@@ -94,7 +94,7 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
   const isA5 = paperSize === 'A5';
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden pb-12 print:min-h-0 print:pb-0">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-100 pb-12 text-slate-900 print:min-h-0 print:bg-white print:pb-0">
       {/* Dynamic @page size rule */}
       <style>{`
         @media print {
@@ -106,7 +106,7 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
       `}</style>
 
       {/* ==================== NON-PRINTING CONTROL BAR ==================== */}
-      <section className="no-print border-b border-industrial-border bg-slate-950/95 px-3 py-3 sm:px-6">
+      <section className="no-print border-b border-slate-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -123,17 +123,17 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
             <button
               type="button"
               onClick={() => setPoPickerOpen(true)}
-              className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-sky-400/50 bg-industrial-elevated px-3.5 py-2 text-left text-sm font-bold text-slate-100 hover:border-sky-400"
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-left text-sm font-bold text-slate-800 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-50/50"
             >
-              <QrCode className="h-4 w-4 text-sky-400" />
+              <QrCode className="h-4 w-4 text-blue-600" />
               <span>
-                Lệnh SX: <strong className="font-mono-num text-sky-300">{activePoId}</strong>
+                Lệnh SX: <strong className="font-mono-num text-blue-700">{activePoId}</strong>
               </span>
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-4 w-4 text-slate-500" />
             </button>
 
             {/* A4 / A5 Toggle */}
-            <div className="inline-flex rounded-xl border border-industrial-border bg-slate-900 p-1">
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
               {(['A4', 'A5'] as const).map((sz) => (
                 <button
                   key={sz}
@@ -142,10 +142,10 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
                     setPaperSize(sz);
                     toast.info(`Đã chuyển bố cục bản in sang khổ giấy ${sz}`);
                   }}
-                  className={`min-h-[40px] rounded-lg px-3 text-xs font-extrabold transition-colors ${
+                  className={`min-h-[40px] rounded-lg px-3 text-xs font-extrabold transition-all ${
                     paperSize === sz
-                      ? 'bg-sky-500 text-slate-950'
-                      : 'text-slate-300 hover:text-white'
+                      ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Khổ {sz}
@@ -162,7 +162,7 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
                 size="lg"
                 onClick={() => navigateTo(`/worker?qr=${encodeURIComponent(firstQrPayload)}`)}
               >
-                <Smartphone className="h-4 w-4 text-emerald-400" />
+                <Smartphone className="h-4 w-4 text-emerald-600" />
                 <span>Giả lập quét trên ĐT</span>
               </Button>
             )}
@@ -184,12 +184,12 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
       {/* ==================== PRINTABLE ISO SHEET ==================== */}
       <main className="mx-auto mt-4 px-2 sm:px-4 print:mt-0 print:px-0">
         {loading ? (
-          <div className="no-print mx-auto flex max-w-3xl items-center justify-center gap-2 rounded-2xl border border-industrial-border bg-industrial-surface p-12 text-slate-300">
-            <RefreshCw className="h-5 w-5 animate-spin text-sky-400" />
+          <div className="no-print mx-auto flex max-w-3xl items-center justify-center gap-2.5 rounded-2xl border border-slate-200 bg-white p-12 text-sm font-medium text-slate-600 shadow-card">
+            <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
             <span>Đang dựng Phiếu Công Nghệ chuẩn ISO cho {activePoId}...</span>
           </div>
         ) : errorMsg || !traveler ? (
-          <div className="no-print mx-auto max-w-3xl rounded-2xl border border-red-500/50 bg-red-950/40 p-6 text-center text-red-200">
+          <div className="no-print mx-auto max-w-3xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-rose-800 shadow-card">
             <p className="font-bold">{errorMsg || 'Không tìm thấy dữ liệu Lệnh SX.'}</p>
             <Button
               type="button"

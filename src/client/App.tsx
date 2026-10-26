@@ -50,11 +50,11 @@ function ShellRouter() {
   }
 
   return (
-    <div className="min-h-screen w-full max-w-full bg-industrial-canvas text-slate-50">
+    <div className="min-h-screen w-full max-w-full bg-industrial-canvas text-slate-900">
       <TopRoleBar currentPath={pathname} />
       <Suspense
         fallback={
-          <div className="flex min-h-[60vh] items-center justify-center px-4 text-sm font-semibold text-slate-400">
+          <div className="flex min-h-[60vh] items-center justify-center px-4 text-sm font-semibold text-slate-600">
             Đang tải phân hệ MES...
           </div>
         }

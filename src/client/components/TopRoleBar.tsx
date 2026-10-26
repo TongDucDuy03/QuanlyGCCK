@@ -41,7 +41,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
         <button
           type="button"
           onClick={() => setCollapsedKiosk(false)}
-          className="rounded-lg border border-industrial-border bg-slate-900/90 px-2.5 py-1 text-xs font-semibold text-slate-300 shadow-lg hover:bg-slate-800 hover:text-white"
+          className="rounded-lg border border-slate-300 bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-card backdrop-blur transition-colors hover:border-blue-500 hover:bg-slate-50 hover:text-blue-700"
         >
           Hiện thanh chuyển cổng
         </button>
@@ -84,23 +84,23 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
   const isPrintActive = currentPath.startsWith('/print/');
 
   const pillCls = (active: boolean) =>
-    `inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${
+    `inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-all ${
       active
-        ? 'border-sky-400/70 bg-sky-500/20 text-sky-200 shadow-sm'
-        : 'border-industrial-border bg-industrial-elevated/80 text-slate-300 hover:border-slate-500 hover:text-white'
+        ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200 font-bold'
+        : 'text-slate-600 hover:bg-white/60 hover:text-slate-900 font-semibold'
     }`;
 
   return (
-    <header className="no-print relative md:sticky md:top-0 z-40 w-full max-w-full border-b border-industrial-border bg-slate-950/95 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-[1920px] flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 sm:px-4">
+    <header className="no-print relative lg:sticky lg:top-0 z-40 w-full max-w-full border-b border-slate-200 bg-white/95 backdrop-blur shadow-sm">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-wrap lg:flex-nowrap lg:h-[52px] items-center justify-between gap-2 px-2.5 py-1.5 lg:py-0 sm:px-4">
         {/* Brand Identity */}
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-400/40 bg-sky-500/15 text-sky-300">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
             <Factory className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-xs font-extrabold tracking-wide text-slate-100 sm:text-sm">
-              GCCK THẮNG LỢI <span className="text-sky-400">LEAN MES</span>
+            <div className="truncate text-sm font-extrabold tracking-tight text-slate-900">
+              GCCK Thắng Lợi
             </div>
           </div>
         </div>
@@ -108,7 +108,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
         {/* 1-Click Role & Shell Switcher */}
         <nav
           aria-label="Chuyển nhanh cổng giao diện"
-          className="flex flex-wrap items-center gap-1.5"
+          className="flex flex-wrap lg:flex-nowrap items-center gap-1 rounded-xl bg-slate-100 p-1"
         >
           <button
             type="button"
@@ -121,7 +121,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
             }
             className={pillCls(isWorkerActive)}
           >
-            <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+            <Smartphone className="h-3.5 w-3.5 text-emerald-600" />
             <span>Công Nhân</span>
           </button>
 
@@ -130,7 +130,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
             onClick={() => void handleRoleNav('/admin', 'NV_KT02', '🔍 Tổ Trưởng / QC')}
             className={pillCls(isQcActive)}
           >
-            <UserCheck className="h-3.5 w-3.5 text-amber-400" />
+            <UserCheck className="h-3.5 w-3.5 text-amber-600" />
             <span>Tổ Trưởng / QC</span>
           </button>
 
@@ -139,7 +139,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
             onClick={() => void handleRoleNav('/admin', 'NV00053', '🛡️ Quản Trị Admin')}
             className={pillCls(isAdminActive)}
           >
-            <Shield className="h-3.5 w-3.5 text-sky-400" />
+            <Shield className="h-3.5 w-3.5 text-blue-600" />
             <span>Quản Trị Admin</span>
           </button>
 
@@ -148,7 +148,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
             onClick={() => void handleRoleNav('/andon', undefined, '📺 TV Andon 55"')}
             className={pillCls(isAndon)}
           >
-            <MonitorPlay className="h-3.5 w-3.5 text-purple-400" />
+            <MonitorPlay className="h-3.5 w-3.5 text-violet-600" />
             <span>TV Andon 55&quot;</span>
           </button>
 
@@ -159,22 +159,22 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
             }
             className={pillCls(isPrintActive)}
           >
-            <Printer className="h-3.5 w-3.5 text-slate-300" />
+            <Printer className="h-3.5 w-3.5 text-slate-500" />
             <span>Phiếu QR</span>
           </button>
         </nav>
 
-        {/* Active User & PIN / Outbox Status */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Active User & PIN / Offline Sync Status */}
+        <div className="flex flex-wrap lg:flex-nowrap items-center gap-1.5">
           {outboxCount > 0 && (
             <button
               type="button"
               onClick={() => void flushOfflineOutbox()}
-              className="inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-200"
-              title="Đồng bộ phiếu lưu ngoại tuyến"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"
+              title="Nhấn để đồng bộ ngay dữ liệu lưu tạm ngoại tuyến"
             >
-              <CloudOff className="h-3.5 w-3.5" />
-              <span className="font-mono-num">{outboxCount}</span> chờ đồng bộ
+              <CloudOff className="h-3.5 w-3.5 text-amber-600" />
+              <span className="font-mono-num">Đang đồng bộ ({outboxCount})</span>
             </button>
           )}
 
@@ -200,9 +200,9 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
           <button
             type="button"
             onClick={() => openPinModal(user?.workerId)}
-            className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-industrial-border bg-slate-900 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:border-sky-400 hover:text-sky-300"
+            className="inline-flex min-h-[32px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:text-blue-700"
           >
-            <KeyRound className="h-3.5 w-3.5 text-sky-400" />
+            <KeyRound className="h-3.5 w-3.5 text-blue-600" />
             <span>Đổi PIN / TK</span>
           </button>
 
@@ -210,7 +210,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
             <button
               type="button"
               onClick={() => setCollapsedKiosk(true)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-industrial-border bg-slate-900 text-slate-300 hover:text-white"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900"
               title="Thu gọn thanh trên TV Kiosk"
             >
               <ChevronUp className="h-4 w-4" />

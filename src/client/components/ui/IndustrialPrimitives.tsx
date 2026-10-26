@@ -47,13 +47,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="no-print fixed bottom-20 sm:bottom-4 right-4 z-[90] flex max-w-md flex-col gap-2 pointer-events-none px-3 sm:px-0">
+      <div className="no-print fixed left-3 right-3 sm:left-auto sm:right-4 bottom-20 sm:bottom-4 z-[90] flex max-w-md flex-col gap-2 pointer-events-none">
         {toasts.map((t) => {
           const styles: Record<ToastKind, string> = {
-            success: 'border-emerald-500/60 bg-slate-900/95 text-emerald-100',
-            error: 'border-red-500/70 bg-slate-900/95 text-red-100',
-            warning: 'border-amber-500/70 bg-slate-900/95 text-amber-100',
-            info: 'border-sky-500/60 bg-slate-900/95 text-sky-100',
+            success: 'border-emerald-300 bg-emerald-50 text-emerald-900',
+            error: 'border-rose-300 bg-rose-50 text-rose-900',
+            warning: 'border-amber-300 bg-amber-50 text-amber-900',
+            info: 'border-blue-300 bg-blue-50 text-blue-900',
+          };
+          const iconStyles: Record<ToastKind, string> = {
+            success: 'text-emerald-600',
+            error: 'text-rose-600',
+            warning: 'text-amber-600',
+            info: 'text-blue-600',
           };
           const Icon =
             t.kind === 'success'
@@ -68,14 +74,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <div
               key={t.id}
               role="status"
-              className={`pointer-events-auto flex items-start gap-2.5 rounded-xl border px-3.5 py-3 shadow-2xl backdrop-blur-md transition-all ${styles[t.kind]}`}
+              className={`pointer-events-auto flex items-start gap-2.5 rounded-xl border px-3.5 py-3 shadow-elevated transition-all ${styles[t.kind]}`}
             >
-              <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+              <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${iconStyles[t.kind]}`} />
               <div className="flex-1 text-sm font-medium leading-snug">{t.message}</div>
               <button
                 type="button"
                 onClick={() => removeToast(t.id)}
-                className="rounded p-0.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                className="rounded-md p-0.5 text-slate-500 transition-colors hover:bg-black/5 hover:text-slate-900"
                 aria-label="Đóng thông báo"
               >
                 <X className="h-4 w-4" />
@@ -117,9 +123,9 @@ export function Card({
 }: CardProps) {
   return (
     <div
-      className={`rounded-xl border border-industrial-border ${
-        elevated ? 'bg-industrial-elevated' : 'bg-industrial-surface'
-      } ${noPadding ? '' : 'p-4'} shadow-lg ${className}`}
+      className={`rounded-2xl border border-slate-200 ${
+        elevated ? 'bg-industrial-elevated' : 'bg-white'
+      } ${noPadding ? '' : 'p-4'} shadow-card ${className}`}
       {...rest}
     >
       {children}
@@ -136,12 +142,12 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 export function Badge({ children, variant = 'neutral', className = '', ...rest }: BadgeProps) {
   const variants: Record<BadgeVariant, string> = {
-    neutral: 'border-slate-600/60 bg-slate-800/80 text-slate-200',
-    info: 'border-sky-500/40 bg-sky-500/15 text-sky-300',
-    success: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
-    warning: 'border-amber-500/45 bg-amber-500/15 text-amber-300',
-    danger: 'border-red-500/50 bg-red-500/20 text-red-300',
-    purple: 'border-purple-500/45 bg-purple-500/15 text-purple-300',
+    neutral: 'border-slate-200 bg-slate-100 text-slate-700',
+    info: 'border-blue-200 bg-blue-50 text-blue-700',
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    warning: 'border-amber-200 bg-amber-50 text-amber-800',
+    danger: 'border-rose-200 bg-rose-50 text-rose-700',
+    purple: 'border-violet-200 bg-violet-50 text-violet-700',
   };
 
   return (
@@ -173,17 +179,17 @@ export function Button({
 }: ButtonProps) {
   const variants: Record<ButtonVariant, string> = {
     primary:
-      'bg-sky-500 text-slate-950 hover:bg-sky-400 active:bg-sky-300 border border-sky-400/50 font-bold shadow-sm',
+      'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 border border-blue-600 font-bold shadow-sm',
     secondary:
-      'bg-industrial-elevated text-slate-100 hover:bg-slate-700/80 border border-industrial-border font-semibold',
+      'bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 border border-slate-300 font-semibold shadow-sm',
     success:
-      'bg-emerald-500 text-slate-950 hover:bg-emerald-400 active:bg-emerald-300 border border-emerald-400/50 font-bold shadow-sm',
+      'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-600 font-bold shadow-sm',
     warning:
-      'bg-amber-500 text-slate-950 hover:bg-amber-400 active:bg-amber-300 border border-amber-400/50 font-bold shadow-sm',
+      'bg-amber-500 text-slate-950 hover:bg-amber-600 active:bg-amber-700 border border-amber-500 font-bold shadow-sm',
     danger:
-      'bg-red-600 text-white hover:bg-red-500 active:bg-red-400 border border-red-400/40 font-bold shadow-sm',
+      'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 border border-rose-600 font-bold shadow-sm',
     ghost:
-      'bg-transparent text-slate-300 hover:bg-slate-800/70 hover:text-white border border-transparent font-medium',
+      'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200/70 border border-transparent font-medium',
   };
 
   const sizes: Record<ButtonSize, string> = {
@@ -237,24 +243,24 @@ export function Modal({
 
   return (
     <div
-      className="no-print fixed inset-0 z-[80] flex items-end justify-center bg-black/75 p-0 sm:items-center sm:p-4 backdrop-blur-sm"
+      className="no-print fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/40 p-0 sm:items-center sm:p-4 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={`flex max-h-[92vh] w-full ${maxWidthClass} flex-col rounded-t-2xl sm:rounded-2xl border border-industrial-border bg-industrial-surface shadow-2xl`}
+        className={`flex max-h-[92vh] w-full ${maxWidthClass} flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-elevated`}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-industrial-border px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-4 py-3.5">
           <div>
-            <h3 className="text-base font-bold text-slate-50">{title}</h3>
-            {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+            <h3 className="text-base font-bold text-slate-900">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-industrial-border bg-industrial-elevated text-slate-300 hover:bg-slate-700 hover:text-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
             aria-label="Đóng hộp thoại"
           >
             <X className="h-4 w-4" />
@@ -262,7 +268,7 @@ export function Modal({
         </div>
         <div className="flex-1 overflow-y-auto p-4">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-industrial-border px-4 py-3">
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-4 py-3">
             {footer}
           </div>
         )}
@@ -295,18 +301,18 @@ export function PaginationBar({
   const endIdx = Math.min(totalItems, safePage * pageSize);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-industrial-border px-3 py-2.5 text-xs text-slate-300">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-600">
       <div className="flex items-center gap-2">
         <span>
-          Hiển thị <strong className="font-mono-num text-slate-100">{startIdx}</strong>–
-          <strong className="font-mono-num text-slate-100">{endIdx}</strong> / Tổng{' '}
-          <strong className="font-mono-num text-sky-300">{totalItems}</strong> bản ghi
+          Hiển thị <strong className="font-mono-num text-slate-900">{startIdx}</strong>–
+          <strong className="font-mono-num text-slate-900">{endIdx}</strong> / Tổng{' '}
+          <strong className="font-mono-num text-blue-700">{totalItems}</strong> bản ghi
         </span>
         {onPageSizeChange && (
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="rounded-md border border-industrial-border bg-industrial-elevated px-2 py-1 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
           >
             {pageSizeOptions.map((opt) => (
               <option key={opt} value={opt}>
@@ -322,18 +328,18 @@ export function PaginationBar({
           type="button"
           disabled={safePage <= 1}
           onClick={() => onPageChange(safePage - 1)}
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-industrial-border bg-industrial-elevated px-2.5 font-semibold text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40"
         >
           <ChevronLeft className="h-3.5 w-3.5" /> Trước
         </button>
-        <span className="px-2 font-mono-num font-semibold text-slate-200">
+        <span className="px-2 font-mono-num font-semibold text-slate-700">
           Trang {safePage} / {totalPages}
         </span>
         <button
           type="button"
           disabled={safePage >= totalPages}
           onClick={() => onPageChange(safePage + 1)}
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-industrial-border bg-industrial-elevated px-2.5 font-semibold text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40"
         >
           Sau <ChevronRight className="h-3.5 w-3.5" />
         </button>

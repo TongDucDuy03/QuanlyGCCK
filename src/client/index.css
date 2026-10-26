@@ -3,17 +3,19 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  --gcck-canvas: #090d16;
-  --gcck-surface: #111827;
-  --gcck-elevated: #182235;
-  --gcck-border: #23304d;
-  --gcck-text: #f8fafc;
-  --gcck-muted: #94a3b8;
-  --gcck-accent: #38bdf8;
-  --gcck-run: #10b981;
-  --gcck-warn: #f59e0b;
-  --gcck-stop: #ef4444;
+  color-scheme: light;
+  --gcck-canvas: #f4f6fb;
+  --gcck-surface: #ffffff;
+  --gcck-elevated: #f8fafc;
+  --gcck-subtle: #f1f5f9;
+  --gcck-border: #e2e8f0;
+  --gcck-border-strong: #cbd5e1;
+  --gcck-text: #0f172a;
+  --gcck-muted: #64748b;
+  --gcck-accent: #2563eb;
+  --gcck-run: #059669;
+  --gcck-warn: #d97706;
+  --gcck-stop: #e11d48;
 }
 
 html,
@@ -34,20 +36,20 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Sleek Industrial Scrollbars */
+/* Bright Daylight Precision Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b111e;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #23304d;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #33466e;
+  background: #94a3b8;
 }
 
 /* Crisp Black-on-White A4/A5 Print Styles for QR Job Traveler */

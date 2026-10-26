@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Delete, KeyRound, Lock, ShieldCheck } from 'lucide-react';
+import { Delete, Lock, ShieldCheck } from 'lucide-react';
 import type {
   AuthMode,
   AuthSessionResponse,
@@ -154,7 +154,7 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
-// ==================== 56PX INDUSTRIAL PIN LOGIN MODAL ====================
+// ==================== 56PX BRIGHT POS / BANKING PIN LOGIN MODAL ====================
 interface PinLoginModalProps {
   open: boolean;
   onClose: () => void;
@@ -206,6 +206,7 @@ export function PinLoginModal({
   };
 
   const keypadDigits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  const dotSlots = Math.max(4, Math.min(8, pin.length));
 
   return (
     <Modal
@@ -217,14 +218,14 @@ export function PinLoginModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600">
             Mã nhân viên / Tài khoản
           </label>
           {profiles.length > 0 ? (
             <select
               value={workerId}
               onChange={(e) => setWorkerId(e.target.value)}
-              className="min-h-[48px] w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+              className="min-h-[48px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             >
               {profiles.map((p) => (
                 <option key={p.workerId} value={p.workerId}>
@@ -238,20 +239,39 @@ export function PinLoginModal({
               value={workerId}
               onChange={(e) => setWorkerId(e.target.value)}
               placeholder="VD: NV00214 hoặc NV00053"
-              className="min-h-[48px] w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+              className="min-h-[48px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             />
           )}
         </div>
 
         <div>
-          <label className="mb-1.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <label className="mb-1.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-600">
             <span>Mã PIN cá nhân</span>
-            <span className="text-[11px] font-normal text-slate-500">
+            <span className="text-[11px] font-medium normal-case tracking-normal text-slate-500">
               Mặc định CN: 1234 | QĐ: admin123
             </span>
           </label>
+
+          {/* Banking/POS PIN Dots Indicator */}
+          <div
+            aria-hidden="true"
+            className="mb-2 flex items-center justify-center gap-2.5 py-1"
+          >
+            {Array.from({ length: dotSlots }).map((_, idx) => {
+              const filled = idx < pin.length;
+              return (
+                <span
+                  key={idx}
+                  className={`h-3 w-3 rounded-full transition-all ${
+                    filled ? 'scale-110 bg-blue-600 shadow-sm' : 'bg-slate-200'
+                  }`}
+                />
+              );
+            })}
+          </div>
+
           <div className="relative">
-            <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               type="password"
               value={pin}
@@ -259,20 +279,20 @@ export function PinLoginModal({
                 setErrMsg('');
                 setPin(e.target.value);
               }}
-              placeholder="Nhập PIN..."
-              className="font-mono-num min-h-[52px] w-full rounded-xl border border-industrial-border bg-slate-950 pl-10 pr-4 text-center text-xl font-bold tracking-[0.25em] text-sky-300 focus:border-sky-400 focus:outline-none"
+              placeholder="Nhập mã PIN..."
+              className="font-mono-num min-h-[50px] w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-center text-xl font-bold tracking-[0.25em] text-slate-900 shadow-sm placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:font-medium placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             />
           </div>
         </div>
 
-        {/* 56px Shopfloor Numeric Keypad for oil-stained fingers */}
+        {/* 56px Shopfloor Numeric Keypad */}
         <div className="grid grid-cols-3 gap-2">
           {keypadDigits.map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => appendDigit(d)}
-              className="font-mono-num flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-xl font-bold text-slate-100 hover:bg-slate-700 active:scale-[0.98]"
+              className="font-mono-num flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xl font-bold text-slate-900 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 active:scale-95"
             >
               {d}
             </button>
@@ -280,21 +300,21 @@ export function PinLoginModal({
           <button
             type="button"
             onClick={() => setPin('')}
-            className="flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-slate-800/80 text-sm font-bold text-amber-300 hover:bg-slate-700"
+            className="flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-sm font-bold text-amber-800 transition-all hover:border-amber-300 hover:bg-amber-100 active:scale-95"
           >
             XÓA
           </button>
           <button
             type="button"
             onClick={() => appendDigit('0')}
-            className="font-mono-num flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-xl font-bold text-slate-100 hover:bg-slate-700 active:scale-[0.98]"
+            className="font-mono-num flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xl font-bold text-slate-900 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 active:scale-95"
           >
             0
           </button>
           <button
             type="button"
             onClick={() => setPin((p) => p.slice(0, -1))}
-            className="flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+            className="flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-200 hover:text-slate-900 active:scale-95"
             aria-label="Xóa 1 ký tự"
           >
             <Delete className="h-5 w-5" />
@@ -302,7 +322,7 @@ export function PinLoginModal({
         </div>
 
         {errMsg && (
-          <div className="rounded-lg border border-red-500/50 bg-red-950/60 px-3 py-2 text-xs font-semibold text-red-200">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">
             {errMsg}
           </div>
         )}
