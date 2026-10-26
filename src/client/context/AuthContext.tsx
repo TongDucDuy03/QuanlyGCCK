@@ -1,0 +1,323 @@
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Delete, KeyRound, Lock, ShieldCheck } from 'lucide-react';
+import type {
+  AuthMode,
+  AuthSessionResponse,
+  AuthSessionUser,
+  QuickSwitchProfile,
+} from '@shared/types';
+import { apiClient, setStoredAuthToken } from '../lib/apiClient';
+import { Button, Modal, useToast } from '../components/ui/IndustrialPrimitives';
+
+interface AuthContextValue {
+  user: AuthSessionUser | null;
+  authMode: AuthMode;
+  loading: boolean;
+  quickSwitchProfiles: QuickSwitchProfile[];
+  loginWithPin: (workerIdOrUsername: string, pin: string) => Promise<AuthSessionUser>;
+  quickSwitch: (params: { workerId?: string; role?: string }) => Promise<AuthSessionUser | null>;
+  logout: () => Promise<void>;
+  refreshSession: () => Promise<void>;
+  openPinModal: (preselectedWorkerId?: string) => void;
+  closePinModal: () => void;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthSessionUser | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>('DEMO_QUICK');
+  const [quickSwitchProfiles, setQuickSwitchProfiles] = useState<QuickSwitchProfile[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [pinModalOpen, setPinModalOpen] = useState<boolean>(false);
+  const [preselectedId, setPreselectedId] = useState<string>('');
+  const toast = useToast();
+
+  const quickSwitch = useCallback(
+    async (params: { workerId?: string; role?: string }): Promise<AuthSessionUser | null> => {
+      const res = await apiClient.post<{
+        token: string;
+        user: AuthSessionUser;
+        authMode: AuthMode;
+      }>('/auth/quick-switch', params);
+      if (res.token) setStoredAuthToken(res.token);
+      setUser(res.user);
+      setAuthMode(res.authMode);
+      return res.user;
+    },
+    []
+  );
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const sess = await apiClient.get<AuthSessionResponse>('/auth/session');
+      setAuthMode(sess.authMode);
+      setQuickSwitchProfiles(sess.quickSwitchProfiles || []);
+
+      if (sess.user) {
+        setUser(sess.user);
+      } else if (sess.authMode === 'DEMO_QUICK') {
+        // Zero-friction automatic role bootstrap based on entry URL
+        const path = typeof window !== 'undefined' ? window.location.pathname : '/worker';
+        if (path.startsWith('/admin')) {
+          await quickSwitch({ workerId: 'NV00053' });
+        } else if (!path.startsWith('/andon')) {
+          await quickSwitch({ workerId: 'NV00214' });
+        }
+      } else {
+        setUser(null);
+      }
+    } catch {
+      // Offline fallback keeps UI usable
+    } finally {
+      setLoading(false);
+    }
+  }, [quickSwitch]);
+
+  useEffect(() => {
+    void refreshSession();
+  }, [refreshSession]);
+
+  const loginWithPin = useCallback(
+    async (workerIdOrUsername: string, pin: string): Promise<AuthSessionUser> => {
+      const res = await apiClient.post<{
+        token: string;
+        user: AuthSessionUser;
+        authMode: AuthMode;
+      }>('/auth/login', {
+        workerId: workerIdOrUsername,
+        pin,
+      });
+      if (res.token) setStoredAuthToken(res.token);
+      setUser(res.user);
+      setAuthMode(res.authMode);
+      setPinModalOpen(false);
+      toast.success(`Xin chào ${res.user.name} (${res.user.title})`);
+      return res.user;
+    },
+    [toast]
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      await apiClient.post('/auth/logout', {});
+    } catch {
+      // ignore
+    }
+    setStoredAuthToken(null);
+    setUser(null);
+    toast.info('Đã đăng xuất phiên làm việc.');
+  }, [toast]);
+
+  const openPinModal = useCallback(
+    (workerId?: string) => {
+      setPreselectedId(workerId || user?.workerId || 'NV00214');
+      setPinModalOpen(true);
+    },
+    [user?.workerId]
+  );
+
+  const closePinModal = useCallback(() => setPinModalOpen(false), []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        authMode,
+        loading,
+        quickSwitchProfiles,
+        loginWithPin,
+        quickSwitch,
+        logout,
+        refreshSession,
+        openPinModal,
+        closePinModal,
+      }}
+    >
+      {children}
+      <PinLoginModal
+        open={pinModalOpen}
+        onClose={closePinModal}
+        initialWorkerId={preselectedId}
+        profiles={quickSwitchProfiles}
+        onSubmit={loginWithPin}
+      />
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return ctx;
+}
+
+// ==================== 56PX INDUSTRIAL PIN LOGIN MODAL ====================
+interface PinLoginModalProps {
+  open: boolean;
+  onClose: () => void;
+  initialWorkerId: string;
+  profiles: QuickSwitchProfile[];
+  onSubmit: (workerId: string, pin: string) => Promise<AuthSessionUser>;
+}
+
+export function PinLoginModal({
+  open,
+  onClose,
+  initialWorkerId,
+  profiles,
+  onSubmit,
+}: PinLoginModalProps) {
+  const [workerId, setWorkerId] = useState(initialWorkerId || 'NV00214');
+  const [pin, setPin] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [errMsg, setErrMsg] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setWorkerId(initialWorkerId || 'NV00214');
+      setPin('');
+      setErrMsg('');
+    }
+  }, [open, initialWorkerId]);
+
+  const appendDigit = (d: string) => {
+    setErrMsg('');
+    setPin((prev) => (prev.length < 12 ? prev + d : prev));
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!workerId.trim() || !pin.trim()) {
+      setErrMsg('Vui lòng nhập Mã nhân viên và mã PIN.');
+      return;
+    }
+    setSubmitting(true);
+    setErrMsg('');
+    try {
+      await onSubmit(workerId.trim(), pin.trim());
+    } catch (err: any) {
+      setErrMsg(err?.message || 'Đăng nhập thất bại.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const keypadDigits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Xác Thực Phiên Vận Hành & Quản Trị"
+      subtitle="Phiên đăng nhập được ghi nhớ an toàn 30 ngày trên thiết bị này"
+      maxWidthClass="max-w-md"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Mã nhân viên / Tài khoản
+          </label>
+          {profiles.length > 0 ? (
+            <select
+              value={workerId}
+              onChange={(e) => setWorkerId(e.target.value)}
+              className="min-h-[48px] w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+            >
+              {profiles.map((p) => (
+                <option key={p.workerId} value={p.workerId}>
+                  {p.workerId} — {p.name} ({p.title})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={workerId}
+              onChange={(e) => setWorkerId(e.target.value)}
+              placeholder="VD: NV00214 hoặc NV00053"
+              className="min-h-[48px] w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+            />
+          )}
+        </div>
+
+        <div>
+          <label className="mb-1.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <span>Mã PIN cá nhân</span>
+            <span className="text-[11px] font-normal text-slate-500">
+              Mặc định CN: 1234 | QĐ: admin123
+            </span>
+          </label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="password"
+              value={pin}
+              onChange={(e) => {
+                setErrMsg('');
+                setPin(e.target.value);
+              }}
+              placeholder="Nhập PIN..."
+              className="font-mono-num min-h-[52px] w-full rounded-xl border border-industrial-border bg-slate-950 pl-10 pr-4 text-center text-xl font-bold tracking-[0.25em] text-sky-300 focus:border-sky-400 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* 56px Shopfloor Numeric Keypad for oil-stained fingers */}
+        <div className="grid grid-cols-3 gap-2">
+          {keypadDigits.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => appendDigit(d)}
+              className="font-mono-num flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-xl font-bold text-slate-100 hover:bg-slate-700 active:scale-[0.98]"
+            >
+              {d}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setPin('')}
+            className="flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-slate-800/80 text-sm font-bold text-amber-300 hover:bg-slate-700"
+          >
+            XÓA
+          </button>
+          <button
+            type="button"
+            onClick={() => appendDigit('0')}
+            className="font-mono-num flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-xl font-bold text-slate-100 hover:bg-slate-700 active:scale-[0.98]"
+          >
+            0
+          </button>
+          <button
+            type="button"
+            onClick={() => setPin((p) => p.slice(0, -1))}
+            className="flex h-14 min-h-[56px] items-center justify-center rounded-xl border border-industrial-border bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+            aria-label="Xóa 1 ký tự"
+          >
+            <Delete className="h-5 w-5" />
+          </button>
+        </div>
+
+        {errMsg && (
+          <div className="rounded-lg border border-red-500/50 bg-red-950/60 px-3 py-2 text-xs font-semibold text-red-200">
+            {errMsg}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          variant="primary"
+          size="touch"
+          disabled={submitting}
+          className="w-full"
+        >
+          <ShieldCheck className="h-5 w-5" />
+          {submitting ? 'ĐANG XÁC THỰC...' : 'MỞ KHÓA CA LÀM VIỆC'}
+        </Button>
+      </form>
+    </Modal>
+  );
+}

@@ -1,0 +1,700 @@
+import type ExcelJS from 'exceljs';
+import type {
+  EmployeeAttSummary,
+  Payroll3PRow,
+  ProductCostingSummary,
+  ProductionLogDto,
+} from '@shared/types';
+import { normalizeVn } from '@shared/vnSearch';
+
+async function createExcelWorkbook(): Promise<ExcelJS.Workbook> {
+  const mod = await import('exceljs');
+  const Lib = ((mod as any).default || mod) as typeof ExcelJS;
+  return new Lib.Workbook();
+}
+
+export interface MasterOperationImportRow {
+  customer: string;
+  productName: string;
+  opName: string;
+  stdSeconds: number;
+  stage: string;
+  defaultMachine: string;
+  toolCode: string;
+}
+
+/**
+ * Neutralizes CSV/Excel Formula Injection on untrusted strings starting with '=', '@',
+ * or '+/-' followed by letters (e.g. +SUM, -HYPERLINK), while keeping valid shopfloor
+ * attendance codes like '+2', '-1.5', 'C2+2', 'C2/2-0.75' as pure string text.
+ */
+export function sanitizeForExcel(value: unknown): string | number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (value === null || value === undefined) {
+    return '';
+  }
+  const s = String(value);
+  if (!s) return '';
+  if (/^\s*[=@]/.test(s) || /^\s*[+-]\s*[a-zA-Z]/.test(s)) {
+    return `'${s}`;
+  }
+  return s;
+}
+
+function toExactArrayBuffer(input: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (input instanceof Uint8Array) {
+    const copy = new Uint8Array(input.byteLength);
+    copy.set(input);
+    return copy.buffer;
+  }
+  return input;
+}
+
+async function workbookToBytes(wb: ExcelJS.Workbook): Promise<Uint8Array> {
+  const raw: unknown = await wb.xlsx.writeBuffer();
+  if (raw instanceof Uint8Array) {
+    return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+  }
+  return new Uint8Array(raw as ArrayBuffer);
+}
+
+function appendSafeRow(
+  ws: ExcelJS.Worksheet,
+  values: Array<string | number | null | undefined>,
+  options: { isHeader?: boolean; forceAllTextFromCol?: number } = {}
+): ExcelJS.Row {
+  const row = ws.addRow([]);
+  values.forEach((raw, idx) => {
+    const colNum = idx + 1;
+    const cell = row.getCell(colNum);
+    const forceText =
+      options.forceAllTextFromCol !== undefined && colNum >= options.forceAllTextFromCol;
+
+    if (forceText) {
+      const strVal = sanitizeForExcel(raw === null || raw === undefined ? '' : String(raw));
+      cell.value = String(strVal);
+      cell.numFmt = '@';
+    } else {
+      const safeVal = sanitizeForExcel(raw);
+      cell.value = safeVal;
+      if (typeof safeVal === 'string') {
+        cell.numFmt = '@';
+      }
+    }
+
+    if (options.isHeader) {
+      cell.font = { bold: true, color: { argb: 'FFF8FAFC' }, size: 10 };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF0F172A' },
+      };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF334155' } },
+        left: { style: 'thin', color: { argb: 'FF334155' } },
+        bottom: { style: 'thin', color: { argb: 'FF38BDF8' } },
+        right: { style: 'thin', color: { argb: 'FF334155' } },
+      };
+    }
+  });
+  if (options.isHeader) {
+    row.height = 26;
+  }
+  return row;
+}
+
+function autoFitColumns(ws: ExcelJS.Worksheet, minWidth = 10, maxWidth = 42): void {
+  ws.columns.forEach((col) => {
+    let best = minWidth;
+    col.eachCell?.({ includeEmpty: false }, (cell) => {
+      const len = String(cell.value ?? '').length;
+      if (len + 3 > best) best = Math.min(maxWidth, len + 3);
+    });
+    col.width = best;
+  });
+}
+
+// ==================== 1. ATTENDANCE 4-SHEET WORKBOOK ====================
+export async function buildAttendanceWorkbook(params: {
+  yearMonth: string;
+  dows: string[];
+  employees: EmployeeAttSummary[];
+}): Promise<Uint8Array> {
+  const wb = await createExcelWorkbook();
+  wb.creator = 'GCCK Thắng Lợi Lean MES';
+  wb.created = new Date();
+
+  const dayHeaders = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const dows31 = Array.from({ length: 31 }, (_, i) => params.dows[i] || '-');
+
+  // Sheet 1: 1_BANG_NHAP_THANG (36 columns)
+  const ws1 = wb.addWorksheet('1_BANG_NHAP_THANG', {
+    views: [{ state: 'frozen', xSplit: 3, ySplit: 2 }],
+  });
+  appendSafeRow(
+    ws1,
+    ['STT', 'Mã NV', 'Nhân viên', 'Loại công', 'Ca mặc định', ...dayHeaders],
+    { isHeader: true }
+  );
+  appendSafeRow(ws1, ['', '', '', '', '', ...dows31], {
+    isHeader: true,
+    forceAllTextFromCol: 6,
+  });
+
+  params.employees.forEach((emp, i) => {
+    const days31 = Array.from({ length: 31 }, (_, d) => emp.days?.[d] ?? '');
+    appendSafeRow(
+      ws1,
+      [
+        i + 1,
+        emp.empId,
+        emp.name,
+        emp.workType || 'Công',
+        emp.defaultShift || 'Ca 1',
+        ...days31,
+      ],
+      { forceAllTextFromCol: 6 }
+    );
+  });
+  autoFitColumns(ws1, 6, 28);
+
+  // Sheet 2: 2_TONG_HOP_CONG_TC (16 columns)
+  const ws2 = wb.addWorksheet('2_TONG_HOP_CONG_TC', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+  appendSafeRow(
+    ws2,
+    [
+      'STT',
+      'Mã nhân viên',
+      'Tên nhân viên',
+      'Nhận diện thông minh & Cảnh báo',
+      'Số giờ hưởng 100% lương',
+      'Số công tính AB',
+      'A,B',
+      'Công thường',
+      'Công ca 3',
+      'TC x1.5',
+      'TC x2',
+      'TC x3',
+      'Phụ cấp ăn ca',
+      'Tổng nghỉ',
+      'Muộn/sớm',
+      'Ô lỗi',
+    ],
+    { isHeader: true }
+  );
+  params.employees.forEach((emp, i) => {
+    appendSafeRow(ws2, [
+      i + 1,
+      emp.empId,
+      emp.name,
+      emp.badgeText || '',
+      emp.hours100,
+      emp.abDays,
+      emp.grade,
+      emp.regDays,
+      emp.s3Days,
+      emp.ot15,
+      emp.ot20,
+      emp.ot30,
+      emp.mealTotal,
+      emp.offDays,
+      emp.lateHours,
+      emp.errCount,
+    ]);
+  });
+  autoFitColumns(ws2, 10, 38);
+
+  // Sheet 3: 3_PHU_CAP_AN_CA (35 columns)
+  const ws3 = wb.addWorksheet('3_PHU_CAP_AN_CA', {
+    views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }],
+  });
+  appendSafeRow(
+    ws3,
+    ['STT', 'Mã nhân viên', 'Tên nhân viên', ...dayHeaders, 'Tổng Phụ Cấp Ăn Ca'],
+    { isHeader: true }
+  );
+  params.employees.forEach((emp, i) => {
+    const meals31 = Array.from({ length: 31 }, (_, d) => Number(emp.dailyMeals?.[d] ?? 0));
+    appendSafeRow(ws3, [i + 1, emp.empId, emp.name, ...meals31, emp.mealTotal]);
+  });
+  autoFitColumns(ws3, 8, 28);
+
+  // Sheet 4: 4_TONG_HOP_NAM_12T (24 columns)
+  const ws4 = wb.addWorksheet('4_TONG_HOP_NAM_12T', {
+    views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }],
+  });
+  appendSafeRow(
+    ws4,
+    [
+      'STT',
+      'Mã NV',
+      'Tên nhân viên',
+      'Ca mặc định',
+      'T1',
+      'T2',
+      'T3',
+      'T4',
+      'T5',
+      'T6',
+      'T7',
+      'T8',
+      'T9',
+      'T10',
+      'T11',
+      'T12',
+      'Tổng Công Thường Năm',
+      'Tổng Giờ Tăng Ca Năm (h)',
+      'Quỹ Phép Năm (12 ngày)',
+      'Đã Nghỉ Phép Thực Tế (P)',
+      'Phép Còn Lại',
+      'Tổng Nghỉ KP Thực Tế',
+      'Tổng Giờ Muộn/Sớm Thực Tế',
+      'Xếp Loại & Nhận Diện',
+    ],
+    { isHeader: true }
+  );
+  params.employees.forEach((emp, i) => {
+    const yr = emp.yearly;
+    const months12 = Array.from({ length: 12 }, (_, m) => Number(yr?.months?.[m] ?? 0));
+    appendSafeRow(ws4, [
+      i + 1,
+      emp.empId,
+      emp.name,
+      emp.defaultShift || 'Ca 1',
+      ...months12,
+      yr?.totalYearDays ?? emp.regDays,
+      yr?.totalYearOt ?? emp.totalOt,
+      yr?.annualLeaveQuota ?? 12,
+      yr?.usedLeaveDays ?? emp.pDays,
+      yr?.remainingLeaveDays ?? Math.max(0, 12 - emp.pDays),
+      emp.kpDays,
+      emp.lateHours,
+      yr?.yearRank || 'Đạt Chuẩn A',
+    ]);
+  });
+  autoFitColumns(ws4, 8, 34);
+
+  return workbookToBytes(wb);
+}
+
+// ==================== 2. COSTING & PNL 19-COLUMN WORKBOOK ====================
+export async function buildCostingPnlWorkbook(
+  items: ProductCostingSummary[]
+): Promise<Uint8Array> {
+  const wb = await createExcelWorkbook();
+  wb.creator = 'GCCK Thắng Lợi Lean MES';
+  const ws = wb.addWorksheet('BAO_GIA_LO_LAI_SP', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  appendSafeRow(
+    ws,
+    [
+      'Mã SP',
+      'Khách Hàng',
+      'Tên Thành Phẩm Cuối Cùng',
+      'Số NC',
+      'Quy Trình Công Nghệ',
+      'Tổng Giây ĐM (s)',
+      'Tổng Giờ ĐM (h)',
+      'Chi Phí Nhân Công ĐM',
+      'Chi Phí Máy ĐM',
+      'Chi Phí Dao Cụ ĐM',
+      'Quản Lý 10% + Phôi & GCN',
+      'TỔNG GIÁ VỐN ĐM / 1 SP',
+      'ĐƠN GIÁ BÁO GIÁ KHÁCH / 1 SP',
+      'SL Đã SX',
+      'GIÁ THÀNH THỰC TẾ / 1 SP',
+      'LÃI / LỖ TRÊN 1 SP',
+      'TỔNG LÃI / LỖ CẢ LÔ',
+      '% BIÊN LỢI NHUẬN',
+      'KẾT LUẬN',
+    ],
+    { isHeader: true }
+  );
+
+  items.forEach((c) => {
+    const status =
+      c.unitProfit < 0
+        ? 'CẢNH BÁO LỖ'
+        : c.marginPct < 10
+          ? 'LÃI MỎNG (<10%)'
+          : 'LÃI TỐT';
+    const overheadPlusMat =
+      (Number(c.stdOverhead) || 0) +
+      (Number(c.rawMaterialCost) || 0) +
+      (Number(c.outsourceCost) || 0);
+
+    appendSafeRow(ws, [
+      c.spId,
+      c.customer,
+      c.productName,
+      c.opCount,
+      c.opsSummary,
+      c.totalSec,
+      c.totalHours,
+      c.stdLabor,
+      c.stdMach,
+      c.stdTool,
+      overheadPlusMat,
+      c.totalStdCost,
+      c.quotedPrice,
+      c.finishedQty,
+      c.actualUnitCost,
+      c.unitProfit,
+      c.totalBatchProfit,
+      `${c.marginPct}%`,
+      status,
+    ]);
+  });
+
+  autoFitColumns(ws, 11, 44);
+  return workbookToBytes(wb);
+}
+
+// ==================== 3. DAILY LOGS 17-COLUMN WORKBOOK ====================
+export async function buildDailyLogsWorkbook(
+  logs: ProductionLogDto[]
+): Promise<Uint8Array> {
+  const wb = await createExcelWorkbook();
+  wb.creator = 'GCCK Thắng Lợi Lean MES';
+  const ws = wb.addWorksheet('NHAT_KY_SAN_LUONG', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  appendSafeRow(
+    ws,
+    [
+      'Thời gian',
+      'Ngày làm',
+      'Ca',
+      'Mã NV',
+      'Họ tên',
+      'Máy',
+      'Khách hàng',
+      'Sản phẩm',
+      'Mã NC',
+      'Nguyên công',
+      'SL OK',
+      'SL Rework',
+      'SL Hủy',
+      'Phút dừng',
+      'Lương ca (VNĐ)',
+      'Đánh giá KPI',
+      'Ghi chú',
+    ],
+    { isHeader: true }
+  );
+
+  logs.forEach((l) => {
+    appendSafeRow(ws, [
+      l.timeStr,
+      l.workDate,
+      l.shiftType,
+      l.workerId,
+      l.workerName,
+      l.machineName,
+      l.customer,
+      l.productName,
+      l.ncId,
+      l.opName,
+      l.okQty,
+      l.reworkQty,
+      l.scrapQty,
+      l.stopMinutes,
+      l.income,
+      l.kpiStatus,
+      l.note,
+    ]);
+  });
+
+  autoFitColumns(ws, 10, 42);
+  return workbookToBytes(wb);
+}
+
+// ==================== 4. MASTER OPERATIONS 7-COL TEMPLATE & PARSER ====================
+export async function buildOperationsTemplateWorkbook(): Promise<Uint8Array> {
+  const wb = await createExcelWorkbook();
+  wb.creator = 'GCCK Thắng Lợi Lean MES';
+  const ws = wb.addWorksheet('MAU_NAP_NGUYEN_CONG', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  appendSafeRow(
+    ws,
+    [
+      'KhachHang',
+      'TenSanPham',
+      'TenNguyenCong',
+      'DinhMucGiay',
+      'BuocCongDoan',
+      'MayMacDinh',
+      'MaDaoCu',
+    ],
+    { isHeader: true }
+  );
+
+  appendSafeRow(ws, [
+    'Vico - QLTB',
+    'Bích thép D320 mẫu',
+    'NC1: Tiện thô 2 mặt',
+    2700,
+    '1',
+    'Máy Tiện CNC 1',
+    'T01',
+  ]);
+  appendSafeRow(ws, [
+    'Vico - QLTB',
+    'Bích thép D320 mẫu',
+    'NC2: Khoan 8 lỗ M16',
+    1800,
+    'End',
+    'Máy Phay CNC 1',
+    'DR14',
+  ]);
+
+  autoFitColumns(ws, 14, 38);
+  return workbookToBytes(wb);
+}
+
+function cellValueToCleanString(val: ExcelJS.CellValue): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'object') {
+    if ('text' in val && typeof val.text === 'string') return normalizeVn(val.text);
+    if ('richText' in val && Array.isArray(val.richText)) {
+      return normalizeVn(val.richText.map((r) => r.text).join(''));
+    }
+    if ('result' in val && val.result !== undefined) return normalizeVn(String(val.result));
+  }
+  const s = normalizeVn(String(val));
+  return s.startsWith("'") && s.length > 1 && /^[=@+-]/.test(s.slice(1)) ? s.slice(1) : s;
+}
+
+export async function parseOperationsWorkbookBuffer(
+  buffer: ArrayBuffer | Uint8Array
+): Promise<MasterOperationImportRow[]> {
+  const wb = await createExcelWorkbook();
+  await wb.xlsx.load(toExactArrayBuffer(buffer));
+  const ws = wb.worksheets[0];
+  if (!ws) {
+    throw new Error('File Excel không có sheet dữ liệu.');
+  }
+
+  const headers: string[] = [];
+  ws.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    headers[colNumber] = cellValueToCleanString(cell.value);
+  });
+
+  const rows: MasterOperationImportRow[] = [];
+  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, string> = {};
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      const key = headers[colNumber] || `col_${colNumber}`;
+      const cleaned = cellValueToCleanString(cell.value);
+      obj[key] = cleaned;
+      obj[`col_${colNumber}`] = cleaned;
+    });
+
+    const productName =
+      obj.TenSanPham ||
+      obj['Tên Sản Phẩm'] ||
+      obj['Tên sản phẩm'] ||
+      obj.Product ||
+      obj.col_2 ||
+      '';
+    if (!productName) return;
+
+    const customer =
+      obj.KhachHang ||
+      obj['Khách hàng'] ||
+      obj['Khách Hàng'] ||
+      obj.Customer ||
+      obj.col_1 ||
+      'Vico - Nội bộ / Khách lẻ';
+
+    const opName =
+      obj.TenNguyenCong ||
+      obj['Tên Nguyên Công'] ||
+      obj['Tên nguyên công'] ||
+      obj.Operation ||
+      obj.col_3 ||
+      'Gia công';
+
+    const rawSec =
+      obj.DinhMucGiay ||
+      obj['Định mức giây (s)'] ||
+      obj['Định mức giây'] ||
+      obj.Seconds ||
+      obj.col_4 ||
+      '1800';
+    const stdSeconds = Math.max(60, Math.round(Number(rawSec) || 1800));
+
+    const stage =
+      obj.BuocCongDoan || obj['Bước'] || obj['Bước công đoạn'] || obj.col_5 || 'End';
+
+    const defaultMachine =
+      obj.MayMacDinh ||
+      obj['Máy mặc định'] ||
+      obj.Machine ||
+      obj.col_6 ||
+      'Máy Tiện CNC 1';
+
+    const toolCode =
+      obj.MaDaoCu || obj['Mã Dao'] || obj['Mã dao cụ'] || obj.col_7 || 'T01';
+
+    rows.push({
+      customer,
+      productName,
+      opName,
+      stdSeconds,
+      stage,
+      defaultMachine,
+      toolCode,
+    });
+  });
+
+  return rows;
+}
+
+// ==================== 5. 3P MONTHLY PAYROLL WORKBOOK ====================
+export async function buildPayroll3PWorkbook(
+  yearMonth: string,
+  rows: Payroll3PRow[]
+): Promise<Uint8Array> {
+  const wb = await createExcelWorkbook();
+  wb.creator = 'GCCK Thắng Lợi Lean MES';
+  const ws = wb.addWorksheet(`LUONG_3P_${yearMonth.replace('-', '_')}`, {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  appendSafeRow(
+    ws,
+    [
+      'STT',
+      'Mã NV',
+      'Họ & Tên',
+      'Chức danh',
+      'Chế độ lương',
+      'Lương CB 8h',
+      'Công thường',
+      'Giờ 100%',
+      'Tổng OT (h)',
+      'Xếp loại',
+      'Giờ ĐM Sản phẩm (h)',
+      'P1: Lương Vị trí / Phép',
+      'P2: Thưởng Chuyên cần A/B',
+      'P3: Lương Khoán / Vượt ĐM',
+      'Phụ cấp Ăn ca',
+      'Khấu trừ NG',
+      'THỰC LĨNH CUỐI THÁNG',
+      'Ghi chú diễn giải',
+    ],
+    { isHeader: true }
+  );
+
+  rows.forEach((r, idx) => {
+    appendSafeRow(ws, [
+      idx + 1,
+      r.workerId,
+      r.name,
+      r.title,
+      r.salaryMode,
+      r.baseSalary,
+      r.regDays,
+      r.hours100,
+      r.totalOt,
+      r.grade,
+      r.earnedStdHours,
+      r.p1PositionPay,
+      r.p2PersonBonus,
+      r.p3PerformancePay,
+      r.mealAllowance,
+      r.scrapPenalty,
+      r.netPay,
+      r.note,
+    ]);
+  });
+
+  autoFitColumns(ws, 10, 42);
+  return workbookToBytes(wb);
+}
+
+// ==================== BROWSER DOWNLOAD & FILE HELPERS ====================
+export function downloadWorkbookBytes(bytes: Uint8Array, filename: string): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const blob = new Blob([copy.buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+export async function downloadAttendanceExcel(params: {
+  yearMonth: string;
+  dows: string[];
+  employees: EmployeeAttSummary[];
+}): Promise<void> {
+  const bytes = await buildAttendanceWorkbook(params);
+  downloadWorkbookBytes(
+    bytes,
+    `GCCK_ThangLoi_ChamCong_4Bang_${params.yearMonth}.xlsx`
+  );
+}
+
+export async function downloadCostingPnlExcel(
+  items: ProductCostingSummary[]
+): Promise<void> {
+  const bytes = await buildCostingPnlWorkbook(items);
+  downloadWorkbookBytes(bytes, 'GCCK_ThangLoi_BaoGia_DoiSoat_LoLai_19Cot.xlsx');
+}
+
+export async function downloadDailyLogsExcel(
+  logs: ProductionLogDto[],
+  dateSuffix = ''
+): Promise<void> {
+  const bytes = await buildDailyLogsWorkbook(logs);
+  const suffix = dateSuffix ? `_${dateSuffix}` : '';
+  downloadWorkbookBytes(bytes, `GCCK_ThangLoi_BaoCao_SanLuong_17Cot${suffix}.xlsx`);
+}
+
+export async function downloadOperationsTemplateExcel(): Promise<void> {
+  const bytes = await buildOperationsTemplateWorkbook();
+  downloadWorkbookBytes(bytes, 'GCCK_ThangLoi_Mau_Nap_Nguyen_Cong_7Cot.xlsx');
+}
+
+export async function downloadPayroll3PExcel(
+  yearMonth: string,
+  rows: Payroll3PRow[]
+): Promise<void> {
+  const bytes = await buildPayroll3PWorkbook(yearMonth, rows);
+  downloadWorkbookBytes(bytes, `GCCK_ThangLoi_BangChotLuong_KPI_3P_${yearMonth}.xlsx`);
+}
+
+export function fileToUint8Array(file: File): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) {
+        resolve(new Uint8Array(reader.result));
+      } else {
+        reject(new Error('Không thể đọc dữ liệu nhị phân của file Excel.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Lỗi đọc file Excel từ thiết bị.'));
+    reader.readAsArrayBuffer(file);
+  });
+}

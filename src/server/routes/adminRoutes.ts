@@ -1,0 +1,1651 @@
+import { Router } from 'express';
+import ExcelJS from 'exceljs';
+import type { DatabaseSync } from 'node:sqlite';
+import type {
+  AttendanceRow,
+  OpLogSummary,
+  WorkerMonthlyLogAgg,
+} from '../../shared/types';
+import { withTransaction } from '../db/connection';
+import { canonicalizeCustomerName, derivePoStatus } from '../db/seed';
+import {
+  getConfigMap,
+  getMealConfigFromDb,
+  getPayrollConfigFromDb,
+  mapLogRowToDto,
+  queryDeliveries,
+  queryLogs,
+  queryMachines,
+  queryOperations,
+  queryProducts,
+  queryPurchaseOrders,
+  queryQcInspections,
+  querySchedules,
+  queryWorkersForViewer,
+} from '../db/queries';
+import { hashPin, requireRoles } from '../auth/security';
+import { computeProductCosting } from '../../shared/costingEngine';
+import { calculateTurnPayroll, isVietnamSunday } from '../../shared/payrollEngine';
+import {
+  computeEmployeeMonthlyStats,
+  computeMonthDows,
+  computeMonthly3PPayroll,
+  getDefShiftCode,
+} from '../../shared/attendanceParser';
+import { computeMachineLoads } from '../../shared/loadBalancing';
+import { normalizeVn } from '../../shared/vnSearch';
+import { flushPendingOutbox, listOutboxItems } from '../adapters/syncAdapters';
+
+export function createAdminRoutes(db: DatabaseSync): Router {
+  const router = Router();
+
+  function recomputeProductStepOrders(spId: string): void {
+    const ops = db
+      .prepare(`SELECT nc_id FROM operations WHERE sp_id = ? ORDER BY step_order ASC, rowid ASC`)
+      .all(spId) as Array<{ nc_id: string }>;
+    const total = ops.length;
+    const upd = db.prepare(
+      `UPDATE operations SET step_order = ?, is_final_op = ?, stage = ? WHERE nc_id = ?`
+    );
+    ops.forEach((o, idx) => {
+      const step = idx + 1;
+      const isFinal = idx === total - 1 ? 1 : 0;
+      const stg = isFinal === 1 ? 'End' : String(step);
+      upd.run(step, isFinal, stg, o.nc_id);
+    });
+  }
+
+  function ensureProductId(customer: string, productName: string, matName: string = ''): string {
+    const normCust = canonicalizeCustomerName(customer).customer;
+    const normProd = normalizeVn(productName);
+    const existing = db
+      .prepare(`SELECT sp_id FROM products WHERE customer = ? AND product_name = ?`)
+      .get(normCust, normProd) as { sp_id: string } | undefined;
+    if (existing) return String(existing.sp_id);
+
+    const maxRow = db
+      .prepare(`SELECT COUNT(*) AS cnt FROM products`)
+      .get() as { cnt: number };
+    let nextNum = Number(maxRow.cnt) + 1;
+    let spId = `SP${String(nextNum).padStart(3, '0')}`;
+    while (db.prepare('SELECT 1 FROM products WHERE sp_id = ?').get(spId)) {
+      nextNum++;
+      spId = `SP${String(nextNum).padStart(3, '0')}`;
+    }
+
+    db.prepare(
+      `INSERT INTO products (sp_id, customer, product_name, mat_name, quoted_price, raw_material_cost, outsource_cost)
+       VALUES (?, ?, ?, ?, 0, 0, 0)`
+    ).run(spId, normCust, normProd, normalizeVn(matName));
+
+    return spId;
+  }
+
+  function nextNcId(): string {
+    const rows = db.prepare(`SELECT nc_id FROM operations`).all() as Array<{ nc_id: string }>;
+    let maxNum = 627;
+    for (const r of rows) {
+      const m = /^NC(\d+)$/i.exec(String(r.nc_id));
+      if (m && Number(m[1]) > maxNum) maxNum = Number(m[1]);
+    }
+    return `NC${String(maxNum + 1).padStart(3, '0')}`;
+  }
+
+  // ==================== ORDERS & DELIVERY ====================
+  router.get('/orders', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (_req, res) => {
+    res.json({ items: queryPurchaseOrders(db), deliveries: queryDeliveries(db) });
+  });
+
+  router.post('/orders', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const poId = normalizeVn(req.body?.poId || '');
+    const { customer } = canonicalizeCustomerName(req.body?.customer || 'Win-Win');
+    const productName = normalizeVn(req.body?.productName || '');
+    const qtyPo = Math.max(1, Math.round(Number(req.body?.qtyPo) || 1));
+    const dueDate = normalizeVn(req.body?.dueDate || '2026-11-30');
+    const materialLot = normalizeVn(req.body?.materialLot || `LOT-VICO-${Date.now().toString().slice(-4)}`);
+    const supplierName = normalizeVn(req.body?.supplierName || 'Xưởng Đúc VICO Thắng Lợi');
+    const castDate = normalizeVn(req.body?.castDate || '2026-10-20');
+    const note = normalizeVn(req.body?.note || '');
+
+    if (!poId || !productName) {
+      res.status(400).json({ error: 'Vui lòng nhập Mã PO và chọn Sản phẩm.' });
+      return;
+    }
+
+    const dup = db.prepare('SELECT 1 FROM purchase_orders WHERE po_id = ?').get(poId);
+    if (dup) {
+      res.status(409).json({ error: `Mã PO ${poId} đã tồn tại.` });
+      return;
+    }
+
+    let spId = normalizeVn(req.body?.spId || '') || null;
+    if (!spId) {
+      const prodRow = db
+        .prepare(`SELECT sp_id FROM products WHERE product_name = ? LIMIT 1`)
+        .get(productName) as { sp_id: string } | undefined;
+      spId = prodRow ? String(prodRow.sp_id) : null;
+    }
+
+    db.prepare(
+      `INSERT INTO purchase_orders (
+        po_id, customer, sp_id, product_name, qty_po, due_date,
+        wip_qty, finished_qty, delivered_qty, stock_qty, remain_qty,
+        status, material_lot, supplier_name, cast_date, priority, note
+      ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, '⏳ Đang chờ SX', ?, ?, ?, 2, ?)`
+    ).run(poId, customer, spId, productName, qtyPo, dueDate, qtyPo, materialLot, supplierName, castDate, note);
+
+    const created = queryPurchaseOrders(db).find((p) => p.poId === poId);
+    res.status(201).json({ success: true, item: created });
+  });
+
+  router.patch('/orders/:poId', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const poId = normalizeVn(req.params.poId);
+    const existing = db
+      .prepare('SELECT * FROM purchase_orders WHERE po_id = ?')
+      .get(poId) as Record<string, any> | undefined;
+    if (!existing) {
+      res.status(404).json({ error: `Không tìm thấy PO ${poId}` });
+      return;
+    }
+
+    const qtyPo =
+      req.body?.qtyPo !== undefined
+        ? Math.max(1, Math.round(Number(req.body.qtyPo)))
+        : Number(existing.qty_po);
+    const dueDate =
+      req.body?.dueDate !== undefined ? normalizeVn(req.body.dueDate) : String(existing.due_date);
+    const materialLot =
+      req.body?.materialLot !== undefined
+        ? normalizeVn(req.body.materialLot)
+        : String(existing.material_lot);
+    const supplierName =
+      req.body?.supplierName !== undefined
+        ? normalizeVn(req.body.supplierName)
+        : String(existing.supplier_name);
+    const priority =
+      req.body?.priority !== undefined ? Number(req.body.priority) : Number(existing.priority);
+    const note = req.body?.note !== undefined ? normalizeVn(req.body.note) : String(existing.note);
+
+    const fin = Number(existing.finished_qty);
+    const del = Number(existing.delivered_qty);
+    const wip = Number(existing.wip_qty);
+    const stock = Math.max(0, fin - del);
+    const remain = Math.max(0, qtyPo - del);
+    const status = derivePoStatus(qtyPo, wip, fin, del);
+
+    db.prepare(
+      `UPDATE purchase_orders
+       SET qty_po = ?, due_date = ?, material_lot = ?, supplier_name = ?, priority = ?, note = ?,
+           stock_qty = ?, remain_qty = ?, status = ?
+       WHERE po_id = ?`
+    ).run(qtyPo, dueDate, materialLot, supplierName, priority, note, stock, remain, status, poId);
+
+    const updated = queryPurchaseOrders(db).find((p) => p.poId === poId);
+    res.json({ success: true, item: updated });
+  });
+
+  router.post('/orders/:poId/deliver', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const poId = normalizeVn(req.params.poId);
+    const qtyDeliver = Math.max(1, Math.round(Number(req.body?.qtyDeliver) || 0));
+    const note = normalizeVn(req.body?.note || '');
+    const viewer = req.authUser!;
+
+    try {
+      const updated = withTransaction(db, () => {
+        const po = db
+          .prepare('SELECT * FROM purchase_orders WHERE po_id = ?')
+          .get(poId) as Record<string, any> | undefined;
+        if (!po) throw new Error(`Không tìm thấy PO ${poId}`);
+
+        const qtyPo = Number(po.qty_po);
+        const fin = Number(po.finished_qty);
+        const wip = Number(po.wip_qty);
+        const newDel = Number(po.delivered_qty) + qtyDeliver;
+        const newStock = Math.max(0, fin - newDel);
+        const newRemain = Math.max(0, qtyPo - newDel);
+        const newStatus = derivePoStatus(qtyPo, wip, fin, newDel);
+
+        db.prepare(
+          `UPDATE purchase_orders
+           SET delivered_qty = ?, stock_qty = ?, remain_qty = ?, status = ?
+           WHERE po_id = ?`
+        ).run(newDel, newStock, newRemain, newStatus, poId);
+
+        db.prepare(
+          `INSERT INTO delivery_logs (po_id, customer, product_name, qty_deliver, delivered_by, note)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).run(poId, String(po.customer), String(po.product_name), qtyDeliver, viewer.name, note);
+
+        return queryPurchaseOrders(db).find((p) => p.poId === poId);
+      });
+
+      res.status(201).json({
+        success: true,
+        message: `Đã xuất kho giao ${qtyDeliver} SP cho đơn ${poId}.`,
+        item: updated,
+      });
+    } catch (err: any) {
+      res.status(400).json({ error: String(err?.message || err) });
+    }
+  });
+
+  // ==================== SCHEDULES & MACHINE BALANCING ====================
+  router.get('/schedules', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const workDate = req.query.workDate ? normalizeVn(String(req.query.workDate)) : undefined;
+    const machines = queryMachines(db);
+    const orders = queryPurchaseOrders(db);
+    const ops = queryOperations(db);
+    const schedules = querySchedules(db, workDate);
+    const loads = computeMachineLoads(machines, orders, ops, schedules);
+    res.json({ schedules, loads });
+  });
+
+  router.post('/schedules', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const machineId = normalizeVn(req.body?.machineId || 'M02');
+    const mach = db.prepare('SELECT id, name FROM machines WHERE id = ?').get(machineId) as
+      | { id: string; name: string }
+      | undefined;
+    if (!mach) {
+      res.status(404).json({ error: `Không tìm thấy máy ${machineId}` });
+      return;
+    }
+
+    const poId = normalizeVn(req.body?.poId || 'PO-THEO-KH');
+    const ncId = normalizeVn(req.body?.ncId || 'NC001');
+    const opRow = db.prepare('SELECT * FROM operations WHERE nc_id = ?').get(ncId) as
+      | Record<string, any>
+      | undefined;
+
+    const workDate = normalizeVn(req.body?.workDate || '2026-10-26');
+    const shiftType = normalizeVn(req.body?.shiftType || 'Ca 1 (Sáng 06h-14h)');
+    const plannedQty = Math.max(1, Math.round(Number(req.body?.plannedQty) || 1));
+    const plannedHours = Math.max(0.25, Number(req.body?.plannedHours) || 4);
+    const isLightsOut = req.body?.isLightsOut ? 1 : 0;
+    const sequenceOrder = Math.max(1, Math.round(Number(req.body?.sequenceOrder) || 1));
+    const note = normalizeVn(req.body?.note || '');
+
+    const r = db
+      .prepare(
+        `INSERT INTO machine_schedules (
+          machine_id, machine_name, po_id, nc_id, product_name, op_name, mat_name, tool_code,
+          work_date, shift_type, planned_qty, planned_hours, is_lights_out, sequence_order, status, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PLANNED', ?)`
+      )
+      .run(
+        mach.id,
+        mach.name,
+        poId,
+        ncId,
+        normalizeVn(req.body?.productName || opRow?.product_name || ''),
+        normalizeVn(req.body?.opName || opRow?.op_name || ''),
+        normalizeVn(req.body?.matName || opRow?.mat_name || ''),
+        normalizeVn(req.body?.toolCode || opRow?.tool_code || ''),
+        workDate,
+        shiftType,
+        plannedQty,
+        plannedHours,
+        isLightsOut,
+        sequenceOrder,
+        note
+      );
+
+    res.status(201).json({
+      success: true,
+      id: Number(r.lastInsertRowid),
+      schedules: querySchedules(db),
+    });
+  });
+
+  router.patch('/schedules/:id', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const id = Number(req.params.id);
+    const existing = db.prepare('SELECT * FROM machine_schedules WHERE id = ?').get(id) as
+      | Record<string, any>
+      | undefined;
+    if (!existing) {
+      res.status(404).json({ error: 'Không tìm thấy lịch máy.' });
+      return;
+    }
+
+    let machId = String(existing.machine_id);
+    let machName = String(existing.machine_name);
+    if (req.body?.machineId) {
+      const m = db
+        .prepare('SELECT id, name FROM machines WHERE id = ?')
+        .get(normalizeVn(req.body.machineId)) as { id: string; name: string } | undefined;
+      if (m) {
+        machId = m.id;
+        machName = m.name;
+      }
+    }
+
+    const shiftType =
+      req.body?.shiftType !== undefined ? normalizeVn(req.body.shiftType) : String(existing.shift_type);
+    const plannedQty =
+      req.body?.plannedQty !== undefined ? Number(req.body.plannedQty) : Number(existing.planned_qty);
+    const plannedHours =
+      req.body?.plannedHours !== undefined
+        ? Number(req.body.plannedHours)
+        : Number(existing.planned_hours);
+    const isLightsOut =
+      req.body?.isLightsOut !== undefined
+        ? req.body.isLightsOut
+          ? 1
+          : 0
+        : Number(existing.is_lights_out);
+    const status =
+      req.body?.status !== undefined ? normalizeVn(req.body.status) : String(existing.status);
+
+    db.prepare(
+      `UPDATE machine_schedules
+       SET machine_id = ?, machine_name = ?, shift_type = ?, planned_qty = ?, planned_hours = ?,
+           is_lights_out = ?, status = ?
+       WHERE id = ?`
+    ).run(machId, machName, shiftType, plannedQty, plannedHours, isLightsOut, status, id);
+
+    res.json({ success: true, schedules: querySchedules(db) });
+  });
+
+  router.delete('/schedules/:id', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    db.prepare('DELETE FROM machine_schedules WHERE id = ?').run(Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  router.post(
+    '/operations/:ncId/assign-machine',
+    requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'),
+    (req, res) => {
+      const ncId = normalizeVn(req.params.ncId);
+      const targetMachine = normalizeVn(req.body?.machineName || '');
+      const mach = db
+        .prepare('SELECT id, name, cost_per_hour FROM machines WHERE LOWER(name) = LOWER(?) OR id = ?')
+        .get(targetMachine, targetMachine) as
+        | { id: string; name: string; cost_per_hour: number }
+        | undefined;
+
+      if (!mach) {
+        res.status(404).json({ error: `Không tìm thấy máy ${targetMachine}` });
+        return;
+      }
+
+      const op = db.prepare('SELECT std_seconds FROM operations WHERE nc_id = ?').get(ncId) as
+        | { std_seconds: number }
+        | undefined;
+      if (!op) {
+        res.status(404).json({ error: `Không tìm thấy nguyên công ${ncId}` });
+        return;
+      }
+
+      const newStdMachCost = Math.round((Number(op.std_seconds) / 3600) * Number(mach.cost_per_hour));
+      db.prepare(`UPDATE operations SET default_machine = ?, std_mach_cost = ? WHERE nc_id = ?`).run(
+        mach.name,
+        newStdMachCost,
+        ncId
+      );
+
+      res.json({
+        success: true,
+        message: `Đã điều chuyển ${ncId} sang máy ${mach.name}.`,
+        machineName: mach.name,
+      });
+    }
+  );
+
+  // ==================== LOGS & QC ====================
+  router.get('/logs', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const viewer = req.authUser!;
+    const includeVoided = req.query.includeVoided === '1';
+    const items = queryLogs(db, viewer.workerId, viewer.appRole, 1000, includeVoided);
+    res.json({ items });
+  });
+
+  router.patch('/logs/:id', requireRoles('SHIFT_LEADER', 'ADMIN'), (req, res) => {
+    const id = Number(req.params.id);
+    const viewer = req.authUser!;
+
+    try {
+      const updated = withTransaction(db, () => {
+        const log = db
+          .prepare('SELECT * FROM production_logs WHERE id = ?')
+          .get(id) as Record<string, any> | undefined;
+        if (!log) throw new Error('Không tìm thấy nhật ký sản xuất.');
+
+        const okQty =
+          req.body?.okQty !== undefined
+            ? Math.max(0, Math.round(Number(req.body.okQty)))
+            : Number(log.ok_qty);
+        const reworkQty =
+          req.body?.reworkQty !== undefined
+            ? Math.max(0, Math.round(Number(req.body.reworkQty)))
+            : Number(log.rework_qty);
+        const scrapQty =
+          req.body?.scrapQty !== undefined
+            ? Math.max(0, Math.round(Number(req.body.scrapQty)))
+            : Number(log.scrap_qty);
+        const isVoided =
+          req.body?.isVoided !== undefined ? (req.body.isVoided ? 1 : 0) : Number(log.is_voided);
+        const qcStatus =
+          req.body?.qcStatus !== undefined ? normalizeVn(req.body.qcStatus) : String(log.qc_status);
+
+        const prevEffectiveFinalOk =
+          Number(log.is_voided) === 0 && Number(log.is_final_op) === 1 ? Number(log.ok_qty) : 0;
+        const nextEffectiveFinalOk =
+          isVoided === 0 && Number(log.is_final_op) === 1 ? okQty : 0;
+        const deltaFinalOk = nextEffectiveFinalOk - prevEffectiveFinalOk;
+
+        const poId = String(log.po_id);
+        let prevLoggedWip = 0;
+        if (poId && poId !== 'PO-THEO-KH') {
+          const prevWipRow = db
+            .prepare(
+              `SELECT COALESCE(MAX(step_ok), 0) AS max_up_ok
+               FROM (
+                 SELECT SUM(ok_qty) AS step_ok
+                 FROM production_logs
+                 WHERE po_id = ? AND is_final_op = 0 AND is_voided = 0
+                 GROUP BY nc_id
+               )`
+            )
+            .get(poId) as { max_up_ok: number } | undefined;
+          prevLoggedWip = Number(prevWipRow?.max_up_ok || 0);
+        }
+
+        const qtyChanged =
+          okQty !== Number(log.ok_qty) ||
+          reworkQty !== Number(log.rework_qty) ||
+          scrapQty !== Number(log.scrap_qty) ||
+          (isVoided === 0 && Number(log.is_voided) === 1);
+
+        if (isVoided === 0 && qtyChanged) {
+          const wRow = db
+            .prepare('SELECT salary_mode, cost_per_sec FROM workers WHERE id = ?')
+            .get(String(log.worker_id)) as Record<string, any> | undefined;
+          const opRow = db
+            .prepare('SELECT * FROM operations WHERE nc_id = ?')
+            .get(String(log.nc_id)) as Record<string, any> | undefined;
+          const machRow = db
+            .prepare('SELECT cost_per_hour FROM machines WHERE id = ? OR LOWER(name) = LOWER(?)')
+            .get(String(log.machine_id || ''), String(log.machine_name || '')) as
+            | Record<string, any>
+            | undefined;
+          const toolCode = String(log.tool_code || opRow?.tool_code || '');
+          const toolRow = toolCode
+            ? (db.prepare('SELECT cost_per_edge FROM cutting_tools WHERE code = ?').get(toolCode) as
+                | Record<string, any>
+                | undefined)
+            : undefined;
+
+          const siblingRows = db
+            .prepare(
+              `SELECT machine_name, shift_type, start_time, end_time, meal_allowance, overtime_minutes, stop_minutes
+               FROM production_logs
+               WHERE worker_id = ? AND work_date = ? AND is_voided = 0 AND id != ?`
+            )
+            .all(String(log.worker_id), String(log.work_date), id) as Array<Record<string, any>>;
+
+          const normShift = normalizeVn(String(log.shift_type || '')).toLowerCase();
+          let mealPaidAmount = 0;
+          let paidOtMinutes = 0;
+          let paidStopMinutes = 0;
+          for (const r of siblingRows) {
+            if (normalizeVn(r.shift_type).toLowerCase() === normShift) {
+              mealPaidAmount += Number(r.meal_allowance || 0);
+              paidOtMinutes = Math.max(paidOtMinutes, Number(r.overtime_minutes || 0));
+              paidStopMinutes += Number(r.stop_minutes || 0);
+            }
+          }
+
+          const priorCtx = {
+            priorLogs: siblingRows.map((r) => ({
+              machineName: String(r.machine_name),
+              startTime: String(r.start_time || '06:00'),
+              endTime: String(r.end_time || '14:00'),
+              mealAllowancePaid: Number(r.meal_allowance || 0),
+              paidOtMinutes: Number(r.overtime_minutes || 0),
+              paidStopMinutes: Number(r.stop_minutes || 0),
+            })),
+            mealAlreadyPaid: mealPaidAmount > 0,
+            mealPaidAmount,
+            paidOtMinutes,
+            paidStopMinutes,
+          };
+
+          const prevScrap = Number(log.scrap_qty || 0);
+          const nextDamageVal =
+            scrapQty === 0
+              ? 0
+              : prevScrap > 0
+                ? Math.round((Number(log.damage_value || 0) / prevScrap) * scrapQty)
+                : scrapQty *
+                  Math.max(
+                    50000,
+                    Number(opRow?.std_labor_cost || 0) +
+                      Number(opRow?.std_mach_cost || 0) +
+                      Number(opRow?.std_tool_cost || 0)
+                  );
+
+          const workDateStr = String(log.work_date);
+          const recalc = calculateTurnPayroll(
+            {
+              workerId: String(log.worker_id),
+              salaryMode: String(wRow?.salary_mode || 'Khoán 1 + 0.33 máy'),
+              costPerSec: Number(wRow?.cost_per_sec ?? 13.89),
+              workDate: workDateStr,
+              shiftType: String(log.shift_type || 'Ca 1 (Sáng 06h-14h)'),
+              startTime: String(log.start_time || '06:00'),
+              endTime: String(log.end_time || '14:00'),
+              overtimeMinutes: Number(log.overtime_minutes || 0),
+              isSunday: isVietnamSunday(workDateStr),
+              isLightsOut: Boolean(log.is_lights_out),
+              machineName: String(log.machine_name),
+              machineMode: log.machine_mode === 'SECOND' ? 'SECOND' : 'FIRST',
+              machineCostPerHour: Number(machRow?.cost_per_hour || 250000),
+              stdSeconds: Number(opRow?.std_seconds ?? log.std_seconds ?? 0),
+              stdEdgesPerPcs: Number(opRow?.std_edges_per_pcs || 0),
+              costPerEdge: Number(toolRow?.cost_per_edge ?? opRow?.cost_per_edge ?? 0),
+              okQty,
+              reworkQty,
+              scrapQty,
+              defectType: String(log.defect_type || ''),
+              damageValue: nextDamageVal,
+              stopMinutes: Number(log.stop_minutes || 0),
+              stopReason: String(log.stop_reason || 'Không có dừng máy'),
+            },
+            priorCtx,
+            getPayrollConfigFromDb(db)
+          );
+
+          db.prepare(
+            `UPDATE production_logs
+             SET ok_qty = ?, rework_qty = ?, scrap_qty = ?, damage_value = ?, is_voided = ?, qc_status = ?,
+                 edges_used = ?, piece_wage = ?, ot_bonus_wage = ?, wait_wage = ?, meal_allowance = ?,
+                 scrap_penalty = ?, direct_piece_income = ?, income = ?, batch_cost = ?, kpi_pct = ?, kpi_status = ?
+             WHERE id = ?`
+          ).run(
+            okQty,
+            reworkQty,
+            scrapQty,
+            nextDamageVal,
+            isVoided,
+            qcStatus,
+            recalc.edgesConsumed,
+            recalc.basePieceWage,
+            recalc.otBonusWage,
+            recalc.waitWage,
+            recalc.mealAllowance,
+            recalc.scrapPenalty,
+            recalc.directPieceIncome,
+            recalc.turnTotalIncome,
+            recalc.batchCost,
+            recalc.kpiPct,
+            recalc.kpiStatus,
+            id
+          );
+        } else {
+          db.prepare(
+            `UPDATE production_logs
+             SET ok_qty = ?, rework_qty = ?, scrap_qty = ?, is_voided = ?, qc_status = ?
+             WHERE id = ?`
+          ).run(okQty, reworkQty, scrapQty, isVoided, qcStatus, id);
+        }
+
+        if (poId && poId !== 'PO-THEO-KH') {
+          const po = db
+            .prepare('SELECT * FROM purchase_orders WHERE po_id = ?')
+            .get(poId) as Record<string, any> | undefined;
+          if (po) {
+            const nextWipRow = db
+              .prepare(
+                `SELECT COALESCE(MAX(step_ok), 0) AS max_up_ok
+                 FROM (
+                   SELECT SUM(ok_qty) AS step_ok
+                   FROM production_logs
+                   WHERE po_id = ? AND is_final_op = 0 AND is_voided = 0
+                   GROUP BY nc_id
+                 )`
+              )
+              .get(poId) as { max_up_ok: number } | undefined;
+            const nextLoggedWip = Number(nextWipRow?.max_up_ok || 0);
+            const baselineSeededWip = Math.max(0, Number(po.wip_qty) - prevLoggedWip);
+
+            const qtyPo = Number(po.qty_po);
+            const del = Number(po.delivered_qty);
+            const newFin = Math.max(0, Number(po.finished_qty) + deltaFinalOk);
+            const newWip = Math.min(qtyPo, Math.max(baselineSeededWip, nextLoggedWip));
+            const newStock = Math.max(0, newFin - del);
+            const newRemain = Math.max(0, qtyPo - del);
+            const newStatus = derivePoStatus(qtyPo, newWip, newFin, del);
+            db.prepare(
+              `UPDATE purchase_orders
+               SET wip_qty = ?, finished_qty = ?, stock_qty = ?, remain_qty = ?, status = ?
+               WHERE po_id = ?`
+            ).run(newWip, newFin, newStock, newRemain, newStatus, poId);
+          }
+        }
+
+        const refreshed = db
+          .prepare('SELECT * FROM production_logs WHERE id = ?')
+          .get(id) as Record<string, any>;
+        return mapLogRowToDto(refreshed, viewer.workerId, viewer.appRole);
+      });
+
+      res.json({ success: true, item: updated });
+    } catch (err: any) {
+      res.status(400).json({ error: String(err?.message || err) });
+    }
+  });
+
+  router.get('/qc', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const poId = req.query.poId ? normalizeVn(String(req.query.poId)) : undefined;
+    res.json({ items: queryQcInspections(db, poId) });
+  });
+
+  router.post('/qc', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const viewer = req.authUser!;
+    const inspectionType = normalizeVn(req.body?.inspectionType || 'FAI');
+    const poId = normalizeVn(req.body?.poId || '');
+    const ncId = normalizeVn(req.body?.ncId || '') || null;
+    const result = normalizeVn(req.body?.result || 'PASS');
+
+    if (!poId) {
+      res.status(400).json({ error: 'Vui lòng chọn mã PO kiểm tra QC.' });
+      return;
+    }
+
+    const po = db.prepare('SELECT sp_id, product_name FROM purchase_orders WHERE po_id = ?').get(poId) as
+      | { sp_id: string | null; product_name: string }
+      | undefined;
+    const op = ncId
+      ? (db.prepare('SELECT op_name, default_machine FROM operations WHERE nc_id = ?').get(ncId) as
+          | { op_name: string; default_machine: string }
+          | undefined)
+      : undefined;
+
+    const dims = Array.isArray(req.body?.measuredDims)
+      ? JSON.stringify(req.body.measuredDims)
+      : String(req.body?.measuredDimsJson || '[]');
+
+    const r = db
+      .prepare(
+        `INSERT INTO qc_inspections (
+          inspection_type, po_id, sp_id, nc_id, product_name, op_name, machine_name,
+          operator_id, inspector_id, inspector_name, result, sample_size, defect_qty,
+          measured_dims_json, root_cause, corrective_action
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        inspectionType,
+        poId,
+        po?.sp_id ?? null,
+        ncId,
+        normalizeVn(req.body?.productName || po?.product_name || ''),
+        normalizeVn(req.body?.opName || op?.op_name || ''),
+        normalizeVn(req.body?.machineName || op?.default_machine || ''),
+        normalizeVn(req.body?.operatorId || ''),
+        viewer.workerId,
+        viewer.name,
+        result,
+        Math.max(1, Number(req.body?.sampleSize) || 1),
+        Math.max(0, Number(req.body?.defectQty) || 0),
+        dims,
+        normalizeVn(req.body?.rootCause || ''),
+        normalizeVn(req.body?.correctiveAction || '')
+      );
+
+    // If FAI passed, clear PENDING_QC logs on that PO
+    if (inspectionType === 'FAI' && (result === 'PASS' || result === 'CONCESSION')) {
+      db.prepare(
+        `UPDATE production_logs SET qc_status = 'PASSED' WHERE po_id = ? AND qc_status = 'PENDING_QC'`
+      ).run(poId);
+    }
+
+    const created = queryQcInspections(db).find((q) => q.id === Number(r.lastInsertRowid));
+    res.status(201).json({ success: true, item: created });
+  });
+
+  // ==================== COSTING & PNL (STRICT ADMIN / DIRECTOR ONLY) ====================
+  function buildAllCostingSummaries() {
+    const products = queryProducts(db, true);
+    const ops = queryOperations(db);
+    const logRows = db
+      .prepare(
+        `SELECT nc_id, ok_qty, rework_qty, scrap_qty, batch_cost, is_voided
+         FROM production_logs WHERE is_voided = 0`
+      )
+      .all() as Array<Record<string, any>>;
+
+    const opsBySp = new Map<string, typeof ops>();
+    for (const o of ops) {
+      const list = opsBySp.get(o.spId) || [];
+      list.push(o);
+      opsBySp.set(o.spId, list);
+    }
+
+    const logsByNc = new Map<string, OpLogSummary[]>();
+    for (const l of logRows) {
+      const nc = String(l.nc_id);
+      const list = logsByNc.get(nc) || [];
+      list.push({
+        ncId: nc,
+        okQty: Number(l.ok_qty || 0),
+        reworkQty: Number(l.rework_qty || 0),
+        scrapQty: Number(l.scrap_qty || 0),
+        batchCost: Number(l.batch_cost || 0),
+        isVoided: Number(l.is_voided || 0),
+      });
+      logsByNc.set(nc, list);
+    }
+
+    return products.map((p) => {
+      const pOps = opsBySp.get(p.spId) || [];
+      const pLogs = pOps.flatMap((o) => logsByNc.get(o.ncId) || []);
+      return computeProductCosting(p, pOps, pLogs);
+    });
+  }
+
+  router.get('/costing', requireRoles('DIRECTOR', 'ADMIN'), (_req, res) => {
+    const items = buildAllCostingSummaries();
+    const profitCount = items.filter((i) => i.unitProfit >= 0).length;
+    const lossCount = items.filter((i) => i.unitProfit < 0).length;
+    const totalNetProfit = items.reduce(
+      (sum, i) => sum + (i.hasActual ? i.totalBatchProfit : 0),
+      0
+    );
+
+    res.json({
+      items,
+      summary: {
+        totalProducts: items.length,
+        profitCount,
+        lossCount,
+        totalNetProfit,
+      },
+    });
+  });
+
+  router.patch('/costing/:spId', requireRoles('DIRECTOR', 'ADMIN'), (req, res) => {
+    const spId = normalizeVn(req.params.spId);
+    const prod = db.prepare('SELECT * FROM products WHERE sp_id = ?').get(spId) as
+      | Record<string, any>
+      | undefined;
+    if (!prod) {
+      res.status(404).json({ error: `Không tìm thấy sản phẩm ${spId}` });
+      return;
+    }
+
+    const quotedPrice =
+      req.body?.quotedPrice !== undefined
+        ? Math.max(0, Number(req.body.quotedPrice) || 0)
+        : Number(prod.quoted_price);
+    const rawMaterialCost =
+      req.body?.rawMaterialCost !== undefined
+        ? Math.max(0, Number(req.body.rawMaterialCost) || 0)
+        : Number(prod.raw_material_cost);
+    const outsourceCost =
+      req.body?.outsourceCost !== undefined
+        ? Math.max(0, Number(req.body.outsourceCost) || 0)
+        : Number(prod.outsource_cost);
+
+    db.prepare(
+      `UPDATE products SET quoted_price = ?, raw_material_cost = ?, outsource_cost = ? WHERE sp_id = ?`
+    ).run(quotedPrice, rawMaterialCost, outsourceCost, spId);
+
+    const updatedItem = buildAllCostingSummaries().find((c) => c.spId === spId);
+    res.json({ success: true, item: updatedItem });
+  });
+
+  // ==================== ATTENDANCE & 3P PAYROLL ====================
+  function ensureMonthAttendanceRows(yearMonth: string): AttendanceRow[] {
+    const [yStr, mStr] = yearMonth.split('-');
+    const year = Number(yStr) || 2026;
+    const month = Number(mStr) || 10;
+
+    let rows = db
+      .prepare(
+        `SELECT year_month, emp_id, emp_name, work_type, default_shift, year_days_hist_json, days_json
+         FROM attendance_monthly WHERE year_month = ? ORDER BY rowid ASC`
+      )
+      .all(yearMonth) as Array<Record<string, any>>;
+
+    if (rows.length === 0) {
+      const baseRows = db
+        .prepare(
+          `SELECT emp_id, emp_name, work_type, default_shift, year_days_hist_json
+           FROM attendance_monthly WHERE year_month = '2026-10' ORDER BY rowid ASC`
+        )
+        .all() as Array<Record<string, any>>;
+
+      const dows = computeMonthDows(year, month);
+      const ins = db.prepare(
+        `INSERT OR IGNORE INTO attendance_monthly (year_month, emp_id, emp_name, work_type, default_shift, year_days_hist_json, days_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      );
+
+      withTransaction(db, () => {
+        if (baseRows.length > 0) {
+          for (const b of baseRows) {
+            const rawHist: number[] =
+              year === 2026 ? JSON.parse(String(b.year_days_hist_json || '[]')) : [];
+            const hist12 = new Array(12).fill(0);
+            if (year === 2026) {
+              for (let i = 0; i < Math.min(9, rawHist.length); i++) {
+                hist12[i] = Number(rawHist[i] || 0);
+              }
+            }
+            const targetDays =
+              year === 2026 && month >= 1 && month <= 9 ? Number(hist12[month - 1] || 0) : 0;
+            const defCode = getDefShiftCode(String(b.default_shift));
+            const days: string[] = [];
+            let count = 0;
+            for (let d = 0; d < 31; d++) {
+              if (targetDays > 0 && dows[d] !== '-' && dows[d] !== 'CN' && count < targetDays) {
+                count++;
+                days.push(defCode);
+              } else {
+                days.push('');
+              }
+            }
+            ins.run(
+              yearMonth,
+              String(b.emp_id),
+              String(b.emp_name),
+              String(b.work_type || 'Công'),
+              String(b.default_shift || 'Ca 1'),
+              JSON.stringify(hist12),
+              JSON.stringify(days)
+            );
+          }
+        } else {
+          const workers = db.prepare('SELECT id, name, salary_mode FROM workers WHERE is_active = 1').all() as Array<
+            Record<string, any>
+          >;
+          for (const w of workers) {
+            const defShift = String(w.salary_mode).includes('Hành chính') ? 'Hành chính' : 'Ca 1';
+            ins.run(
+              yearMonth,
+              String(w.id),
+              String(w.name),
+              'Công',
+              defShift,
+              JSON.stringify(new Array(12).fill(0)),
+              JSON.stringify(new Array(31).fill(''))
+            );
+          }
+        }
+      });
+
+      rows = db
+        .prepare(
+          `SELECT year_month, emp_id, emp_name, work_type, default_shift, year_days_hist_json, days_json
+           FROM attendance_monthly WHERE year_month = ? ORDER BY rowid ASC`
+        )
+        .all(yearMonth) as Array<Record<string, any>>;
+    }
+
+    // Dynamically aggregate regDays from all other saved months of the same year in attendance_monthly
+    const mealCfg = getMealConfigFromDb(db);
+    const siblingYearRows = db
+      .prepare(
+        `SELECT year_month, emp_id, emp_name, work_type, default_shift, days_json
+         FROM attendance_monthly
+         WHERE year_month LIKE ? AND year_month != ?`
+      )
+      .all(`${year}-%`, yearMonth) as Array<Record<string, any>>;
+
+    const dynamicMonthDaysByEmp = new Map<string, Map<number, number>>();
+    for (const sRow of siblingYearRows) {
+      const sibYm = String(sRow.year_month);
+      const sibMonth = Number(sibYm.split('-')[1]);
+      if (!sibMonth || sibMonth < 1 || sibMonth > 12) continue;
+      const empId = String(sRow.emp_id);
+      const sibSummary = computeEmployeeMonthlyStats(
+        {
+          empId,
+          name: String(sRow.emp_name || ''),
+          workType: String(sRow.work_type || 'Công'),
+          defaultShift: String(sRow.default_shift || 'Ca 1'),
+          yearDaysHist: [],
+          days: JSON.parse(String(sRow.days_json || '[]')),
+        },
+        year,
+        sibMonth,
+        mealCfg
+      );
+      let empMonths = dynamicMonthDaysByEmp.get(empId);
+      if (!empMonths) {
+        empMonths = new Map<number, number>();
+        dynamicMonthDaysByEmp.set(empId, empMonths);
+      }
+      empMonths.set(sibMonth, sibSummary.regDays);
+    }
+
+    return rows.map((r) => {
+      const empId = String(r.emp_id);
+      const storedHist: number[] =
+        year === 2026 ? JSON.parse(String(r.year_days_hist_json || '[]')) : [];
+      const mergedHist = new Array(12).fill(0);
+      if (year === 2026) {
+        for (let mIdx = 0; mIdx < Math.min(12, storedHist.length); mIdx++) {
+          mergedHist[mIdx] = Number(storedHist[mIdx] || 0);
+        }
+      }
+      const empDynamic = dynamicMonthDaysByEmp.get(empId);
+      if (empDynamic) {
+        for (const [mNum, regDaysVal] of empDynamic.entries()) {
+          mergedHist[mNum - 1] = regDaysVal;
+        }
+      }
+
+      return {
+        empId,
+        name: String(r.emp_name),
+        workType: String(r.work_type || 'Công'),
+        defaultShift: String(r.default_shift || 'Ca 1'),
+        yearDaysHist: mergedHist,
+        days: JSON.parse(String(r.days_json || '[]')),
+      };
+    });
+  }
+
+  router.get('/attendance/:yearMonth', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const ym = normalizeVn(req.params.yearMonth);
+    const [yStr, mStr] = ym.split('-');
+    const year = Number(yStr) || 2026;
+    const month = Number(mStr) || 10;
+    const mealCfg = getMealConfigFromDb(db);
+
+    const rawRows = ensureMonthAttendanceRows(ym);
+    const employees = rawRows.map((emp) => computeEmployeeMonthlyStats(emp, year, month, mealCfg));
+
+    res.json({
+      yearMonth: ym,
+      year,
+      month,
+      dows: computeMonthDows(year, month),
+      mealConfig: mealCfg,
+      employees,
+    });
+  });
+
+  router.put(
+    '/attendance/:yearMonth/cell',
+    requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'),
+    (req, res) => {
+      const ym = normalizeVn(req.params.yearMonth);
+      const empId = normalizeVn(req.body?.empId || '');
+      const dayIndex = Number(req.body?.dayIndex);
+      const value = normalizeVn(String(req.body?.value ?? ''));
+      const defaultShift = req.body?.defaultShift ? normalizeVn(req.body.defaultShift) : undefined;
+
+      ensureMonthAttendanceRows(ym);
+      const row = db
+        .prepare(
+          `SELECT days_json, default_shift FROM attendance_monthly WHERE year_month = ? AND emp_id = ?`
+        )
+        .get(ym, empId) as { days_json: string; default_shift: string } | undefined;
+
+      if (!row) {
+        res.status(404).json({ error: `Không tìm thấy bảng công của ${empId}` });
+        return;
+      }
+
+      const days: string[] = JSON.parse(row.days_json || '[]');
+      while (days.length < 31) days.push('');
+      if (!Number.isNaN(dayIndex) && dayIndex >= 0 && dayIndex < 31) {
+        days[dayIndex] = value;
+      }
+
+      db.prepare(
+        `UPDATE attendance_monthly
+         SET days_json = ?, default_shift = ?, updated_at = datetime('now')
+         WHERE year_month = ? AND emp_id = ?`
+      ).run(JSON.stringify(days), defaultShift ?? row.default_shift, ym, empId);
+
+      const [yStr, mStr] = ym.split('-');
+      const updatedRows = ensureMonthAttendanceRows(ym);
+      const updatedEmp = updatedRows.find((e) => e.empId === empId)!;
+      const summary = computeEmployeeMonthlyStats(
+        updatedEmp,
+        Number(yStr) || 2026,
+        Number(mStr) || 10,
+        getMealConfigFromDb(db)
+      );
+
+      res.json({ success: true, employee: summary });
+    }
+  );
+
+  router.post(
+    '/attendance/:yearMonth/batch',
+    requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'),
+    (req, res) => {
+      const ym = normalizeVn(req.params.yearMonth);
+      const [yStr, mStr] = ym.split('-');
+      const year = Number(yStr) || 2026;
+      const month = Number(mStr) || 10;
+      const dows = computeMonthDows(year, month);
+
+      const mode = normalizeVn(req.body?.mode || 'DEFAULT_SHIFT');
+      const fromDay = Math.max(1, Math.min(31, Number(req.body?.fromDay) || 1));
+      const toDay = Math.max(fromDay, Math.min(31, Number(req.body?.toDay) || 25));
+      const rawVal = normalizeVn(String(req.body?.value ?? '')).toUpperCase();
+      const selectedDows: string[] = Array.isArray(req.body?.selectedDows)
+        ? req.body.selectedDows
+        : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      const empIds: string[] = Array.isArray(req.body?.empIds) ? req.body.empIds : [];
+      const fillEmptyWithDef = Boolean(req.body?.fillEmptyWithDef ?? true);
+      const overwrite = Boolean(req.body?.overwrite ?? false);
+
+      const rows = ensureMonthAttendanceRows(ym);
+      let changedCells = 0;
+
+      withTransaction(db, () => {
+        const upd = db.prepare(
+          `UPDATE attendance_monthly SET days_json = ?, updated_at = datetime('now')
+           WHERE year_month = ? AND emp_id = ?`
+        );
+
+        for (const emp of rows) {
+          if (empIds.length > 0 && !empIds.includes(emp.empId)) continue;
+          const defCode = getDefShiftCode(emp.defaultShift);
+          const days = [...emp.days];
+          while (days.length < 31) days.push('');
+
+          for (let d = fromDay; d <= toDay; d++) {
+            const dow = dows[d - 1];
+            if (dow === '-' || !selectedDows.includes(dow)) continue;
+            const cur = String(days[d - 1] || '').trim().toUpperCase();
+
+            if (mode === 'OT_FIXED') {
+              if (cur === 'P' || cur === 'KP' || cur === 'O' || cur === '0') continue;
+              const otPart = rawVal.startsWith('+') ? rawVal : `+${rawVal || '2'}`;
+              if (!cur) {
+                if (fillEmptyWithDef) {
+                  days[d - 1] = `${defCode}${otPart}`;
+                  changedCells++;
+                }
+              } else {
+                const mLate = cur.match(/-\s*\d+(?:\.\d+)?/);
+                const baseOnly =
+                  cur.split('+')[0].replace(/-\s*\d+(?:\.\d+)?/g, '').trim() || defCode;
+                days[d - 1] = `${baseOnly}${otPart}${mLate ? mLate[0].replace(/\s+/g, '') : ''}`;
+                changedCells++;
+              }
+            } else if (mode === 'DEFAULT_SHIFT') {
+              if (!cur || overwrite) {
+                days[d - 1] = defCode;
+                changedCells++;
+              }
+            } else if (mode === 'LONG_LEAVE') {
+              if (!cur || overwrite) {
+                days[d - 1] = rawVal || 'P';
+                changedCells++;
+              }
+            } else if (mode === 'RESIGN') {
+              days[d - 1] = '';
+              changedCells++;
+            }
+          }
+
+          upd.run(JSON.stringify(days), ym, emp.empId);
+        }
+      });
+
+      const refreshed = ensureMonthAttendanceRows(ym).map((e) =>
+        computeEmployeeMonthlyStats(e, year, month, getMealConfigFromDb(db))
+      );
+
+      res.json({ success: true, changedCells, employees: refreshed });
+    }
+  );
+
+  router.get('/payroll/:yearMonth', requireRoles('DIRECTOR', 'ADMIN'), (req, res) => {
+    const rawParam = normalizeVn(req.params.yearMonth);
+    const ym =
+      rawParam.toLowerCase() === '3p'
+        ? normalizeVn(String(req.query.month || '2026-10'))
+        : rawParam;
+    const [yStr, mStr] = ym.split('-');
+    const year = Number(yStr) || 2026;
+    const month = Number(mStr) || 10;
+
+    const workers = queryWorkersForViewer(db, req.authUser!.workerId, 'ADMIN');
+    const attRows = ensureMonthAttendanceRows(ym);
+    const attSummaries = attRows.map((e) =>
+      computeEmployeeMonthlyStats(e, year, month, getMealConfigFromDb(db))
+    );
+
+    const logAggRows = db
+      .prepare(
+        `SELECT worker_id,
+                COUNT(*) AS log_count,
+                COALESCE(SUM(ok_qty * std_seconds), 0) AS earned_sec,
+                COALESCE(SUM(direct_piece_income), 0) AS direct_piece,
+                COALESCE(SUM(wait_wage), 0) AS wait_total,
+                COALESCE(SUM(ot_bonus_wage), 0) AS ot_bonus_total,
+                COALESCE(SUM(meal_allowance), 0) AS meal_total,
+                COALESCE(SUM(scrap_penalty), 0) AS pen_total
+         FROM production_logs
+         WHERE substr(work_date, 1, 7) = ? AND is_voided = 0
+         GROUP BY worker_id`
+      )
+      .all(ym) as Array<Record<string, any>>;
+
+    const logAggs: WorkerMonthlyLogAgg[] = logAggRows.map((r) => ({
+      workerId: String(r.worker_id),
+      logCount: Number(r.log_count),
+      earnedStdSeconds: Number(r.earned_sec),
+      directPieceIncome: Number(r.direct_piece),
+      waitWageTotal: Number(r.wait_total),
+      otBonusTotal: Number(r.ot_bonus_total),
+      logMealTotal: Number(r.meal_total),
+      scrapPenaltyTotal: Number(r.pen_total),
+    }));
+
+    const rows = computeMonthly3PPayroll(workers, attSummaries, logAggs);
+    res.json({
+      yearMonth: ym,
+      rows,
+      totalNetPay: rows.reduce((s, r) => s + r.netPay, 0),
+    });
+  });
+
+  // ==================== MASTER DATA & EXCEL IMPORT ====================
+  router.get(
+    '/master/operations',
+    requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'),
+    (_req, res) => {
+      res.json({ items: queryOperations(db) });
+    }
+  );
+
+  router.post(
+    '/master/operations',
+    requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'),
+    (req, res) => {
+      const customer = canonicalizeCustomerName(req.body?.customer || 'Vico - Nội bộ / Khách lẻ').customer;
+      const productName = normalizeVn(req.body?.productName || '');
+
+      if (!productName) {
+        res.status(400).json({ error: 'Vui lòng nhập Tên sản phẩm.' });
+        return;
+      }
+
+      const rawLines: string = String(req.body?.rawLines || '').trim();
+      const itemsToCreate: Array<{
+        opName: string;
+        stdSeconds: number;
+        defaultMachine: string;
+        toolCode: string;
+        matName: string;
+        cuttingRec: string;
+      }> = [];
+
+      if (rawLines) {
+        for (const line of rawLines.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          const parts = trimmed.split('|').map((s) => normalizeVn(s));
+          itemsToCreate.push({
+            opName: parts[0] || 'Gia công cơ khí',
+            stdSeconds: Math.max(60, Number(parts[1]) || 1800),
+            defaultMachine: normalizeVn(req.body?.defaultMachine || 'Máy Tiện CNC 1'),
+            toolCode: normalizeVn(req.body?.toolCode || 'T01'),
+            matName: normalizeVn(req.body?.matName || 'Thép cơ khí chế tạo'),
+            cuttingRec: normalizeVn(req.body?.cuttingRec || 'Vc=100m/p | f=0.15mm/v'),
+          });
+        }
+      } else {
+        itemsToCreate.push({
+          opName: normalizeVn(req.body?.opName || 'Gia công CNC'),
+          stdSeconds: Math.max(60, Number(req.body?.stdSeconds) || 1800),
+          defaultMachine: normalizeVn(req.body?.defaultMachine || 'Máy Tiện CNC 1'),
+          toolCode: normalizeVn(req.body?.toolCode || 'T01'),
+          matName: normalizeVn(req.body?.matName || 'Thép cơ khí chế tạo'),
+          cuttingRec: normalizeVn(req.body?.cuttingRec || 'Vc=100m/p | f=0.15mm/v'),
+        });
+      }
+
+      const createdIds: string[] = [];
+      withTransaction(db, () => {
+        const spId = ensureProductId(customer, productName, itemsToCreate[0]?.matName || '');
+        for (const item of itemsToCreate) {
+          const ncId = nextNcId();
+          const mach = db
+            .prepare('SELECT name, cost_per_hour FROM machines WHERE LOWER(name) = LOWER(?)')
+            .get(item.defaultMachine) as { name: string; cost_per_hour: number } | undefined;
+          const tool = db
+            .prepare('SELECT code, name, cost_per_edge FROM cutting_tools WHERE code = ?')
+            .get(item.toolCode) as { code: string; name: string; cost_per_edge: number } | undefined;
+
+          const stdLaborCost = Math.round(item.stdSeconds * 13.89);
+          const stdMachCost = Math.round((item.stdSeconds / 3600) * Number(mach?.cost_per_hour || 350000));
+          const costPerEdge = Number(tool?.cost_per_edge || 25000);
+          const stdEdges = Number(((item.stdSeconds / 1800) * 1.0).toFixed(2));
+          const stdToolCost = Math.round(stdEdges * costPerEdge);
+
+          db.prepare(
+            `INSERT INTO operations (
+              nc_id, sp_id, customer, product_name, op_name, std_seconds, stage, step_order, is_final_op,
+              default_machine, mat_name, cutting_rec, tool_code, tool_name, cost_per_edge,
+              std_edges_per_pcs, std_labor_cost, std_mach_cost, std_tool_cost, is_critical_check
+            ) VALUES (?, ?, ?, ?, ?, ?, 'End', 999, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
+          ).run(
+            ncId,
+            spId,
+            customer,
+            productName,
+            item.opName,
+            item.stdSeconds,
+            mach?.name || item.defaultMachine,
+            item.matName,
+            item.cuttingRec,
+            tool?.code || item.toolCode,
+            tool?.name || '',
+            costPerEdge,
+            stdEdges,
+            stdLaborCost,
+            stdMachCost,
+            stdToolCost
+          );
+          createdIds.push(ncId);
+        }
+        recomputeProductStepOrders(spId);
+      });
+
+      res.status(201).json({ success: true, createdIds, items: queryOperations(db) });
+    }
+  );
+
+  router.patch(
+    '/master/operations/:ncId',
+    requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'),
+    (req, res) => {
+      const ncId = normalizeVn(req.params.ncId);
+      const op = db.prepare('SELECT * FROM operations WHERE nc_id = ?').get(ncId) as
+        | Record<string, any>
+        | undefined;
+      if (!op) {
+        res.status(404).json({ error: `Không tìm thấy ${ncId}` });
+        return;
+      }
+
+      const opName = req.body?.opName !== undefined ? normalizeVn(req.body.opName) : String(op.op_name);
+      const stdSeconds =
+        req.body?.stdSeconds !== undefined
+          ? Math.max(10, Math.round(Number(req.body.stdSeconds)))
+          : Number(op.std_seconds);
+      const defaultMachine =
+        req.body?.defaultMachine !== undefined
+          ? normalizeVn(req.body.defaultMachine)
+          : String(op.default_machine);
+      const cuttingRec =
+        req.body?.cuttingRec !== undefined ? normalizeVn(req.body.cuttingRec) : String(op.cutting_rec);
+      const isCriticalCheck =
+        req.body?.isCriticalCheck !== undefined
+          ? req.body.isCriticalCheck
+            ? 1
+            : 0
+          : Number(op.is_critical_check);
+
+      const mach = db
+        .prepare('SELECT cost_per_hour FROM machines WHERE LOWER(name) = LOWER(?)')
+        .get(defaultMachine) as { cost_per_hour: number } | undefined;
+      const tool = op.tool_code
+        ? (db
+            .prepare('SELECT cost_per_edge FROM cutting_tools WHERE code = ?')
+            .get(String(op.tool_code)) as { cost_per_edge: number } | undefined)
+        : undefined;
+
+      const prevStdSec = Number(op.std_seconds || 0);
+      const prevStdEdges = Number(op.std_edges_per_pcs || 0);
+      const stdEdgesPerPcs =
+        prevStdSec > 0 && prevStdEdges > 0
+          ? Number(((stdSeconds / prevStdSec) * prevStdEdges).toFixed(2))
+          : Number(((stdSeconds / 1800) * 1.0).toFixed(2));
+      const costPerEdge = Number(tool?.cost_per_edge ?? op.cost_per_edge ?? 25000);
+      const stdToolCost = Math.round(stdEdgesPerPcs * costPerEdge);
+
+      const stdLaborCost = Math.round(stdSeconds * 13.89);
+      const stdMachCost = Math.round(
+        (stdSeconds / 3600) * Number(mach?.cost_per_hour || 350000)
+      );
+
+      db.prepare(
+        `UPDATE operations
+         SET op_name = ?, std_seconds = ?, default_machine = ?, cutting_rec = ?,
+             std_edges_per_pcs = ?, std_labor_cost = ?, std_mach_cost = ?, std_tool_cost = ?, is_critical_check = ?
+         WHERE nc_id = ?`
+      ).run(
+        opName,
+        stdSeconds,
+        defaultMachine,
+        cuttingRec,
+        stdEdgesPerPcs,
+        stdLaborCost,
+        stdMachCost,
+        stdToolCost,
+        isCriticalCheck,
+        ncId
+      );
+
+      res.json({
+        success: true,
+        item: queryOperations(db).find((o) => o.ncId === ncId),
+      });
+    }
+  );
+
+  router.delete('/master/operations/:ncId', requireRoles('DIRECTOR', 'ADMIN'), (req, res) => {
+    const ncId = normalizeVn(req.params.ncId);
+    const op = db.prepare('SELECT sp_id FROM operations WHERE nc_id = ?').get(ncId) as
+      | { sp_id: string }
+      | undefined;
+    if (!op) {
+      res.status(404).json({ error: `Không tìm thấy ${ncId}` });
+      return;
+    }
+
+    withTransaction(db, () => {
+      db.prepare('DELETE FROM operations WHERE nc_id = ?').run(ncId);
+      recomputeProductStepOrders(String(op.sp_id));
+    });
+
+    res.json({ success: true });
+  });
+
+  // Safe Excel (.xlsx) importer powered by exceljs
+  router.post(
+    '/master/operations/import-xlsx',
+    requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'),
+    async (req, res) => {
+      try {
+        interface ParsedImportRow {
+          customer: string;
+          productName: string;
+          opName: string;
+          stdSeconds: number;
+          defaultMachine: string;
+          toolCode: string;
+        }
+
+        const parsedRows: ParsedImportRow[] = [];
+
+        if (Array.isArray(req.body?.excelRows)) {
+          for (const r of req.body.excelRows) {
+            const pName = normalizeVn(r.productName || r.TenSanPham || '');
+            if (!pName) continue;
+            parsedRows.push({
+              customer: normalizeVn(r.customer || r.KhachHang || 'Vico - Nội bộ / Khách lẻ'),
+              productName: pName,
+              opName: normalizeVn(r.opName || r.TenNguyenCong || 'Gia công'),
+              stdSeconds: Math.max(60, Number(r.stdSeconds || r.DinhMucGiay || 1800)),
+              defaultMachine: normalizeVn(r.machine || r.defaultMachine || r.MayMacDinh || 'Máy Tiện CNC 1'),
+              toolCode: normalizeVn(r.toolCode || r.MaDaoCu || 'T01'),
+            });
+          }
+        } else if (req.body?.xlsxBase64) {
+          const cleanB64 = String(req.body.xlsxBase64).replace(/^data:.*?;base64,/, '');
+          const wb = new ExcelJS.Workbook();
+          await wb.xlsx.load(Buffer.from(cleanB64, 'base64') as any);
+          const ws = wb.worksheets[0];
+          if (!ws) {
+            res.status(400).json({ error: 'File Excel không có sheet dữ liệu.' });
+            return;
+          }
+
+          const headers: string[] = [];
+          ws.getRow(1).eachCell((cell, colNumber) => {
+            headers[colNumber] = normalizeVn(String(cell.value ?? ''));
+          });
+
+          ws.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return;
+            const obj: Record<string, string> = {};
+            row.eachCell((cell, colNumber) => {
+              const key = headers[colNumber] || `col_${colNumber}`;
+              obj[key] = normalizeVn(String(cell.value ?? ''));
+            });
+
+            const productName =
+              obj.TenSanPham || obj['Tên Sản Phẩm'] || obj.Product || obj.col_2 || '';
+            if (!productName) return;
+
+            parsedRows.push({
+              customer:
+                obj.KhachHang || obj['Khách hàng'] || obj.Customer || obj.col_1 || 'Vico - Nội bộ / Khách lẻ',
+              productName,
+              opName:
+                obj.TenNguyenCong || obj['Tên Nguyên Công'] || obj.Operation || obj.col_3 || 'Gia công',
+              stdSeconds: Math.max(
+                60,
+                Number(obj.DinhMucGiay || obj['Định mức giây (s)'] || obj.Seconds || obj.col_4 || 1800)
+              ),
+              defaultMachine:
+                obj.MayMacDinh || obj['Máy mặc định'] || obj.col_6 || 'Máy Tiện CNC 1',
+              toolCode: obj.MaDaoCu || obj['Mã Dao'] || obj.col_7 || 'T01',
+            });
+          });
+        }
+
+        if (parsedRows.length === 0) {
+          res.status(400).json({ error: 'Không tìm thấy dòng nguyên công hợp lệ trong file Excel.' });
+          return;
+        }
+
+        const touchedSpIds = new Set<string>();
+        withTransaction(db, () => {
+          for (const r of parsedRows) {
+            const cust = canonicalizeCustomerName(r.customer).customer;
+            const spId = ensureProductId(cust, r.productName, 'Thép cơ khí chế tạo');
+            touchedSpIds.add(spId);
+
+            const ncId = nextNcId();
+            const mach = db
+              .prepare('SELECT name, cost_per_hour FROM machines WHERE LOWER(name) = LOWER(?)')
+              .get(r.defaultMachine) as { name: string; cost_per_hour: number } | undefined;
+            const tool = db
+              .prepare('SELECT code, name, cost_per_edge FROM cutting_tools WHERE code = ?')
+              .get(r.toolCode) as { code: string; name: string; cost_per_edge: number } | undefined;
+
+            const stdLaborCost = Math.round(r.stdSeconds * 13.89);
+            const stdMachCost = Math.round(
+              (r.stdSeconds / 3600) * Number(mach?.cost_per_hour || 350000)
+            );
+            const costPerEdge = Number(tool?.cost_per_edge || 25000);
+            const stdEdges = Number(((r.stdSeconds / 1800) * 1.0).toFixed(2));
+            const stdToolCost = Math.round(stdEdges * costPerEdge);
+
+            db.prepare(
+              `INSERT INTO operations (
+                nc_id, sp_id, customer, product_name, op_name, std_seconds, stage, step_order, is_final_op,
+                default_machine, mat_name, cutting_rec, tool_code, tool_name, cost_per_edge,
+                std_edges_per_pcs, std_labor_cost, std_mach_cost, std_tool_cost, is_critical_check
+              ) VALUES (?, ?, ?, ?, ?, ?, 'End', 999, 1, ?, 'Thép cơ khí chế tạo', 'Vc=100m/p', ?, ?, ?, ?, ?, ?, ?, 0)`
+            ).run(
+              ncId,
+              spId,
+              cust,
+              r.productName,
+              r.opName,
+              r.stdSeconds,
+              mach?.name || r.defaultMachine,
+              tool?.code || r.toolCode,
+              tool?.name || '',
+              costPerEdge,
+              stdEdges,
+              stdLaborCost,
+              stdMachCost,
+              stdToolCost
+            );
+          }
+
+          for (const spId of touchedSpIds) {
+            recomputeProductStepOrders(spId);
+          }
+        });
+
+        res.status(201).json({
+          success: true,
+          importedCount: parsedRows.length,
+          message: `Đã nạp thành công ${parsedRows.length} nguyên công từ Excel (.xlsx).`,
+        });
+      } catch (err: any) {
+        res.status(400).json({ error: `Lỗi đọc file Excel: ${String(err?.message || err)}` });
+      }
+    }
+  );
+
+  router.post('/master/machines', requireRoles('DIRECTOR', 'ADMIN'), (req, res) => {
+    const name = normalizeVn(req.body?.name || '');
+    const group = normalizeVn(req.body?.group || 'Gia công CNC');
+    const costPerHour = Math.max(50000, Number(req.body?.costPerHour) || 250000);
+
+    if (!name) {
+      res.status(400).json({ error: 'Vui lòng nhập tên máy.' });
+      return;
+    }
+
+    const cnt = (db.prepare('SELECT COUNT(*) AS c FROM machines').get() as { c: number }).c;
+    const id = normalizeVn(req.body?.id || `M${String(Number(cnt) + 1).padStart(2, '0')}`);
+
+    db.prepare(
+      `INSERT INTO machines (id, name, group_name, cost_per_hour, status) VALUES (?, ?, ?, ?, 'IDLE')`
+    ).run(id, name, group, costPerHour);
+
+    res.status(201).json({ success: true, items: queryMachines(db) });
+  });
+
+  router.patch('/master/machines/:id', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const id = normalizeVn(req.params.id);
+    const m = db.prepare('SELECT * FROM machines WHERE id = ?').get(id) as
+      | Record<string, any>
+      | undefined;
+    if (!m) {
+      res.status(404).json({ error: `Không tìm thấy máy ${id}` });
+      return;
+    }
+
+    const status = req.body?.status !== undefined ? normalizeVn(req.body.status) : String(m.status);
+    const costPerHour =
+      req.body?.costPerHour !== undefined ? Number(req.body.costPerHour) : Number(m.cost_per_hour);
+    const stopReason =
+      req.body?.stopReason !== undefined
+        ? normalizeVn(req.body.stopReason) || null
+        : m.stop_reason;
+
+    db.prepare(
+      `UPDATE machines SET status = ?, cost_per_hour = ?, stop_reason = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(status, costPerHour, stopReason, id);
+
+    res.json({ success: true, items: queryMachines(db) });
+  });
+
+  router.post('/master/workers', requireRoles('ADMIN'), (req, res) => {
+    const id = normalizeVn(req.body?.id || req.body?.empIdOrUser || '');
+    const name = normalizeVn(req.body?.name || req.body?.fullName || '');
+    const role = normalizeVn(req.body?.role || 'CN');
+    const title = normalizeVn(
+      req.body?.title ||
+        (role === 'QĐ' ? 'Quản đốc' : role === 'TC' ? 'Trưởng ca' : role === 'KT' ? 'Kỹ thuật / QC' : 'Công nhân')
+    );
+    const salaryMode = normalizeVn(req.body?.salaryMode || 'Khoán 1 + 0.33 máy');
+    const baseSalary = Math.max(100000, Number(req.body?.baseSalary) || 385000);
+    const costPerSec = Number((baseSalary / 28800).toFixed(2));
+    const rawChat = normalizeVn(req.body?.chatId || '');
+    const validChat = rawChat && !rawChat.startsWith('CHAT_ID_') ? rawChat : null;
+    const rawPin = normalizeVn(req.body?.pin || '');
+
+    if (!id || !name) {
+      res.status(400).json({ error: 'Vui lòng nhập Mã nhân viên và Họ tên.' });
+      return;
+    }
+
+    const existing = db.prepare('SELECT id, pin_hash FROM workers WHERE id = ?').get(id) as
+      | { id: string; pin_hash: string }
+      | undefined;
+
+    if (existing) {
+      const nextPinHash = rawPin ? hashPin(rawPin) : existing.pin_hash;
+      db.prepare(
+        `UPDATE workers
+         SET name = ?, role = ?, title = ?, salary_mode = ?, base_salary = ?, cost_per_sec = ?,
+             pin_hash = ?, chat_id = ?, is_linked = ?
+         WHERE id = ?`
+      ).run(name, role, title, salaryMode, baseSalary, costPerSec, nextPinHash, validChat, validChat ? 1 : 0, id);
+    } else {
+      db.prepare(
+        `INSERT INTO workers (
+          id, name, username, role, title, salary_mode, base_salary, cost_per_sec, pin_hash, chat_id, is_linked, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+      ).run(
+        id,
+        name,
+        normalizeVn(req.body?.username || id.toLowerCase()),
+        role,
+        title,
+        salaryMode,
+        baseSalary,
+        costPerSec,
+        hashPin(rawPin || '1234'),
+        validChat,
+        validChat ? 1 : 0
+      );
+    }
+
+    res.status(existing ? 200 : 201).json({
+      success: true,
+      workers: queryWorkersForViewer(db, req.authUser!.workerId, 'ADMIN'),
+    });
+  });
+
+  // ==================== SYSTEM CONFIG & OUTBOX SYNC ====================
+  router.get('/config', requireRoles('ADMIN'), (_req, res) => {
+    const cfg = getConfigMap(db);
+    delete cfg.SESSION_HMAC_SECRET;
+    res.json({ config: cfg });
+  });
+
+  router.put('/config', requireRoles('ADMIN'), (req, res) => {
+    const allowedKeys = [
+      'AUTH_MODE',
+      'TELEGRAM_BOT_TOKEN',
+      'TELEGRAM_BOT_USERNAME',
+      'MANAGER_CHAT_ID',
+      'WEB_APP_URL',
+      'GAS_SYNC_ENABLED',
+      'SECONDS_PER_SHIFT',
+      'SECOND_MACHINE_RATE',
+      'MEAL_SHIFT_2_3',
+      'MEAL_OT_2H',
+      'MEAL_SUNDAY',
+      'KPI_WARNING_THRESHOLD',
+    ];
+
+    const upsert = db.prepare(
+      `INSERT OR REPLACE INTO system_config (key, value, updated_at) VALUES (?, ?, datetime('now'))`
+    );
+
+    withTransaction(db, () => {
+      for (const k of allowedKeys) {
+        if (req.body?.[k] !== undefined) {
+          upsert.run(k, normalizeVn(String(req.body[k])));
+        }
+      }
+    });
+
+    const cfg = getConfigMap(db);
+    delete cfg.SESSION_HMAC_SECRET;
+    res.json({ success: true, config: cfg });
+  });
+
+  router.get('/sync/outbox', requireRoles('ADMIN'), (_req, res) => {
+    res.json({ items: listOutboxItems(db, 60) });
+  });
+
+  router.post('/sync/flush', requireRoles('ADMIN'), async (_req, res) => {
+    const result = await flushPendingOutbox(db, 30);
+    res.json({ success: true, ...result, items: listOutboxItems(db, 60) });
+  });
+
+  return router;
+}
