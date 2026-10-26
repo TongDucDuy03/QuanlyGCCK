@@ -14,6 +14,12 @@ export const AUDITED_CLIENT_FILES: string[] = [
   'src/client/components/TopRoleBar.tsx',
   'src/client/context/AuthContext.tsx',
   'src/client/features/print/JobTravelerPrint.tsx',
+  'src/client/features/worker/WorkerPortal.tsx',
+  'src/client/features/worker/SearchablePickerSheet.tsx',
+  'src/client/features/worker/QrScannerModal.tsx',
+  'src/client/features/worker/FaiInspectionModal.tsx',
+  'src/client/features/worker/TelegramLinkModal.tsx',
+  'src/client/features/andon/AndonTvBoard.tsx',
 ];
 
 const FORBIDDEN_DARK_SURFACE_PATTERNS: Array<{ label: string; regex: RegExp }> = [
@@ -46,6 +52,14 @@ const FORBIDDEN_DARK_SURFACE_PATTERNS: Array<{ label: string; regex: RegExp }> =
     label: 'dark tinted surface (bg-*-900|950)',
     regex:
       /\bbg-(?:sky|blue|cyan|teal|emerald|green|amber|yellow|orange|red|rose|purple|violet|indigo)-9[05]0\b/g,
+  },
+  {
+    label: 'dark black backdrop/overlay (bg-black/40..95)',
+    regex: /\bbg-black\/(?:[456789]0|75|95)\b/g,
+  },
+  {
+    label: 'dark hex canvas (bg-[#0...])',
+    regex: /\bbg-\[#0[0-9a-fA-F]{5}\]/g,
   },
 ];
 
@@ -152,5 +166,55 @@ describe('Bright Daylight Design System — Static Source Audit', () => {
 
     expect(withoutComments).not.toMatch(/\bOutbox\b/i);
     expect(topBarSource).toContain('Đang đồng bộ');
+  });
+
+  it('WorkerPortal renders compact <header data-testid="worker-sticky-header"> without Telegram, tucks Telegram inside <details>, and removes English "Offline Outbox"', () => {
+    const workerSource = readRepoFile('src/client/features/worker/WorkerPortal.tsx');
+
+    // 1. Sticky header exists as <header ... data-testid="worker-sticky-header" ...>...</header>
+    const headerMatch = workerSource.match(
+      /<header\b[^>]*data-testid="worker-sticky-header"[^>]*>([\s\S]*?)<\/header>/
+    );
+    expect(headerMatch, 'Expected <header data-testid="worker-sticky-header"> in WorkerPortal.tsx').not.toBeNull();
+    const headerContent = headerMatch![1];
+    expect(headerContent).not.toMatch(/Telegram/i);
+
+    // 2. Every setTelegramModalOpen(true) trigger is inside a <details ...>...</details> block
+    const detailsBlocks = Array.from(
+      workerSource.matchAll(/<details\b[\s\S]*?<\/details>/g),
+      (m) => m[0]
+    );
+    expect(detailsBlocks.length).toBeGreaterThan(0);
+    expect(detailsBlocks.some((block) => block.includes('setTelegramModalOpen(true)'))).toBe(true);
+
+    const outsideDetails = workerSource.replace(/<details\b[\s\S]*?<\/details>/g, '');
+    expect(outsideDetails).not.toContain('setTelegramModalOpen(true)');
+
+    // 3. English "Offline Outbox" is absent from WorkerPortal.tsx
+    expect(workerSource).not.toMatch(/Offline\s+Outbox/i);
+  });
+
+  it('QrScannerModal restricts bg-black strictly to the dynamic readerDomId camera viewport container', () => {
+    const qrSource = readRepoFile('src/client/features/worker/QrScannerModal.tsx');
+
+    expect(qrSource).toMatch(/id=\{readerDomId\}[\s\S]{0,160}\bbg-black\b/);
+
+    // Ensure no other bare bg-black (without opacity slash) exists outside readerDomId element
+    const withoutReaderViewport = qrSource.replace(
+      /<div\s+id=\{readerDomId\}[\s\S]*?\/>/g,
+      ''
+    );
+    expect(withoutReaderViewport).not.toMatch(/(?<!hover:)\bbg-black(?!\/)\b/);
+  });
+
+  it('AndonTvBoard uses anti-glare daylight #EEF2F6 canvas and strictly leaks zero VND/salary strings', () => {
+    const andonSource = readRepoFile('src/client/features/andon/AndonTvBoard.tsx');
+    const withoutComments = andonSource
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+
+    expect(andonSource).toContain('bg-[#EEF2F6]');
+    expect(andonSource).toContain('text-slate-900');
+    expect(withoutComments).not.toMatch(/₫|VNĐ|\bVND\b|đ\/s|Lương|Thu nhập/i);
   });
 });

@@ -183,12 +183,12 @@ export function QrScannerModal({
       subtitle="Tự động điền Lệnh SX (PO), Chi tiết bản vẽ, Nguyên công, Máy & Dao cụ trong 1 chạm"
       maxWidthClass="max-w-lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-4 text-slate-900">
         {/* Hidden mount node for image-file QR decoding */}
         <div id={fileReaderDomId} className="hidden" />
 
         {/* 3 Mode Switcher Tabs (>= 48px height) */}
-        <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-industrial-border bg-slate-950 p-1">
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-slate-200 bg-slate-100 p-1">
           <button
             type="button"
             onClick={() => {
@@ -197,8 +197,8 @@ export function QrScannerModal({
             }}
             className={`flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-xs font-bold transition-colors ${
               mode === 'CAMERA'
-                ? 'bg-sky-500 text-slate-950 shadow'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-white hover:text-slate-900'
             }`}
           >
             <Camera className="h-4 w-4" />
@@ -213,8 +213,8 @@ export function QrScannerModal({
             }}
             className={`flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-xs font-bold transition-colors ${
               mode === 'IMAGE'
-                ? 'bg-sky-500 text-slate-950 shadow'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-white hover:text-slate-900'
             }`}
           >
             <ImageUp className="h-4 w-4" />
@@ -229,8 +229,8 @@ export function QrScannerModal({
             }}
             className={`flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-xs font-bold transition-colors ${
               mode === 'QUICK'
-                ? 'bg-emerald-500 text-slate-950 shadow'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-white hover:text-slate-900'
             }`}
           >
             <Sparkles className="h-4 w-4" />
@@ -240,27 +240,27 @@ export function QrScannerModal({
 
         {/* Mode Viewport */}
         {mode === 'CAMERA' && (
-          <div className="rounded-xl border border-industrial-border bg-slate-950 p-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div
               id={readerDomId}
-              className="mx-auto min-h-[240px] w-full max-w-[320px] overflow-hidden rounded-lg bg-slate-900"
+              className="mx-auto min-h-[240px] w-full max-w-[320px] overflow-hidden rounded-lg bg-black"
             />
             {cameraStatus && (
-              <p className="mt-2 text-center text-xs font-medium text-sky-300">{cameraStatus}</p>
+              <p className="mt-2 text-center text-xs font-semibold text-blue-700">{cameraStatus}</p>
             )}
           </div>
         )}
 
         {mode === 'IMAGE' && (
-          <div className="rounded-xl border border-dashed border-sky-500/50 bg-slate-950/80 p-4 text-center">
-            <QrCode className="mx-auto h-10 w-10 text-sky-400" />
-            <p className="mt-2 text-sm font-bold text-slate-100">
+          <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/50 p-4 text-center">
+            <QrCode className="mx-auto h-10 w-10 text-blue-600" />
+            <p className="mt-2 text-sm font-bold text-slate-900">
               Chọn hoặc chụp ảnh Phiếu Công Nghệ có mã QR
             </p>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-600">
               Dùng tốt khi phiếu bọc túi nilon dính dầu hoặc camera trình duyệt bị chặn
             </p>
-            <label className="mt-3 inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-extrabold text-slate-950 hover:bg-sky-400">
+            <label className="mt-3 inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-blue-700">
               <ImageUp className="h-4 w-4" />
               <span>{busyImage ? 'Đang giải mã QR...' : 'CHỌN ẢNH MÃ QR'}</span>
               <input
@@ -277,7 +277,7 @@ export function QrScannerModal({
         {mode === 'QUICK' && (
           <form onSubmit={handleManualSubmit} className="flex gap-2">
             <div className="relative min-w-0 flex-1">
-              <Terminal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Terminal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 value={manualInput}
@@ -286,7 +286,7 @@ export function QrScannerModal({
                   setManualInput(e.target.value);
                 }}
                 placeholder="GCCK|PO485-01|NC098"
-                className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 pl-9 pr-3 text-sm font-semibold text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm font-semibold text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
             <Button type="submit" variant="primary" size="lg" className="shrink-0">
@@ -296,12 +296,12 @@ export function QrScannerModal({
         )}
 
         {scanError && (
-          <div className="flex items-start justify-between gap-2 rounded-xl border border-amber-500/50 bg-amber-950/50 px-3 py-2.5 text-xs font-medium text-amber-200">
+          <div className="flex items-start justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-900">
             <span>{scanError}</span>
             <button
               type="button"
               onClick={() => setScanError('')}
-              className="shrink-0 text-amber-300 hover:text-white"
+              className="shrink-0 rounded p-0.5 text-amber-700 transition-colors hover:bg-amber-100 hover:text-amber-950"
               aria-label="Ẩn lỗi"
             >
               <X className="h-4 w-4" />
@@ -310,12 +310,12 @@ export function QrScannerModal({
         )}
 
         {/* Always-Visible 1-Tap Quick-Sim Sample QR Cards */}
-        <div className="space-y-2 border-t border-industrial-border pt-3">
+        <div className="space-y-2 border-t border-slate-200 pt-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-blue-700">
               ⚡ Chạm Nhanh Mã QR Mẫu Thực Tế (1-Tap Demo)
             </span>
-            <span className="text-[11px] text-slate-400">Không cần Camera</span>
+            <span className="text-[11px] font-medium text-slate-500">Không cần Camera</span>
           </div>
 
           <div className="space-y-2">
@@ -327,21 +327,21 @@ export function QrScannerModal({
                   onDetected(preset.qrPayload);
                   onClose();
                 }}
-                className="flex min-h-[54px] w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-industrial-border bg-industrial-elevated/90 px-3.5 py-2.5 text-left transition-all hover:border-emerald-400/70 hover:bg-slate-800 active:scale-[0.99]"
+                className="flex min-h-[54px] w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-3.5 py-2.5 text-left text-slate-900 transition-all hover:border-blue-400 hover:bg-blue-100 active:scale-[0.99]"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.5 font-mono-num text-[11px] font-bold text-emerald-300">
+                    <span className="rounded border border-blue-200 bg-white px-1.5 py-0.5 font-mono-num text-[11px] font-bold text-blue-700">
                       {preset.qrPayload}
                     </span>
-                    <span className="text-[11px] font-semibold text-sky-300">{preset.badge}</span>
+                    <span className="text-[11px] font-semibold text-emerald-700">{preset.badge}</span>
                   </div>
-                  <div className="mt-1 truncate text-sm font-bold text-slate-100">
+                  <div className="mt-1 truncate text-sm font-bold text-slate-900">
                     {preset.title}
                   </div>
-                  <div className="truncate text-xs text-slate-400">{preset.subtitle}</div>
+                  <div className="truncate text-xs text-slate-600">{preset.subtitle}</div>
                 </div>
-                <QrCode className="h-6 w-6 shrink-0 text-emerald-400" />
+                <QrCode className="h-6 w-6 shrink-0 text-blue-600" />
               </button>
             ))}
           </div>

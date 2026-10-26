@@ -114,11 +114,11 @@ export function FaiInspectionModal({
       subtitle={`${po.customer} · ${po.productName} (SL lô: ${po.qtyPo} SP)`}
       maxWidthClass="max-w-lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-4 text-slate-900">
         {!canApproveQc && (
-          <div className="space-y-2.5 rounded-xl border border-amber-500/50 bg-amber-950/40 p-3.5 text-xs text-amber-100">
-            <div className="flex items-center gap-2 font-bold text-amber-300">
-              <ShieldAlert className="h-4 w-4 shrink-0" />
+          <div className="space-y-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900">
+            <div className="flex items-center gap-2 font-bold text-amber-800">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
               <span>Yêu cầu chữ ký số Tổ Trưởng / KCS (QC)</span>
             </div>
             <p>
@@ -155,13 +155,13 @@ export function FaiInspectionModal({
         <form onSubmit={handleSubmit} className="space-y-3">
           {poOps.length > 0 && (
             <div>
-              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">
                 Nguyên công kiểm tra mẫu đầu
               </label>
               <select
                 value={ncId}
                 onChange={(e) => setNcId(e.target.value)}
-                className="min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-sm font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+                className="min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               >
                 {poOps.map((op) => (
                   <option key={op.ncId} value={op.ncId}>
@@ -174,50 +174,50 @@ export function FaiInspectionModal({
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-bold text-slate-400">
+              <label className="mb-1 block text-xs font-bold text-slate-700">
                 Chỉ tiêu đo #1
               </label>
               <input
                 type="text"
                 value={dim1Spec}
                 onChange={(e) => setDim1Spec(e.target.value)}
-                className="min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-xs font-medium text-slate-100"
+                className="min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-bold text-slate-400">
+              <label className="mb-1 block text-xs font-bold text-slate-700">
                 Giá trị thực đo #1
               </label>
               <input
                 type="text"
                 value={dim1Val}
                 onChange={(e) => setDim1Val(e.target.value)}
-                className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-xs font-bold text-emerald-300"
+                className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-emerald-700 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-bold text-slate-400">
+              <label className="mb-1 block text-xs font-bold text-slate-700">
                 Chỉ tiêu đo #2
               </label>
               <input
                 type="text"
                 value={dim2Spec}
                 onChange={(e) => setDim2Spec(e.target.value)}
-                className="min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-xs font-medium text-slate-100"
+                className="min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-bold text-slate-400">
+              <label className="mb-1 block text-xs font-bold text-slate-700">
                 Giá trị thực đo #2
               </label>
               <input
                 type="text"
                 value={dim2Val}
                 onChange={(e) => setDim2Val(e.target.value)}
-                className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-xs font-bold text-emerald-300"
+                className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-emerald-700 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
           </div>
@@ -225,9 +225,9 @@ export function FaiInspectionModal({
           <div className="grid grid-cols-3 gap-2">
             {(
               [
-                { val: 'PASS', label: '✅ ĐẠT CHUẨN', cls: 'border-emerald-400 bg-emerald-500/20 text-emerald-200' },
-                { val: 'CONCESSION', label: '🟡 NHÂN NHƯỢNG', cls: 'border-amber-400 bg-amber-500/20 text-amber-200' },
-                { val: 'REWORK', label: '🔴 SỬA LẠI', cls: 'border-red-400 bg-red-500/20 text-red-200' },
+                { val: 'PASS', label: '✅ ĐẠT CHUẨN', cls: 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm' },
+                { val: 'CONCESSION', label: '🟡 NHÂN NHƯỢNG', cls: 'border-amber-400 bg-amber-50 text-amber-800 shadow-sm' },
+                { val: 'REWORK', label: '🔴 SỬA LẠI', cls: 'border-rose-400 bg-rose-50 text-rose-800 shadow-sm' },
               ] as const
             ).map((opt) => (
               <button
@@ -237,7 +237,7 @@ export function FaiInspectionModal({
                 className={`min-h-[48px] rounded-xl border px-2 text-xs font-extrabold transition-colors ${
                   result === opt.val
                     ? opt.cls
-                    : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 {opt.label}
@@ -246,14 +246,14 @@ export function FaiInspectionModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-slate-400">
+            <label className="mb-1 block text-xs font-bold text-slate-700">
               Nhận xét kỹ thuật &amp; hướng dẫn chạy loạt
             </label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-sm text-slate-100"
+              className="min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             />
           </div>
 

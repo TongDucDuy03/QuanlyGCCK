@@ -60,21 +60,21 @@ export function TelegramLinkModal({
       subtitle="Nhận biên lai sản lượng & lương tạm tính riêng tư sau mỗi ca"
       maxWidthClass="max-w-md"
     >
-      <div className="space-y-4">
-        <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/30 p-3 text-xs leading-relaxed text-emerald-100">
-          <div className="flex items-center gap-2 font-bold text-emerald-300">
-            <ShieldCheck className="h-4 w-4 shrink-0" />
+      <div className="space-y-4 text-slate-900">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-900">
+          <div className="flex items-center gap-2 font-bold text-emerald-800">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
             <span>Bảo mật thu nhập cá nhân 100%</span>
           </div>
-          <p className="mt-1 text-emerald-100/90">
+          <p className="mt-1 text-emerald-800">
             Hệ thống chỉ gửi phiếu xác nhận sản lượng và thu nhập ca vào đúng tài khoản Telegram của{' '}
             <strong>{user?.name || 'bạn'}</strong> ({user?.workerId}). Tuyệt đối không đăng lương lên
             nhóm chung hay hiển thị cho đồng nghiệp khác.
           </p>
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-industrial-border bg-slate-950 px-3.5 py-2.5">
-          <span className="text-xs font-semibold text-slate-400">Trạng thái hiện tại:</span>
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5">
+          <span className="text-xs font-semibold text-slate-700">Trạng thái hiện tại:</span>
           {user?.isLinked && user?.chatId ? (
             <Badge variant="success">
               <CheckCircle2 className="h-3.5 w-3.5" /> Đã kết nối ({user.chatId})
@@ -89,9 +89,9 @@ export function TelegramLinkModal({
             href={deepLinkUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-sky-400/50 bg-sky-500/15 px-4 py-2.5 text-sm font-bold text-sky-200 hover:bg-sky-500/25"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100"
           >
-            <MessageCircle className="h-4 w-4 text-sky-400" />
+            <MessageCircle className="h-4 w-4 text-blue-600" />
             <span>Mở Bot @{cleanBot} &amp; Bấm START tự động</span>
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
@@ -105,7 +105,7 @@ export function TelegramLinkModal({
           className="space-y-3"
         >
           <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-700">
               Telegram Chat ID cá nhân
             </label>
             <input
@@ -113,10 +113,10 @@ export function TelegramLinkModal({
               value={chatId}
               onChange={(e) => setChatId(e.target.value)}
               placeholder="VD: 5829104821"
-              className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3.5 text-sm font-semibold text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+              className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             />
-            <p className="mt-1 text-[11px] text-slate-400">
-              Gõ lệnh <code className="text-sky-300">/id</code> vào Bot xưởng hoặc @userinfobot để lấy dãy số Chat ID của bạn.
+            <p className="mt-1 text-[11px] text-slate-600">
+              Gõ lệnh <code className="rounded bg-blue-50 px-1 py-0.5 font-semibold text-blue-700">/id</code> vào Bot xưởng hoặc @userinfobot để lấy dãy số Chat ID của bạn.
             </p>
           </div>
 
@@ -140,7 +140,7 @@ export function TelegramLinkModal({
                 disabled={saving}
                 onClick={() => void handleSave('')}
               >
-                <Unlink className="h-4 w-4 text-red-400" />
+                <Unlink className="h-4 w-4 text-rose-600" />
                 Hủy
               </Button>
             )}

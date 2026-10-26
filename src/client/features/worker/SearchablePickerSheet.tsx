@@ -77,17 +77,17 @@ export function SearchablePickerSheet({
   if (!open) return null;
 
   const badgeTone: Record<NonNullable<PickerOptionItem['metaVariant']>, string> = {
-    emerald: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
-    sky: 'border-sky-500/40 bg-sky-500/15 text-sky-300',
-    amber: 'border-amber-500/45 bg-amber-500/15 text-amber-300',
-    red: 'border-red-500/50 bg-red-500/20 text-red-300',
-    purple: 'border-purple-500/45 bg-purple-500/15 text-purple-300',
-    slate: 'border-slate-600/60 bg-slate-800/80 text-slate-300',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    sky: 'border-blue-200 bg-blue-50 text-blue-700',
+    amber: 'border-amber-200 bg-amber-50 text-amber-800',
+    red: 'border-rose-200 bg-rose-50 text-rose-700',
+    purple: 'border-violet-200 bg-violet-50 text-violet-700',
+    slate: 'border-slate-200 bg-slate-100 text-slate-700',
   };
 
   return (
     <div
-      className="no-print fixed inset-0 z-[85] flex items-end justify-center bg-black/80 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="no-print fixed inset-0 z-[85] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -95,18 +95,18 @@ export function SearchablePickerSheet({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="flex h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-industrial-border bg-industrial-surface shadow-2xl sm:h-[82vh] sm:rounded-2xl"
+        className="flex h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white text-slate-900 shadow-elevated sm:h-[82vh] sm:rounded-2xl"
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-industrial-border bg-slate-950/80 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3.5">
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-base font-extrabold text-slate-50">{title}</h3>
-            {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+            <h3 className="truncate text-base font-extrabold text-slate-900">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-slate-200 hover:bg-slate-700 hover:text-white"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
             aria-label="Đóng danh sách chọn"
           >
             <X className="h-5 w-5" />
@@ -114,9 +114,9 @@ export function SearchablePickerSheet({
         </div>
 
         {/* Sticky Search Box */}
-        <div className="border-b border-industrial-border bg-industrial-surface px-3.5 py-2.5">
+        <div className="border-b border-slate-200 bg-white px-3.5 py-2.5">
           <div className="relative flex items-center">
-            <Search className="pointer-events-none absolute left-3.5 h-5 w-5 text-sky-400" />
+            <Search className="pointer-events-none absolute left-3.5 h-5 w-5 text-blue-600" />
             <input
               ref={inputRef}
               type="text"
@@ -126,31 +126,31 @@ export function SearchablePickerSheet({
                 setShowAll(false);
               }}
               placeholder={searchPlaceholder}
-              className="min-h-[50px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 pl-11 pr-11 text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+              className="min-h-[50px] w-full min-w-0 rounded-xl border border-slate-300 bg-slate-50 pl-11 pr-11 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                className="absolute right-2 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
+                className="absolute right-2 flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-slate-900"
                 aria-label="Xóa từ khóa"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
-          <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-slate-400">
+          <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-slate-500">
             <span>Hỗ trợ gõ tiếng Việt không dấu &amp; ký hiệu bản vẽ (&quot;, Φ, #)</span>
-            <span className="font-mono-num text-sky-300">
+            <span className="font-mono-num font-bold text-blue-700">
               {filtered.length} / {options.length} mục
             </span>
           </div>
         </div>
 
         {/* Scrollable Multi-line List */}
-        <div className="flex-1 space-y-2 overflow-y-auto p-3">
+        <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50/40 p-3">
           {visibleItems.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-industrial-border bg-slate-950/50 px-4 py-10 text-center text-sm text-slate-400">
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-500">
               {emptyMessage}
             </div>
           ) : (
@@ -167,8 +167,8 @@ export function SearchablePickerSheet({
                   }}
                   className={`flex min-h-[56px] w-full min-w-0 items-start justify-between gap-3 rounded-xl border p-3 text-left transition-all active:scale-[0.99] ${
                     active
-                      ? 'border-sky-400 bg-sky-500/15 shadow-md shadow-sky-950/50'
-                      : 'border-industrial-border bg-industrial-elevated/80 hover:border-slate-500 hover:bg-slate-800/80'
+                      ? 'border-blue-500 bg-blue-50/60 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/30'
                   }`}
                 >
                   <div className="min-w-0 flex-1 space-y-1">
@@ -181,16 +181,16 @@ export function SearchablePickerSheet({
                         </span>
                       )}
                       {item.rightText && (
-                        <span className="font-mono-num text-xs font-semibold text-amber-300">
+                        <span className="font-mono-num text-xs font-semibold text-blue-700">
                           {item.rightText}
                         </span>
                       )}
                     </div>
-                    <div className="break-words text-sm font-bold leading-snug text-slate-50">
+                    <div className="break-words text-sm font-bold leading-snug text-slate-900">
                       {item.primaryText}
                     </div>
                     {item.secondaryText && (
-                      <div className="break-words text-xs leading-relaxed text-slate-400">
+                      <div className="break-words text-xs leading-relaxed text-slate-600">
                         {item.secondaryText}
                       </div>
                     )}
@@ -199,8 +199,8 @@ export function SearchablePickerSheet({
                   <div
                     className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
                       active
-                        ? 'border-sky-400 bg-sky-500 text-slate-950'
-                        : 'border-slate-700 bg-slate-900/70 text-transparent'
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-slate-300 bg-slate-50 text-transparent'
                     }`}
                   >
                     <Check className="h-4 w-4 stroke-[3]" />
@@ -214,7 +214,7 @@ export function SearchablePickerSheet({
             <button
               type="button"
               onClick={() => setShowAll(true)}
-              className="min-h-[48px] w-full rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm font-bold text-sky-300 hover:bg-sky-500/20"
+              className="min-h-[48px] w-full rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-2.5 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100"
             >
               Hiển thị toàn bộ {filtered.length} mục (+{filtered.length - INITIAL_RENDER_LIMIT} mục còn lại)
             </button>

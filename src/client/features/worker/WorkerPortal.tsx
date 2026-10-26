@@ -30,7 +30,6 @@ import {
   Star,
   Timer,
   Trash2,
-  Wifi,
   Wrench,
 } from 'lucide-react';
 import type {
@@ -1052,7 +1051,7 @@ export function WorkerPortal() {
       const result = await submitReportWithOfflineFallback(payload);
       if (result.queuedOffline) {
         toast.warning(
-          `🟠 Mất Wi-Fi: Đã lưu an toàn phiếu (${payload.recordUid}) vào Hàng đợi Offline!`
+          `🟠 Mất kết nối mạng: Đã lưu an toàn phiếu (${payload.recordUid}) chờ tự động đồng bộ!`
         );
       } else if (result.response) {
         setTodayOverrideIncome(result.response.todayTotalIncome);
@@ -1128,133 +1127,102 @@ export function WorkerPortal() {
   return (
     <div className="w-full max-w-full overflow-x-clip pb-24">
       {/* ==================== STICKY LIVE SALARY & WORKER STATUS HEADER ==================== */}
-      <section
+      <header
+        data-testid="worker-sticky-header"
         aria-label="Thu nhập tạm tính và trạng thái kết nối"
-        className="sticky top-0 z-30 border-b border-industrial-border bg-slate-950/95 backdrop-blur-md"
+        className="sticky top-0 lg:top-[52px] z-30 border-b border-slate-200 bg-white/95 backdrop-blur shadow-sm"
       >
-        <div className="mx-auto w-full max-w-3xl space-y-2 px-2.5 py-2.5 sm:px-4">
-          {/* 2 Glowing Metric Cards: Turn Salary & Today Accumulated */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="min-w-0 rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/60 via-slate-900 to-slate-950 px-3 py-2 shadow-inner">
-              <div className="truncate text-[11px] font-bold uppercase tracking-wider text-emerald-300/90">
-                Lương tạm tính lượt này
-              </div>
-              <div
-                data-testid="live-turn-income"
-                className="font-mono-num tabular-nums mt-0.5 truncate text-lg font-extrabold text-emerald-400 sm:text-2xl"
-              >
-                {formatVnd(effectivePayroll.turnTotalIncome)}
-              </div>
-              <div className="mt-0.5 flex items-center justify-between gap-1 text-[11px] text-slate-400">
-                <span className="truncate">
-                  {effectivePayroll.isMonthlyStaff
-                    ? 'Chốt 3P cuối tháng'
-                    : effectivePayroll.kpiStatus}
-                </span>
+        <div className="mx-auto w-full max-w-3xl space-y-1.5 px-2.5 py-2 sm:px-4">
+          {/* Compact 3-Column Strip: Turn Salary | Today Accumulated | Quick Actions */}
+          <div className="grid grid-cols-[1fr_1fr_auto] items-stretch gap-2">
+            <div className="min-w-0 rounded-xl border border-emerald-200 bg-emerald-50/90 px-2.5 py-1.5">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-emerald-800">
+                <span className="truncate">Lượt này</span>
                 {effectivePayroll.mealAllowance > 0 && (
-                  <span className="shrink-0 font-mono-num text-amber-300">
+                  <span className="shrink-0 font-mono-num text-[10px] font-extrabold text-amber-800">
                     +{Math.round(effectivePayroll.mealAllowance / 1000)}k ăn
                   </span>
                 )}
               </div>
+              <div
+                data-testid="live-turn-income"
+                className="font-mono-num tabular-nums truncate text-base font-black text-emerald-700 sm:text-lg"
+              >
+                {formatVnd(effectivePayroll.turnTotalIncome)}
+              </div>
             </div>
 
-            <div className="min-w-0 rounded-xl border border-sky-500/40 bg-gradient-to-br from-sky-950/60 via-slate-900 to-slate-950 px-3 py-2 shadow-inner">
-              <div className="truncate text-[11px] font-bold uppercase tracking-wider text-sky-300/90">
+            <div className="min-w-0 rounded-xl border border-blue-200 bg-blue-50/90 px-2.5 py-1.5">
+              <div className="truncate text-[11px] font-bold text-blue-800">
                 Tích lũy hôm nay
               </div>
               <div
                 data-testid="today-accumulated-income"
-                className="font-mono-num tabular-nums mt-0.5 truncate text-lg font-extrabold text-sky-300 sm:text-2xl"
+                className="font-mono-num tabular-nums truncate text-base font-black text-blue-700 sm:text-lg"
               >
                 {formatVnd(myTodayIncome)}
               </div>
-              <div className="mt-0.5 truncate font-mono-num text-[11px] text-slate-400">
-                Dự kiến: {formatVnd(myTodayIncome + effectivePayroll.turnTotalIncome)}
-              </div>
+            </div>
+
+            <div className="flex flex-col justify-between gap-1">
+              <button
+                type="button"
+                title="Đổi Công Nhân / PIN"
+                aria-label="Đổi Công Nhân / PIN"
+                onClick={() => {
+                  if (authMode === 'DEMO_QUICK' && quickSwitchProfiles.length > 0) {
+                    setActivePicker('WORKER_SWITCH');
+                  } else {
+                    openPinModal(user?.workerId);
+                  }
+                }}
+                className="flex h-7 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <KeyRound className="h-3.5 w-3.5 text-blue-600" />
+              </button>
+
+              <button
+                type="button"
+                title="Làm mới dữ liệu"
+                aria-label="Làm mới dữ liệu"
+                onClick={() => void loadBootstrapData(false)}
+                disabled={loadingBootstrap}
+                className="flex h-7 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:bg-slate-50 hover:text-blue-700 disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${
+                    loadingBootstrap ? 'animate-spin text-blue-600' : 'text-slate-600'
+                  }`}
+                />
+              </button>
             </div>
           </div>
 
-          {/* Worker Identity + Action Strip (All touch targets >= 48px) */}
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-            <button
-              type="button"
-              onClick={() => {
-                if (authMode === 'DEMO_QUICK' && quickSwitchProfiles.length > 0) {
-                  setActivePicker('WORKER_SWITCH');
-                } else {
-                  openPinModal(user?.workerId);
-                }
-              }}
-              className="flex min-h-[48px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 py-1.5 text-xs font-bold text-slate-100 hover:border-sky-400"
-            >
-              <KeyRound className="h-4 w-4 shrink-0 text-sky-400" />
-              <span className="truncate">
-                {user ? `${user.name.split(' ').slice(-2).join(' ')}` : 'Đăng nhập PIN'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTelegramModalOpen(true)}
-              className="flex min-h-[48px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 py-1.5 text-xs font-bold text-slate-100 hover:border-emerald-400"
-            >
-              <MessageCircle
-                className={`h-4 w-4 shrink-0 ${user?.isLinked ? 'text-emerald-400' : 'text-slate-400'}`}
-              />
-              <span className="truncate">
-                {user?.isLinked ? 'Telegram: Đã nối' : '📲 Telegram 1-1'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (outboxItems.length > 0) {
-                  void handleManualFlushOutbox();
-                } else {
-                  toast.info(
-                    isOnline
-                      ? 'Kết nối mạng xưởng ổn định — dữ liệu đồng bộ tức thì.'
-                      : 'Đang mất Wi-Fi: Mọi báo cáo gửi sẽ tự lưu Offline Outbox.'
-                  );
-                }
-              }}
-              className={`flex min-h-[48px] min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold ${
-                !isOnline || outboxItems.length > 0
-                  ? 'border-amber-500/60 bg-amber-950/50 text-amber-200'
-                  : 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300'
-              }`}
-            >
-              {!isOnline || outboxItems.length > 0 ? (
-                <>
-                  <CloudOff className="h-4 w-4 shrink-0 text-amber-400" />
-                  <span className="truncate">
-                    Offline ({outboxItems.length} chờ)
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Wifi className="h-4 w-4 shrink-0 text-emerald-400" />
-                  <span className="truncate">🟢 Online</span>
-                </>
+          {/* Conditional Amber Sync Banner ONLY when offline or pending sync */}
+          {(!isOnline || outboxItems.length > 0) && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <CloudOff className="h-4 w-4 shrink-0 text-amber-600" />
+                <span className="truncate">
+                  {!isOnline
+                    ? `Đang ngoại tuyến — đã lưu tạm ${outboxItems.length} phiếu trên máy`
+                    : `Đang chờ đồng bộ ${outboxItems.length} phiếu báo cáo`}
+                </span>
+              </div>
+              {outboxItems.length > 0 && (
+                <button
+                  type="button"
+                  disabled={syncingOutbox}
+                  onClick={() => void handleManualFlushOutbox()}
+                  className="shrink-0 rounded-lg border border-amber-400 bg-white px-2.5 py-1 text-[11px] font-extrabold text-amber-900 shadow-sm hover:bg-amber-100"
+                >
+                  {syncingOutbox ? 'Đang gửi...' : 'Đồng bộ ngay'}
+                </button>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void loadBootstrapData(false)}
-              disabled={loadingBootstrap}
-              className="flex min-h-[48px] min-w-0 items-center justify-center gap-1.5 rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-sky-400"
-            >
-              <RefreshCw
-                className={`h-4 w-4 shrink-0 text-sky-400 ${loadingBootstrap ? 'animate-spin' : ''}`}
-              />
-              <span className="truncate">Làm mới</span>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
-      </section>
+      </header>
 
       {/* ==================== MAIN CONTENT AREA ==================== */}
       <main className="mx-auto w-full max-w-3xl space-y-3 px-2.5 pt-3 sm:px-4">
@@ -1262,11 +1230,11 @@ export function WorkerPortal() {
         {activeTab === 'REPORT' && (
           <>
             {/* 1. Hero QR Scan Button + Fast Search */}
-            <Card className="space-y-2.5 border-sky-500/30 bg-gradient-to-b from-slate-900 to-industrial-surface p-3 sm:p-4">
+            <Card className="space-y-2.5 border-slate-200 bg-white p-3 sm:p-4">
               <button
                 type="button"
                 onClick={() => setQrModalOpen(true)}
-                className="flex min-h-[54px] w-full min-w-0 items-center justify-center gap-2.5 rounded-xl border border-sky-300/60 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400 px-4 py-3 text-sm font-black tracking-wide text-slate-950 shadow-lg shadow-sky-950/60 transition-transform active:scale-[0.99] sm:text-base"
+                className="flex min-h-[56px] w-full min-w-0 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-black tracking-wide text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] sm:text-base"
               >
                 <QrCode className="h-6 w-6 shrink-0" />
                 <span className="truncate">📷 QUÉT MÃ QR PHIẾU CÔNG NGHỆ</span>
@@ -1275,15 +1243,15 @@ export function WorkerPortal() {
               <button
                 type="button"
                 onClick={() => setActivePicker('OPERATION')}
-                className="flex min-h-[48px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-industrial-border bg-slate-950 px-3.5 py-2 text-left text-xs text-slate-300 hover:border-sky-400"
+                className="flex min-h-[48px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2 text-left text-xs font-medium text-slate-700 transition-colors hover:border-blue-400 hover:bg-blue-50/50 hover:text-slate-900"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <Search className="h-4 w-4 shrink-0 text-sky-400" />
+                  <Search className="h-4 w-4 shrink-0 text-blue-600" />
                   <span className="truncate">
                     Tìm nhanh không dấu: mã NC, tên bản vẽ (&quot;, Φ, #), khách hàng...
                   </span>
                 </span>
-                <span className="shrink-0 rounded bg-slate-800 px-2 py-0.5 font-mono-num text-[11px] font-bold text-sky-300">
+                <span className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono-num text-[11px] font-bold text-blue-700">
                   {operationsList.length} NC
                 </span>
               </button>
@@ -1293,16 +1261,16 @@ export function WorkerPortal() {
             {matchingHandoverAlerts.length > 0 && (
               <div
                 role="alert"
-                className="rounded-xl border-2 border-amber-400/80 bg-amber-950/60 p-3.5 text-amber-100 shadow-lg"
+                className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3.5 text-amber-900 shadow-sm"
               >
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-800">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
                   <span>⚠️ Lưu Ý Bàn Giao Từ Ca Trước ({matchingHandoverAlerts[0].machineName})</span>
                 </div>
-                <p className="mt-1 break-words text-sm font-bold text-amber-50">
+                <p className="mt-1 break-words text-sm font-bold text-amber-950">
                   &ldquo;{matchingHandoverAlerts[0].handoverNote}&rdquo;
                 </p>
-                <div className="mt-1 text-[11px] text-amber-200/80">
+                <div className="mt-1 text-[11px] text-amber-800">
                   Thợ bàn giao: <strong>{matchingHandoverAlerts[0].workerName}</strong> ·{' '}
                   {matchingHandoverAlerts[0].shiftType} · Lệnh {matchingHandoverAlerts[0].poId}
                 </div>
@@ -1310,9 +1278,9 @@ export function WorkerPortal() {
             )}
 
             {/* 3. Multi-Line Searchable Selection Cards (Zero <select> truncation!) */}
-            <Card className="space-y-2.5 p-3 sm:p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-300">
+            <Card className="space-y-2.5 border-slate-200 bg-white p-3 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
                   1. Lệnh Sản Xuất · Bản Vẽ · Nguyên Công &amp; Máy
                 </h2>
                 <button
@@ -1324,7 +1292,7 @@ export function WorkerPortal() {
                     if (stopMinutes === 0) setStopMinutes(30);
                     if (!isObjectiveStopReason(stopReason)) setStopReason('Chờ phôi / Chờ cẩu');
                   }}
-                  className="min-h-[48px] rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-bold text-amber-300 hover:bg-amber-500/20"
+                  className="min-h-[40px] rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"
                 >
                   🛑 Chỉ báo dừng máy
                 </button>
@@ -1335,34 +1303,34 @@ export function WorkerPortal() {
                 <button
                   type="button"
                   onClick={() => setActivePicker('PO')}
-                  className="flex min-h-[54px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-industrial-border bg-industrial-elevated p-3 text-left hover:border-sky-400"
+                  className="flex min-h-[54px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-300 bg-slate-50 p-3 text-left text-slate-900 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-semibold uppercase text-slate-400">
+                    <div className="text-[11px] font-semibold uppercase text-slate-600">
                       Đơn hàng / Lệnh SX (PO)
                     </div>
-                    <div className="mt-0.5 truncate font-mono-num text-sm font-extrabold text-sky-300">
+                    <div className="mt-0.5 truncate font-mono-num text-sm font-extrabold text-blue-700">
                       {selectedPo ? `${selectedPo.poId} (${selectedPo.customer})` : 'PO-THEO-KH (Kế hoạch lẻ)'}
                     </div>
                   </div>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
+                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" />
                 </button>
 
                 {/* Machine Trigger */}
                 <button
                   type="button"
                   onClick={() => setActivePicker('MACHINE')}
-                  className="flex min-h-[54px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-industrial-border bg-industrial-elevated p-3 text-left hover:border-sky-400"
+                  className="flex min-h-[54px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-300 bg-slate-50 p-3 text-left text-slate-900 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-semibold uppercase text-slate-400">
+                    <div className="text-[11px] font-semibold uppercase text-slate-600">
                       Máy gia công đứng vận hành
                     </div>
-                    <div className="mt-0.5 truncate text-sm font-extrabold text-emerald-300">
+                    <div className="mt-0.5 truncate text-sm font-extrabold text-emerald-700">
                       {machineName}
                     </div>
                   </div>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
+                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" />
                 </button>
               </div>
 
@@ -1370,10 +1338,10 @@ export function WorkerPortal() {
               <button
                 type="button"
                 onClick={() => setActivePicker('PRODUCT')}
-                className="flex min-h-[56px] w-full min-w-0 items-start justify-between gap-2 rounded-xl border border-industrial-border bg-industrial-elevated p-3 text-left hover:border-sky-400"
+                className="flex min-h-[56px] w-full min-w-0 items-start justify-between gap-2 rounded-xl border border-slate-300 bg-slate-50 p-3 text-left text-slate-900 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase text-slate-400">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase text-slate-600">
                     <span>Chi tiết bản vẽ / Khách hàng</span>
                     {(selectedOp?.customer || selectedProduct?.customer) && (
                       <Badge variant="info">
@@ -1381,24 +1349,24 @@ export function WorkerPortal() {
                       </Badge>
                     )}
                   </div>
-                  <div className="mt-1 break-words text-sm font-extrabold leading-snug text-slate-50">
+                  <div className="mt-1 break-words text-sm font-extrabold leading-snug text-slate-900">
                     {selectedOp?.productName ||
                       selectedProduct?.productName ||
                       selectedPo?.productName ||
                       'Chạm để chọn bản vẽ sản phẩm...'}
                   </div>
                 </div>
-                <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-400" />
+                <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-500" />
               </button>
 
               {/* Operation Multi-line Trigger */}
               <button
                 type="button"
                 onClick={() => setActivePicker('OPERATION')}
-                className="flex min-h-[56px] w-full min-w-0 items-start justify-between gap-2 rounded-xl border border-sky-500/45 bg-sky-950/25 p-3 text-left hover:border-sky-400"
+                className="flex min-h-[56px] w-full min-w-0 items-start justify-between gap-2 rounded-xl border border-blue-300 bg-blue-50/50 p-3 text-left text-slate-900 transition-colors hover:border-blue-500 hover:bg-blue-50"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-sky-300">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-blue-700">
                     <span className="font-mono-num font-extrabold">
                       {selectedOp ? selectedOp.ncId : 'NC_STOP'}
                     </span>
@@ -1410,13 +1378,13 @@ export function WorkerPortal() {
                       </Badge>
                     )}
                   </div>
-                  <div className="mt-1 break-words text-sm font-extrabold leading-snug text-slate-50">
+                  <div className="mt-1 break-words text-sm font-extrabold leading-snug text-slate-900">
                     {selectedOp
                       ? `${selectedOp.opName} (ĐM: ${formatDurationSec(selectedOp.stdSeconds)})`
                       : '🛑 Báo cáo Dừng Máy / Chờ Phôi (Hưởng 100% Lương CB)'}
                   </div>
                 </div>
-                <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-sky-400" />
+                <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-blue-600" />
               </button>
 
               {/* Dual Machine Mode Selector (100% vs 0.33) */}
@@ -1426,8 +1394,8 @@ export function WorkerPortal() {
                   onClick={() => setMachineMode('FIRST')}
                   className={`flex min-h-[48px] min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-xs font-extrabold transition-colors ${
                     machineMode === 'FIRST'
-                      ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200'
-                      : 'border-industrial-border bg-slate-950 text-slate-400 hover:text-slate-200'
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm'
+                      : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <Cpu className="h-4 w-4 shrink-0" />
@@ -1438,8 +1406,8 @@ export function WorkerPortal() {
                   onClick={() => setMachineMode('SECOND')}
                   className={`flex min-h-[48px] min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-xs font-extrabold transition-colors ${
                     machineMode === 'SECOND' || effectivePayroll.effectiveMachineMode === 'SECOND'
-                      ? 'border-purple-400 bg-purple-500/20 text-purple-200'
-                      : 'border-industrial-border bg-slate-950 text-slate-400 hover:text-slate-200'
+                      ? 'border-violet-400 bg-violet-50 text-violet-800 shadow-sm'
+                      : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <Layers className="h-4 w-4 shrink-0" />
@@ -1448,38 +1416,48 @@ export function WorkerPortal() {
               </div>
             </Card>
 
-            {/* 4. Tech Spec Card + Self-Check ★ */}
+            {/* 4. Tech Spec Card + Tool Crib Lookup + Self-Check ★ */}
             {selectedOp && (
-              <Card className="space-y-3 border-industrial-border bg-slate-900/90 p-3 sm:p-4">
+              <Card className="space-y-3 border-slate-200 bg-white p-3 sm:p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-sky-300">
-                    <Sparkles className="h-4 w-4 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-blue-700">
+                    <Sparkles className="h-4 w-4 shrink-0 text-blue-600" />
                     <span>Hướng Dẫn Công Nghệ &amp; Tự Kiểm</span>
                   </div>
-                  {selectedPo && (
-                    <span className="font-mono-num text-xs font-bold text-slate-300">
-                      Tiến độ PO: <strong className="text-emerald-400">{selectedPo.finishedQty}</strong> /{' '}
-                      {selectedPo.qtyPo} SP (NC đã làm: {opDoneSoFar})
-                    </span>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {selectedPo && (
+                      <span className="font-mono-num text-xs font-bold text-slate-700">
+                        Tiến độ PO: <strong className="text-emerald-700">{selectedPo.finishedQty}</strong> /{' '}
+                        {selectedPo.qtyPo} SP (NC đã làm: {opDoneSoFar})
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActivePicker('TOOL')}
+                      className="inline-flex min-h-[36px] items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      <Wrench className="h-3.5 w-3.5 text-blue-600" />
+                      <span>🔧 Tra Cứu Tủ Dao</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
-                  <div className="rounded-lg border border-industrial-border bg-slate-950/80 p-2.5">
-                    <div className="text-[11px] text-slate-400">Phôi / Vật liệu</div>
-                    <div className="mt-0.5 break-words font-semibold text-slate-100">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                    <div className="text-[11px] font-medium text-slate-600">Phôi / Vật liệu</div>
+                    <div className="mt-0.5 break-words font-semibold text-slate-900">
                       {selectedOp.matName || 'Thép chế tạo máy'}
                     </div>
                   </div>
-                  <div className="rounded-lg border border-industrial-border bg-slate-950/80 p-2.5">
-                    <div className="text-[11px] text-slate-400">Chế độ cắt chuẩn (Vc / f)</div>
-                    <div className="font-mono-num mt-0.5 break-words font-semibold text-amber-300">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                    <div className="text-[11px] font-medium text-slate-600">Chế độ cắt chuẩn (Vc / f)</div>
+                    <div className="font-mono-num mt-0.5 break-words font-semibold text-amber-800">
                       {selectedOp.cuttingRec || 'Theo phiếu công nghệ xưởng'}
                     </div>
                   </div>
-                  <div className="rounded-lg border border-industrial-border bg-slate-950/80 p-2.5">
-                    <div className="text-[11px] text-slate-400">Dao cụ định mức</div>
-                    <div className="mt-0.5 break-words font-semibold text-sky-300">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                    <div className="text-[11px] font-medium text-slate-600">Dao cụ định mức</div>
+                    <div className="mt-0.5 break-words font-semibold text-blue-700">
                       {selectedOp.toolCode ? `${selectedOp.toolCode} — ${selectedOp.toolName}` : 'Dao tiêu chuẩn'}
                     </div>
                   </div>
@@ -1487,10 +1465,10 @@ export function WorkerPortal() {
 
                 {/* Soft Warnings */}
                 {combinedWarnings.length > 0 && (
-                  <div className="space-y-1 rounded-xl border border-amber-500/50 bg-amber-950/40 p-2.5 text-xs text-amber-200">
+                  <div className="space-y-1 rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
                     {combinedWarnings.map((w, idx) => (
                       <div key={idx} className="flex items-start gap-2">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                         <span>{w}</span>
                       </div>
                     ))}
@@ -1505,21 +1483,21 @@ export function WorkerPortal() {
                   onClick={() => setSelfCheckOk((v) => !v)}
                   className={`flex min-h-[52px] w-full min-w-0 items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all ${
                     selfCheckOk
-                      ? 'border-emerald-500/60 bg-emerald-950/35 text-emerald-100'
-                      : 'border-amber-500/80 bg-amber-950/50 text-amber-100'
+                      ? 'border-emerald-300 bg-emerald-50/80 text-emerald-900'
+                      : 'border-amber-300 bg-amber-50 text-amber-900'
                   }`}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <Star
                       className={`h-5 w-5 shrink-0 ${
-                        selfCheckOk ? 'fill-amber-400 text-amber-400' : 'text-amber-300'
+                        selfCheckOk ? 'fill-amber-500 text-amber-500' : 'text-amber-600'
                       }`}
                     />
                     <div className="min-w-0">
                       <div className="text-xs font-extrabold sm:text-sm">
                         ★ Đã tự kiểm kích thước quan trọng (Self-Check)
                       </div>
-                      <div className="text-[11px] opacity-80">
+                      <div className="text-[11px] text-slate-600">
                         {selectedOp.isCriticalCheck === 1
                           ? 'Nguyên công bắt buộc đo kiểm thước cặp / panme trước khi tháo phôi'
                           : 'Xác nhận bề mặt & kích thước đạt yêu cầu bản vẽ'}
@@ -1529,8 +1507,8 @@ export function WorkerPortal() {
                   <div
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border font-bold ${
                       selfCheckOk
-                        ? 'border-emerald-400 bg-emerald-500 text-slate-950'
-                        : 'border-amber-400 bg-slate-950 text-transparent'
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-amber-400 bg-white text-transparent'
                     }`}
                   >
                     ✓
@@ -1540,14 +1518,14 @@ export function WorkerPortal() {
             )}
 
             {/* 5. Live Shift Run Timer Strip + 3 Quantity Steppers (Zero Overflow at 360px!) */}
-            <Card className="space-y-3 p-3 sm:p-4">
+            <Card className="space-y-3 border-slate-200 bg-white p-3 sm:p-4">
               {/* Optional Live Run Stopwatch vs End-of-Shift Quick Mode */}
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-industrial-border bg-slate-950 p-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-bold uppercase text-slate-400">
+                  <div className="text-[11px] font-bold uppercase text-slate-600">
                     Chế độ bấm giờ chạy máy trực tiếp
                   </div>
-                  <div className="font-mono-num text-sm font-extrabold text-sky-300">
+                  <div className="font-mono-num text-sm font-extrabold text-blue-700">
                     {runTimer.isRunning || runSnap.elapsedSeconds > 0
                       ? `⏱️ Đang chạy: ${runSnap.formattedClock} (Từ ${startTime})`
                       : `Ca mặc định: ${startTime} → ${endTime}`}
@@ -1563,9 +1541,9 @@ export function WorkerPortal() {
                       setRunTimer((prev) => startPersistentStopTimer(prev, Date.now()));
                       toast.info('▶️ Đã bắt đầu bấm giờ ca chạy máy!');
                     }}
-                    className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl border border-emerald-400/60 bg-emerald-500/20 px-3.5 text-xs font-extrabold text-emerald-200 hover:bg-emerald-500/30"
+                    className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 text-xs font-extrabold text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100"
                   >
-                    <Play className="h-4 w-4 fill-current" />
+                    <Play className="h-4 w-4 fill-current text-emerald-600" />
                     <span>▶️ Bắt đầu ca</span>
                   </button>
                 ) : (
@@ -1577,18 +1555,18 @@ export function WorkerPortal() {
                       setRunTimer((prev) => pausePersistentStopTimer(prev, Date.now()));
                       toast.success(`⏹️ Đã chốt giờ kết thúc: ${nowStr}`);
                     }}
-                    className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl border border-amber-400/60 bg-amber-500/20 px-3.5 text-xs font-extrabold text-amber-200 hover:bg-amber-500/30"
+                    className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 text-xs font-extrabold text-amber-800 shadow-sm transition-colors hover:bg-amber-100"
                   >
-                    <Pause className="h-4 w-4" />
+                    <Pause className="h-4 w-4 text-amber-600" />
                     <span>⏹️ Chốt giờ</span>
                   </button>
                 )}
               </div>
 
               {/* OK Quantity Row */}
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-3">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-800">
                     ✅ Sản Lượng ĐẠT Chuẩn (OK)
                   </span>
                   <div className="flex items-center gap-1">
@@ -1597,7 +1575,7 @@ export function WorkerPortal() {
                         key={inc}
                         type="button"
                         onClick={() => setOkQty((q) => Math.max(0, q + inc))}
-                        className="min-h-[34px] rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 font-mono-num text-xs font-bold text-emerald-300 hover:bg-emerald-500/25"
+                        className="min-h-[34px] rounded-lg border border-emerald-300 bg-white px-2.5 font-mono-num text-xs font-bold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100"
                       >
                         +{inc}
                       </button>
@@ -1609,7 +1587,7 @@ export function WorkerPortal() {
                     type="button"
                     aria-label="Giảm SL Đạt"
                     onClick={() => setOkQty((q) => Math.max(0, q - 1))}
-                    className="flex h-[52px] w-[56px] shrink-0 items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-slate-100 active:scale-95"
+                    className="flex h-[52px] w-[56px] shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-95"
                   >
                     <Minus className="h-6 w-6" />
                   </button>
@@ -1620,13 +1598,13 @@ export function WorkerPortal() {
                     aria-label="Số lượng Đạt OK"
                     value={okQty}
                     onChange={(e) => setOkQty(Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                    className="font-mono-num tabular-nums h-[52px] w-full min-w-0 rounded-xl border border-emerald-500/50 bg-slate-950 px-2 text-center text-2xl font-black text-emerald-400 focus:border-emerald-400 focus:outline-none"
+                    className="font-mono-num tabular-nums h-[52px] w-full min-w-0 rounded-xl border border-emerald-300 bg-white px-2 text-center text-2xl font-black text-emerald-700 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/15"
                   />
                   <button
                     type="button"
                     aria-label="Tăng SL Đạt"
                     onClick={() => setOkQty((q) => q + 1)}
-                    className="flex h-[52px] w-[56px] shrink-0 items-center justify-center rounded-xl border border-emerald-400/60 bg-emerald-500 text-slate-950 shadow active:scale-95"
+                    className="flex h-[52px] w-[56px] shrink-0 items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
                   >
                     <Plus className="h-6 w-6 stroke-[3]" />
                   </button>
@@ -1635,8 +1613,8 @@ export function WorkerPortal() {
 
               {/* REWORK & SCRAP Stacked Rows (Guaranteed zero horizontal overflow at 360px) */}
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                <div className="min-w-0 rounded-xl border border-amber-500/35 bg-amber-950/15 p-2.5">
-                  <div className="mb-1.5 text-xs font-extrabold uppercase text-amber-300">
+                <div className="min-w-0 rounded-xl border border-amber-200 bg-amber-50/60 p-2.5">
+                  <div className="mb-1.5 text-xs font-extrabold uppercase text-amber-800">
                     🔧 Hàng Sửa Lại (Rework)
                   </div>
                   <div className="flex items-center gap-2">
@@ -1644,7 +1622,7 @@ export function WorkerPortal() {
                       type="button"
                       aria-label="Giảm SL Sửa lại"
                       onClick={() => setReworkQty((q) => Math.max(0, q - 1))}
-                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-slate-100"
+                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50"
                     >
                       <Minus className="h-5 w-5" />
                     </button>
@@ -1657,21 +1635,21 @@ export function WorkerPortal() {
                       onChange={(e) =>
                         setReworkQty(Math.max(0, Math.round(Number(e.target.value) || 0)))
                       }
-                      className="font-mono-num tabular-nums h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-2 text-center text-xl font-extrabold text-amber-300 focus:border-amber-400 focus:outline-none"
+                      className="font-mono-num tabular-nums h-[48px] w-full min-w-0 rounded-xl border border-amber-300 bg-white px-2 text-center text-xl font-extrabold text-amber-800 shadow-sm focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-600/15"
                     />
                     <button
                       type="button"
                       aria-label="Tăng SL Sửa lại"
                       onClick={() => setReworkQty((q) => q + 1)}
-                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-amber-500/50 bg-amber-500/20 text-amber-200"
+                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-amber-400 bg-amber-100 text-amber-900 shadow-sm hover:bg-amber-200"
                     >
                       <Plus className="h-5 w-5" />
                     </button>
                   </div>
                 </div>
 
-                <div className="min-w-0 rounded-xl border border-red-500/35 bg-red-950/15 p-2.5">
-                  <div className="mb-1.5 text-xs font-extrabold uppercase text-red-300">
+                <div className="min-w-0 rounded-xl border border-rose-200 bg-rose-50/60 p-2.5">
+                  <div className="mb-1.5 text-xs font-extrabold uppercase text-rose-800">
                     🚨 Hàng Hủy / Phế Phẩm (NG)
                   </div>
                   <div className="flex items-center gap-2">
@@ -1679,7 +1657,7 @@ export function WorkerPortal() {
                       type="button"
                       aria-label="Giảm SL Hàng hủy"
                       onClick={() => setScrapQty((q) => Math.max(0, q - 1))}
-                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-industrial-border bg-industrial-elevated text-slate-100"
+                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50"
                     >
                       <Minus className="h-5 w-5" />
                     </button>
@@ -1692,13 +1670,13 @@ export function WorkerPortal() {
                       onChange={(e) =>
                         setScrapQty(Math.max(0, Math.round(Number(e.target.value) || 0)))
                       }
-                      className="font-mono-num tabular-nums h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-2 text-center text-xl font-extrabold text-red-400 focus:border-red-400 focus:outline-none"
+                      className="font-mono-num tabular-nums h-[48px] w-full min-w-0 rounded-xl border border-rose-300 bg-white px-2 text-center text-xl font-extrabold text-rose-700 shadow-sm focus:border-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-600/15"
                     />
                     <button
                       type="button"
                       aria-label="Tăng SL Hàng hủy"
                       onClick={() => setScrapQty((q) => q + 1)}
-                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-red-500/50 bg-red-500/25 text-red-200"
+                      className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-xl border border-rose-400 bg-rose-100 text-rose-900 shadow-sm hover:bg-rose-200"
                     >
                       <Plus className="h-5 w-5" />
                     </button>
@@ -1708,8 +1686,8 @@ export function WorkerPortal() {
 
               {/* Auto-Expanding NG Scrap Classification Panel */}
               {scrapQty > 0 && (
-                <div className="space-y-2.5 rounded-xl border-2 border-red-500/60 bg-red-950/40 p-3">
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-red-200">
+                <div className="space-y-2.5 rounded-xl border-2 border-rose-300 bg-rose-50/70 p-3">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-rose-800">
                     ⚠️ Phân Loại Nguyên Nhân Hàng Hủy ({scrapQty} SP NG)
                   </div>
 
@@ -1719,14 +1697,14 @@ export function WorkerPortal() {
                       onClick={() => setDefectType('Lỗi Phôi Đúc / Nguyên liệu')}
                       className={`min-h-[50px] w-full rounded-xl border p-2.5 text-left text-xs transition-colors ${
                         defectType.includes('Phôi')
-                          ? 'border-emerald-400 bg-emerald-950/60 text-emerald-100'
-                          : 'border-industrial-border bg-slate-950/80 text-slate-300'
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-900 shadow-sm'
+                          : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       <div className="font-extrabold">
                         🪨 Lỗi Phôi Đúc / Rỗ Khí Nguyên Liệu (Khách quan)
                       </div>
-                      <div className="mt-0.5 text-[11px] opacity-85">
+                      <div className="mt-0.5 text-[11px] text-slate-600">
                         Được hỗ trợ 50% giờ công định mức, KHÔNG trừ phạt lương thợ
                       </div>
                     </button>
@@ -1736,14 +1714,14 @@ export function WorkerPortal() {
                       onClick={() => setDefectType('Lỗi Chủ quan Cơ khí')}
                       className={`min-h-[50px] w-full rounded-xl border p-2.5 text-left text-xs transition-colors ${
                         !defectType.includes('Phôi')
-                          ? 'border-red-400 bg-red-950/70 text-red-100'
-                          : 'border-industrial-border bg-slate-950/80 text-slate-300'
+                          ? 'border-rose-400 bg-rose-100/70 text-rose-900 shadow-sm'
+                          : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       <div className="font-extrabold">
                         ⚠️ Lỗi Chủ Quan Gia Công Cơ Khí (Hụt dung sai / Gãy dao)
                       </div>
-                      <div className="mt-0.5 text-[11px] opacity-85">
+                      <div className="mt-0.5 text-[11px] text-slate-600">
                         Tính khấu trừ lũy tiến bậc thang (50% / 40% / 30%) &amp; chuyển Chờ QC duyệt
                       </div>
                     </button>
@@ -1751,9 +1729,9 @@ export function WorkerPortal() {
 
                   {!defectType.includes('Phôi') && (
                     <div className="space-y-1">
-                      <label className="flex items-center justify-between text-xs font-bold text-red-200">
+                      <label className="flex items-center justify-between text-xs font-bold text-rose-800">
                         <span>Giá trị thiệt hại ước tính (VNĐ)</span>
-                        <span className="font-mono-num text-red-300">
+                        <span className="font-mono-num text-rose-700">
                           Phạt dự kiến: -{formatVnd(effectivePayroll.scrapPenalty)}
                         </span>
                       </label>
@@ -1766,7 +1744,7 @@ export function WorkerPortal() {
                           setIsDamageDirty(true);
                           setDamageValue(Math.max(0, Number(e.target.value) || 0));
                         }}
-                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-red-400/50 bg-slate-950 px-3 text-sm font-bold text-red-200"
+                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-rose-300 bg-white px-3 text-sm font-bold text-rose-800 shadow-sm focus:border-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-600/15"
                       />
                     </div>
                   )}
@@ -1777,15 +1755,15 @@ export function WorkerPortal() {
             {/* 6. FOUR PROGRESSIVE DISCLOSURE ACCORDIONS */}
             <div className="space-y-2">
               {/* Accordion 1: Stop Timer & Machine Incident */}
-              <div className="overflow-hidden rounded-xl border border-industrial-border bg-industrial-surface">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
                 <button
                   type="button"
                   onClick={() => setOpenStopSection((v) => !v)}
-                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-slate-800/40"
+                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <Timer className="h-5 w-5 shrink-0 text-amber-400" />
-                    <span className="truncate text-sm font-bold text-slate-100">
+                    <Timer className="h-5 w-5 shrink-0 text-amber-600" />
+                    <span className="truncate text-sm font-bold text-slate-900">
                       ⏱️ Dừng máy / Sự cố
                     </span>
                   </div>
@@ -1796,23 +1774,23 @@ export function WorkerPortal() {
                       </Badge>
                     )}
                     <ChevronDown
-                      className={`h-4 w-4 text-slate-400 transition-transform ${openStopSection ? 'rotate-180' : ''}`}
+                      className={`h-4 w-4 text-slate-500 transition-transform ${openStopSection ? 'rotate-180' : ''}`}
                     />
                   </div>
                 </button>
 
                 {openStopSection && (
-                  <div className="space-y-3 border-t border-industrial-border bg-slate-950/60 p-3.5">
+                  <div className="space-y-3 border-t border-slate-200 bg-slate-50/70 p-3.5">
                     {/* Persistent Date.now() Stopwatch */}
-                    <div className="rounded-xl border border-amber-500/40 bg-slate-900 p-3">
+                    <div className="rounded-xl border border-amber-300 bg-amber-50/70 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <div className="text-[11px] font-semibold text-slate-400">
+                          <div className="text-[11px] font-semibold text-slate-600">
                             Đồng hồ dừng máy bền vững (tắt màn hình không mất giờ)
                           </div>
                           <div
                             data-testid="persistent-stop-clock"
-                            className="font-mono-num tabular-nums mt-0.5 text-2xl font-black text-amber-300"
+                            className="font-mono-num tabular-nums mt-0.5 text-2xl font-black text-amber-800"
                           >
                             {stopSnap.formattedClock}
                           </div>
@@ -1869,7 +1847,7 @@ export function WorkerPortal() {
                                 setStopMinutes(0);
                                 setStopReason('Không có dừng máy');
                               }}
-                              className="flex h-12 w-12 items-center justify-center rounded-xl border border-industrial-border bg-slate-800 text-slate-300 hover:text-white"
+                              className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
                               aria-label="Xóa đồng hồ dừng máy"
                             >
                               <RotateCcw className="h-4 w-4" />
@@ -1891,10 +1869,10 @@ export function WorkerPortal() {
                               setStopReason('Chờ phôi / Chờ cẩu');
                             }
                           }}
-                          className={`font-mono-num min-h-[48px] rounded-xl border text-xs font-extrabold ${
+                          className={`font-mono-num min-h-[48px] rounded-xl border text-xs font-extrabold transition-colors ${
                             stopMinutes === m
-                              ? 'border-amber-400 bg-amber-500/25 text-amber-200'
-                              : 'border-industrial-border bg-industrial-elevated text-slate-200'
+                              ? 'border-amber-400 bg-amber-100 text-amber-900 shadow-sm'
+                              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                           }`}
                         >
                           {m}p
@@ -1909,7 +1887,7 @@ export function WorkerPortal() {
                           setStopMinutes(Math.max(0, Math.round(Number(e.target.value) || 0)))
                         }
                         aria-label="Số phút dừng máy"
-                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-1.5 text-center text-sm font-bold text-amber-300"
+                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-1.5 text-center text-sm font-bold text-amber-800 shadow-sm focus:border-blue-600 focus:outline-none"
                       />
                     </div>
 
@@ -1920,15 +1898,15 @@ export function WorkerPortal() {
                           key={r.value}
                           type="button"
                           onClick={() => setStopReason(r.value)}
-                          className={`flex min-h-[48px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs ${
+                          className={`flex min-h-[48px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
                             stopReason === r.value
-                              ? 'border-sky-400 bg-sky-500/15 text-slate-50'
-                              : 'border-industrial-border bg-industrial-elevated/70 text-slate-300'
+                              ? 'border-blue-500 bg-blue-50/80 text-slate-900 shadow-sm'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-slate-50'
                           }`}
                         >
                           <div className="min-w-0">
-                            <div className="font-bold">{r.label}</div>
-                            <div className="text-[11px] text-slate-400">{r.sub}</div>
+                            <div className="font-bold text-slate-900">{r.label}</div>
+                            <div className="text-[11px] text-slate-600">{r.sub}</div>
                           </div>
                           {r.paid && (
                             <Badge variant="success" className="shrink-0">
@@ -1943,15 +1921,15 @@ export function WorkerPortal() {
               </div>
 
               {/* Accordion 2: Shift, Overtime & Lights-Out */}
-              <div className="overflow-hidden rounded-xl border border-industrial-border bg-industrial-surface">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
                 <button
                   type="button"
                   onClick={() => setOpenShiftSection((v) => !v)}
-                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-slate-800/40"
+                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <Clock className="h-5 w-5 shrink-0 text-sky-400" />
-                    <span className="truncate text-sm font-bold text-slate-100">
+                    <Clock className="h-5 w-5 shrink-0 text-blue-600" />
+                    <span className="truncate text-sm font-bold text-slate-900">
                       🌙 Ca làm việc, Tăng ca &amp; Lights-out
                     </span>
                   </div>
@@ -1960,16 +1938,16 @@ export function WorkerPortal() {
                     {overtimeMinutes > 0 && <Badge variant="info">OT {overtimeMinutes}p</Badge>}
                     {isLightsOut && <Badge variant="purple">🌙 Đêm</Badge>}
                     <ChevronDown
-                      className={`h-4 w-4 text-slate-400 transition-transform ${openShiftSection ? 'rotate-180' : ''}`}
+                      className={`h-4 w-4 text-slate-500 transition-transform ${openShiftSection ? 'rotate-180' : ''}`}
                     />
                   </div>
                 </button>
 
                 {openShiftSection && (
-                  <div className="space-y-3 border-t border-industrial-border bg-slate-950/60 p-3.5">
+                  <div className="space-y-3 border-t border-slate-200 bg-slate-50/70 p-3.5">
                     {/* Work Date + Auto Sunday Detection */}
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <label className="text-xs font-bold text-slate-300">
+                      <label className="text-xs font-bold text-slate-700">
                         Ngày làm việc (Giờ VN):
                       </label>
                       <div className="flex items-center gap-2">
@@ -1980,7 +1958,7 @@ export function WorkerPortal() {
                           type="date"
                           value={workDate}
                           onChange={(e) => setWorkDate(e.target.value)}
-                          className="font-mono-num min-h-[48px] rounded-xl border border-industrial-border bg-slate-950 px-3 text-sm font-bold text-slate-100"
+                          className="font-mono-num min-h-[48px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -1997,14 +1975,16 @@ export function WorkerPortal() {
                             setStartTime(preset.startTime);
                             setEndTime(preset.endTime);
                           }}
-                          className={`flex min-h-[48px] min-w-0 flex-col items-start justify-center rounded-xl border px-3 py-1.5 text-left ${
+                          className={`flex min-h-[48px] min-w-0 flex-col items-start justify-center rounded-xl border px-3 py-1.5 text-left transition-colors ${
                             shiftType === sh.value
-                              ? 'border-sky-400 bg-sky-500/20 text-sky-100'
-                              : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                              ? 'border-blue-500 bg-blue-50 text-slate-900 shadow-sm'
+                              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                           }`}
                         >
                           <span className="truncate text-xs font-extrabold">{sh.shortLabel}</span>
-                          <span className="font-mono-num text-[11px] text-sky-300">{sh.badge}</span>
+                          <span className="font-mono-num text-[11px] font-semibold text-blue-700">
+                            {sh.badge}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -2012,34 +1992,34 @@ export function WorkerPortal() {
                     {/* Spacious Start/End Time Inputs (Never clips minutes!) */}
                     <div className="grid grid-cols-2 gap-2.5">
                       <div className="min-w-0">
-                        <label className="mb-1 block text-xs font-bold text-slate-400">
+                        <label className="mb-1 block text-xs font-bold text-slate-700">
                           Giờ bắt đầu ca
                         </label>
                         <input
                           type="time"
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
-                          className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-sm font-bold text-slate-100"
+                          className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none"
                         />
                       </div>
                       <div className="min-w-0">
-                        <label className="mb-1 block text-xs font-bold text-slate-400">
+                        <label className="mb-1 block text-xs font-bold text-slate-700">
                           Giờ kết thúc ca
                         </label>
                         <input
                           type="time"
                           value={endTime}
                           onChange={(e) => setEndTime(e.target.value)}
-                          className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-sm font-bold text-slate-100"
+                          className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none"
                         />
                       </div>
                     </div>
 
                     {/* Overtime Stepper (15m steps, 0 - 240m) */}
                     <div>
-                      <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-300">
+                      <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-700">
                         <span>Tăng ca (Bước 15 phút · Tối đa 240p)</span>
-                        <span className="font-mono-num text-sky-300">
+                        <span className="font-mono-num text-blue-700">
                           {overtimeMinutes} phút ({(overtimeMinutes / 60).toFixed(2)}h)
                         </span>
                       </div>
@@ -2049,10 +2029,10 @@ export function WorkerPortal() {
                             key={ot}
                             type="button"
                             onClick={() => setOvertimeMinutes(ot)}
-                            className={`font-mono-num min-h-[48px] rounded-xl border text-xs font-extrabold ${
+                            className={`font-mono-num min-h-[48px] rounded-xl border text-xs font-extrabold transition-colors ${
                               overtimeMinutes === ot
-                                ? 'border-sky-400 bg-sky-500/25 text-sky-200'
-                                : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                                ? 'border-blue-500 bg-blue-50 text-blue-800 shadow-sm'
+                                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                             }`}
                           >
                             {ot}p
@@ -2067,19 +2047,19 @@ export function WorkerPortal() {
                       role="switch"
                       aria-checked={isLightsOut}
                       onClick={() => setIsLightsOut((v) => !v)}
-                      className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left ${
+                      className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
                         isLightsOut
-                          ? 'border-purple-400 bg-purple-950/50 text-purple-100'
-                          : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                          ? 'border-violet-400 bg-violet-50 text-violet-900 shadow-sm'
+                          : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <Moon className="h-5 w-5 shrink-0 text-purple-400" />
+                        <Moon className="h-5 w-5 shrink-0 text-violet-600" />
                         <div className="min-w-0">
-                          <div className="text-xs font-extrabold">
+                          <div className="text-xs font-extrabold text-slate-900">
                             🌙 Chạy tự động qua đêm (Lights-out Machining)
                           </div>
-                          <div className="text-[11px] opacity-80">
+                          <div className="text-[11px] text-slate-600">
                             Gá phôi lớn chu kỳ dài để máy CNC tự chạy không người trực
                           </div>
                         </div>
@@ -2093,15 +2073,15 @@ export function WorkerPortal() {
               </div>
 
               {/* Accordion 3: Cutting Tools & 1-for-1 Swap */}
-              <div className="overflow-hidden rounded-xl border border-industrial-border bg-industrial-surface">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
                 <button
                   type="button"
                   onClick={() => setOpenToolSection((v) => !v)}
-                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-slate-800/40"
+                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <Wrench className="h-5 w-5 shrink-0 text-emerald-400" />
-                    <span className="truncate text-sm font-bold text-slate-100">
+                    <Wrench className="h-5 w-5 shrink-0 text-emerald-600" />
+                    <span className="truncate text-sm font-bold text-slate-900">
                       🔪 Dao cụ &amp; Đổi chíp 1-đổi-1
                     </span>
                   </div>
@@ -2110,32 +2090,32 @@ export function WorkerPortal() {
                       {toolCode || 'Chưa chọn'} · {formatNumber(toolEdgesState.edgesUsed)} cạnh
                     </Badge>
                     <ChevronDown
-                      className={`h-4 w-4 text-slate-400 transition-transform ${openToolSection ? 'rotate-180' : ''}`}
+                      className={`h-4 w-4 text-slate-500 transition-transform ${openToolSection ? 'rotate-180' : ''}`}
                     />
                   </div>
                 </button>
 
                 {openToolSection && (
-                  <div className="space-y-3 border-t border-industrial-border bg-slate-950/60 p-3.5">
+                  <div className="space-y-3 border-t border-slate-200 bg-slate-50/70 p-3.5">
                     <button
                       type="button"
                       onClick={() => setActivePicker('TOOL')}
-                      className="flex min-h-[50px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-industrial-border bg-industrial-elevated p-3 text-left hover:border-sky-400"
+                      className="flex min-h-[50px] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white p-3 text-left shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-50/40"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="text-[11px] text-slate-400">Mã mảnh dao cụ đang dùng</div>
-                        <div className="truncate text-sm font-bold text-slate-100">
+                        <div className="text-[11px] font-medium text-slate-600">Mã mảnh dao cụ đang dùng</div>
+                        <div className="truncate text-sm font-bold text-slate-900">
                           {selectedTool
                             ? `${selectedTool.code} — ${selectedTool.name} (Tồn: ${selectedTool.stockQty ?? 0})`
                             : toolCode || 'Chọn mã dao cụ (63 mã)...'}
                         </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
+                      <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" />
                     </button>
 
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <span className="font-bold text-slate-300">
+                        <span className="font-bold text-slate-700">
                           Số cạnh dao tiêu hao thực tế:
                         </span>
                         {toolEdgesState.isEdgesDirty ? (
@@ -2151,12 +2131,12 @@ export function WorkerPortal() {
                                 )
                               )
                             }
-                            className="font-semibold text-amber-300 underline"
+                            className="font-semibold text-amber-800 underline hover:text-amber-950"
                           >
                             Đã sửa tay — Đặt lại theo ĐM
                           </button>
                         ) : (
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-slate-600">
                             Tự động = {okQty} SP × {selectedOp?.stdEdgesPerPcs ?? 0} cạnh/SP
                           </span>
                         )}
@@ -2171,19 +2151,19 @@ export function WorkerPortal() {
                             applyManualToolEdges(prev, Number(e.target.value))
                           )
                         }
-                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-sm font-bold text-emerald-300"
+                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 shadow-sm focus:border-blue-600 focus:outline-none"
                       />
                     </div>
 
                     {/* 1-for-1 Insert Swap Box */}
-                    <div className="space-y-2.5 rounded-xl border border-sky-500/35 bg-sky-950/20 p-3">
-                      <div className="text-xs font-extrabold uppercase text-sky-300">
+                    <div className="space-y-2.5 rounded-xl border border-blue-200 bg-blue-50/50 p-3">
+                      <div className="text-xs font-extrabold uppercase text-blue-800">
                         🔄 Cấp Phát Đổi Mảnh Chíp Mới (Quy tắc 1-Đổi-1)
                       </div>
                       <button
                         type="button"
                         onClick={() => setOldInsertReturned((v) => !v)}
-                        className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-xl border border-industrial-border bg-slate-950 px-3 text-left text-xs font-semibold text-slate-200"
+                        className="flex min-h-[48px] w-full items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-3 text-left text-xs font-semibold text-slate-800 shadow-sm"
                       >
                         <span>Đã nộp lại xác mảnh chíp mòn/vỡ cũ 1-1</span>
                         <Badge variant={oldInsertReturned ? 'success' : 'danger'}>
@@ -2195,7 +2175,7 @@ export function WorkerPortal() {
                         value={swapReason}
                         onChange={(e) => setSwapReason(e.target.value)}
                         placeholder="Lý do đổi chíp..."
-                        className="min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-xs text-slate-100"
+                        className="min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                       />
                       <Button
                         type="button"
@@ -2203,9 +2183,9 @@ export function WorkerPortal() {
                         size="lg"
                         disabled={swappingTool}
                         onClick={() => void handleToolSwap()}
-                        className="w-full border-sky-400/50 text-sky-200"
+                        className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
                       >
-                        <Wrench className="h-4 w-4 text-sky-400" />
+                        <Wrench className="h-4 w-4 text-blue-600" />
                         {swappingTool ? 'Đang ghi nhận kho dao...' : `Đổi 1 Mảnh [${toolCode || 'Dao'}] Mới Ngay`}
                       </Button>
                     </div>
@@ -2214,15 +2194,15 @@ export function WorkerPortal() {
               </div>
 
               {/* Accordion 4: Photo Proof & Shift Handover Note */}
-              <div className="overflow-hidden rounded-xl border border-industrial-border bg-industrial-surface">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
                 <button
                   type="button"
                   onClick={() => setOpenPhotoSection((v) => !v)}
-                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-slate-800/40"
+                  className="flex min-h-[52px] w-full min-w-0 items-center justify-between gap-2 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <Camera className="h-5 w-5 shrink-0 text-purple-400" />
-                    <span className="truncate text-sm font-bold text-slate-100">
+                    <Camera className="h-5 w-5 shrink-0 text-violet-600" />
+                    <span className="truncate text-sm font-bold text-slate-900">
                       📸 Ảnh minh chứng &amp; Ghi chú bàn giao ca
                     </span>
                   </div>
@@ -2231,20 +2211,20 @@ export function WorkerPortal() {
                       <Badge variant="purple">Đã đính kèm</Badge>
                     )}
                     <ChevronDown
-                      className={`h-4 w-4 text-slate-400 transition-transform ${openPhotoSection ? 'rotate-180' : ''}`}
+                      className={`h-4 w-4 text-slate-500 transition-transform ${openPhotoSection ? 'rotate-180' : ''}`}
                     />
                   </div>
                 </button>
 
                 {openPhotoSection && (
-                  <div className="space-y-3 border-t border-industrial-border bg-slate-950/60 p-3.5">
+                  <div className="space-y-3 border-t border-slate-200 bg-slate-50/70 p-3.5">
                     <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-300">
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700">
                         Ảnh chụp chi tiết hoàn thành / biên bản đo (Tự nén nhẹ &lt;300KB)
                       </label>
                       <div className="flex flex-wrap items-center gap-2">
-                        <label className="inline-flex min-h-[48px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-sky-400/50 bg-sky-500/15 px-4 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25">
-                          <Camera className="h-4 w-4" />
+                        <label className="inline-flex min-h-[48px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-300 bg-blue-50 px-4 text-xs font-extrabold text-blue-700 transition-colors hover:bg-blue-100">
+                          <Camera className="h-4 w-4 text-blue-600" />
                           <span>
                             {compressingPhoto
                               ? 'Đang nén ảnh...'
@@ -2264,7 +2244,7 @@ export function WorkerPortal() {
                           <button
                             type="button"
                             onClick={() => setPhotoBase64('')}
-                            className="flex h-12 w-12 items-center justify-center rounded-xl border border-red-500/40 bg-red-950/40 text-red-300"
+                            className="flex h-12 w-12 items-center justify-center rounded-xl border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100"
                             aria-label="Xóa ảnh đính kèm"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -2275,13 +2255,13 @@ export function WorkerPortal() {
                         <img
                           src={photoBase64}
                           alt="Ảnh minh chứng sản phẩm"
-                          className="mt-2 max-h-48 w-auto rounded-xl border border-industrial-border object-contain"
+                          className="mt-2 max-h-48 w-auto rounded-xl border border-slate-200 object-contain shadow-sm"
                         />
                       )}
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-bold text-slate-400">
+                      <label className="mb-1 block text-xs font-bold text-slate-700">
                         Mã lô phôi / Vật liệu truy xuất (Lot Traceability)
                       </label>
                       <input
@@ -2289,12 +2269,12 @@ export function WorkerPortal() {
                         value={materialLot}
                         onChange={(e) => setMaterialLot(e.target.value)}
                         placeholder="VD: LOT-VICO-2610-001"
-                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 px-3 text-sm text-slate-100"
+                        className="font-mono-num min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-bold text-amber-300">
+                      <label className="mb-1 block text-xs font-bold text-amber-800">
                         Ghi chú bàn giao cho ca sau (Sẽ hiện Banner Vàng trên máy {machineName})
                       </label>
                       <textarea
@@ -2302,7 +2282,7 @@ export function WorkerPortal() {
                         value={handoverNote}
                         onChange={(e) => setHandoverNote(e.target.value)}
                         placeholder="VD: Đang gá dở phôi số 4, chú ý bù mòn dao T03 -0.02mm..."
-                        className="w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 p-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/15"
                       />
                     </div>
                   </div>
@@ -2315,7 +2295,7 @@ export function WorkerPortal() {
               type="button"
               disabled={submittingReport}
               onClick={() => void handleSubmitReport()}
-              className="flex min-h-[56px] w-full min-w-0 items-center justify-center gap-2.5 rounded-2xl border border-emerald-300/60 bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 px-5 py-3.5 text-base font-black tracking-wide text-slate-950 shadow-xl shadow-emerald-950/70 transition-all hover:brightness-105 active:scale-[0.99] disabled:opacity-60"
+              className="flex min-h-[56px] w-full min-w-0 items-center justify-center gap-2.5 rounded-2xl border border-emerald-600 bg-emerald-600 px-5 py-3.5 text-base font-black tracking-wide text-white shadow-md shadow-emerald-600/20 transition-all hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-60"
             >
               <Rocket className="h-6 w-6 shrink-0" />
               <span className="truncate">
@@ -2330,9 +2310,9 @@ export function WorkerPortal() {
         {/* ==================== TAB 2: 📋 LỆNH SX & DUYỆT CON ĐẦU (FAI) ==================== */}
         {activeTab === 'ORDERS_FAI' && (
           <div className="space-y-3">
-            <Card className="space-y-3 p-3 sm:p-4">
+            <Card className="space-y-3 border-slate-200 bg-white p-3 sm:p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-base font-extrabold text-slate-50">
+                <h2 className="text-base font-extrabold text-slate-900">
                   📋 Lệnh Sản Xuất Mở &amp; Duyệt Mẫu Đầu (FAI)
                 </h2>
                 <Badge variant={pendingFaiCount > 0 ? 'warning' : 'success'}>
@@ -2352,10 +2332,10 @@ export function WorkerPortal() {
                     key={f.id}
                     type="button"
                     onClick={() => setOrdersFilter(f.id)}
-                    className={`min-h-[48px] rounded-xl border px-2 text-xs font-extrabold ${
+                    className={`min-h-[48px] rounded-xl border px-2 text-xs font-extrabold transition-colors ${
                       ordersFilter === f.id
-                        ? 'border-sky-400 bg-sky-500/20 text-sky-200'
-                        : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     {f.label}
@@ -2365,13 +2345,13 @@ export function WorkerPortal() {
 
               {ordersFilter !== 'SCHEDULE' && (
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     type="text"
                     value={ordersSearch}
                     onChange={(e) => setOrdersSearch(e.target.value)}
                     placeholder="Tìm mã PO, khách hàng, bản vẽ..."
-                    className="min-h-[48px] w-full min-w-0 rounded-xl border border-industrial-border bg-slate-950 pl-10 pr-3 text-sm text-slate-100"
+                    className="min-h-[48px] w-full min-w-0 rounded-xl border border-slate-300 bg-slate-50 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                   />
                 </div>
               )}
@@ -2380,22 +2360,22 @@ export function WorkerPortal() {
             {ordersFilter === 'SCHEDULE' ? (
               <div className="space-y-2.5">
                 {schedulesList.map((sch) => (
-                  <Card key={sch.id} className="space-y-2.5 p-3.5">
+                  <Card key={sch.id} className="space-y-2.5 border-slate-200 bg-white p-3.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
                         <Badge variant="info">{sch.machineName}</Badge>
                         <Badge variant="neutral">{sch.shiftType}</Badge>
                         {sch.isLightsOut === 1 && <Badge variant="purple">🌙 Lights-out</Badge>}
                       </div>
-                      <span className="font-mono-num text-xs font-bold text-emerald-300">
+                      <span className="font-mono-num text-xs font-bold text-emerald-700">
                         KH: {sch.plannedQty} SP ({sch.plannedHours}h)
                       </span>
                     </div>
-                    <div className="break-words text-sm font-extrabold text-slate-100">
+                    <div className="break-words text-sm font-extrabold text-slate-900">
                       {sch.poId} — {sch.productName || 'Chi tiết cơ khí'}
                     </div>
-                    <div className="text-xs text-slate-400">
-                      Nguyên công: <strong className="text-sky-300">{sch.ncId}</strong> —{' '}
+                    <div className="text-xs text-slate-600">
+                      Nguyên công: <strong className="text-blue-700">{sch.ncId}</strong> —{' '}
                       {sch.opName} · Dao: {sch.toolCode || '—'}
                     </div>
                     <div className="grid grid-cols-2 gap-2 pt-1">
@@ -2426,10 +2406,10 @@ export function WorkerPortal() {
                     po.qtyPo > 0 ? Math.min(100, Math.round((po.finishedQty / po.qtyPo) * 100)) : 0;
                   const needsFai = po.qtyPo >= 5 && po.faiStatus !== 'FAI_PASSED';
                   return (
-                    <Card key={po.poId} className="space-y-2.5 p-3.5">
+                    <Card key={po.poId} className="space-y-2.5 border-slate-200 bg-white p-3.5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="rounded-md border border-sky-500/40 bg-sky-500/15 px-2 py-0.5 font-mono-num text-xs font-extrabold text-sky-300">
+                          <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono-num text-xs font-extrabold text-blue-700">
                             {po.poId}
                           </span>
                           <Badge variant="neutral">{po.customer}</Badge>
@@ -2441,24 +2421,24 @@ export function WorkerPortal() {
                             <Badge variant="neutral">Lô &lt; 5 SP</Badge>
                           )}
                         </div>
-                        <span className="font-mono-num text-xs text-slate-400">
+                        <span className="font-mono-num text-xs font-medium text-slate-600">
                           Hạn: {formatDateVn(po.dueDate)}
                         </span>
                       </div>
 
-                      <div className="break-words text-sm font-extrabold text-slate-50">
+                      <div className="break-words text-sm font-extrabold text-slate-900">
                         {po.productName}
                       </div>
 
                       <div className="space-y-1">
-                        <div className="flex justify-between font-mono-num text-xs text-slate-300">
+                        <div className="flex justify-between font-mono-num text-xs text-slate-700">
                           <span>
                             Hoàn thành: <strong>{po.finishedQty}</strong> / {po.qtyPo} SP (WIP:{' '}
                             {po.wipQty})
                           </span>
-                          <span>{pct}%</span>
+                          <span className="font-bold">{pct}%</span>
                         </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                           <div
                             className="h-full rounded-full bg-emerald-500 transition-all"
                             style={{ width: `${pct}%` }}
@@ -2513,56 +2493,47 @@ export function WorkerPortal() {
         {activeTab === 'SALARY_HISTORY' && (
           <div className="space-y-3">
             {/* Personal Summary Card */}
-            <Card className="space-y-3 border-emerald-500/35 bg-gradient-to-br from-slate-900 to-industrial-surface p-4">
+            <Card className="space-y-3 border-slate-200 bg-white p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                  <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">
                     Hồ Sơ Thu Nhập Cá Nhân (Bảo Mật 1-1)
                   </div>
-                  <h2 className="mt-0.5 truncate text-lg font-extrabold text-slate-50">
+                  <h2 className="mt-0.5 truncate text-lg font-extrabold text-slate-900">
                     {user ? `${user.name} (${user.workerId})` : 'Chưa đăng nhập'}
                   </h2>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600">
                     {user ? `${user.title} · Chế độ: ${user.salaryMode}` : 'Vui lòng mở khóa PIN'}
                   </p>
                 </div>
-                <ShieldCheck className="h-7 w-7 shrink-0 text-emerald-400" />
+                <ShieldCheck className="h-7 w-7 shrink-0 text-emerald-600" />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                <div className="rounded-xl border border-industrial-border bg-slate-950 p-3">
-                  <div className="text-[11px] text-slate-400">Thu nhập đã ghi nhận hôm nay</div>
-                  <div className="font-mono-num tabular-nums mt-1 text-xl font-black text-emerald-400">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                  <div className="text-[11px] font-semibold text-emerald-800">
+                    Thu nhập đã ghi nhận hôm nay
+                  </div>
+                  <div className="font-mono-num tabular-nums mt-1 text-xl font-black text-emerald-700">
                     {formatVnd(myTodayIncome)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-industrial-border bg-slate-950 p-3">
-                  <div className="text-[11px] text-slate-400">Số phiếu đã gửi gần đây</div>
-                  <div className="font-mono-num tabular-nums mt-1 text-xl font-black text-sky-300">
+                <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3">
+                  <div className="text-[11px] font-semibold text-blue-800">
+                    Số phiếu đã gửi gần đây
+                  </div>
+                  <div className="font-mono-num tabular-nums mt-1 text-xl font-black text-blue-700">
                     {myRecentLogs.length} lượt
                   </div>
                 </div>
               </div>
-
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                onClick={() => setTelegramModalOpen(true)}
-                className="w-full"
-              >
-                <MessageCircle className="h-4 w-4 text-sky-400" />
-                {user?.isLinked
-                  ? `Đã nối Telegram 1-1 (Chat ID: ${user.chatId}) — Bấm để đổi`
-                  : '📲 Cài đặt nhận phiếu lương ca qua Telegram 1-1'}
-              </Button>
             </Card>
 
-            {/* Offline Outbox Queue Card */}
+            {/* Hàng Đợi Đồng Bộ Ngoại Tuyến */}
             {outboxItems.length > 0 && (
-              <Card className="space-y-2.5 border-amber-500/50 bg-amber-950/30 p-3.5">
+              <Card className="space-y-2.5 border-amber-300 bg-amber-50/80 p-3.5">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-extrabold text-amber-200">
+                  <div className="text-sm font-extrabold text-amber-900">
                     🟠 Hàng Đợi Ngoại Tuyến ({outboxItems.length} phiếu chờ đồng bộ)
                   </div>
                   <Button
@@ -2579,9 +2550,9 @@ export function WorkerPortal() {
                 {outboxItems.map((q) => (
                   <div
                     key={q.recordUid}
-                    className="rounded-lg border border-amber-500/30 bg-slate-950/80 p-2.5 text-xs text-slate-200"
+                    className="rounded-lg border border-amber-200 bg-white p-2.5 text-xs text-slate-800 shadow-sm"
                   >
-                    <div className="font-mono-num font-bold text-amber-300">{q.recordUid}</div>
+                    <div className="font-mono-num font-bold text-amber-800">{q.recordUid}</div>
                     <div>
                       PO: {q.payload.poId} · NC: {q.payload.ncId} · Đạt: {q.payload.okQty} OK /{' '}
                       {q.payload.scrapQty || 0} NG
@@ -2592,17 +2563,19 @@ export function WorkerPortal() {
             )}
 
             {/* Personal Recent Logs */}
-            <Card className="space-y-2.5 p-3.5">
+            <Card className="space-y-2.5 border-slate-200 bg-white p-3.5">
               <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-1.5 text-sm font-extrabold text-slate-100">
-                  <History className="h-4 w-4 text-sky-400" />
+                <h3 className="flex items-center gap-1.5 text-sm font-extrabold text-slate-900">
+                  <History className="h-4 w-4 text-blue-600" />
                   <span>Lịch Sử Báo Cáo Của Tôi</span>
                 </h3>
-                <span className="text-xs text-slate-400">{myRecentLogs.length} bản ghi</span>
+                <span className="text-xs font-medium text-slate-500">
+                  {myRecentLogs.length} bản ghi
+                </span>
               </div>
 
               {myRecentLogs.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-industrial-border py-8 text-center text-xs text-slate-400">
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 py-8 text-center text-xs text-slate-500">
                   Chưa có phiếu báo cáo nào trong phiên của {user?.name || 'bạn'}.
                 </div>
               ) : (
@@ -2610,27 +2583,27 @@ export function WorkerPortal() {
                   {myRecentLogs.map((log) => (
                     <div
                       key={log.id}
-                      className="space-y-1.5 rounded-xl border border-industrial-border bg-slate-950/80 p-3"
+                      className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-1.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono-num text-xs font-bold text-sky-300">
+                          <span className="font-mono-num text-xs font-bold text-blue-700">
                             {log.timeStr || log.workDate}
                           </span>
                           <Badge variant="neutral">{log.machineName}</Badge>
                         </div>
-                        <span className="font-mono-num tabular-nums text-sm font-extrabold text-emerald-400">
+                        <span className="font-mono-num tabular-nums text-sm font-extrabold text-emerald-700">
                           +{formatVnd(log.income)}
                         </span>
                       </div>
-                      <div className="break-words text-xs font-bold text-slate-100">
+                      <div className="break-words text-xs font-bold text-slate-900">
                         [{log.poId}] {log.ncId} — {log.opName} ({log.productName})
                       </div>
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
                         <span className="font-mono-num">
-                          OK: <strong className="text-emerald-300">{log.okQty}</strong> · Sửa:{' '}
+                          OK: <strong className="text-emerald-700">{log.okQty}</strong> · Sửa:{' '}
                           {log.reworkQty} · NG:{' '}
-                          <strong className="text-red-300">{log.scrapQty}</strong>
+                          <strong className="text-rose-700">{log.scrapQty}</strong>
                           {log.stopMinutes > 0 ? ` · Dừng: ${log.stopMinutes}p` : ''}
                         </span>
                         <div className="flex items-center gap-1">
@@ -2651,7 +2624,7 @@ export function WorkerPortal() {
                           href={log.photoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-sky-400 underline"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 underline hover:text-blue-800"
                         >
                           📸 Xem ảnh đính kèm
                         </a>
@@ -2661,6 +2634,30 @@ export function WorkerPortal() {
                 </div>
               )}
             </Card>
+
+            {/* Optional Advanced Telegram 1-1 Link (Default Collapsed) */}
+            <details className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-card">
+              <summary className="cursor-pointer text-xs font-bold text-slate-600">
+                ⚙️ Tùy chọn nâng cao: Nhận phiếu lương tự động qua tin nhắn (Cài đặt sau)
+              </summary>
+              <div className="mt-3 space-y-2.5 border-t border-slate-100 pt-3">
+                <p className="text-xs text-slate-600">
+                  Liên kết tài khoản cá nhân để tự động nhận biên lai xác nhận sản lượng và thu nhập ca riêng tư 1-1.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => setTelegramModalOpen(true)}
+                  className="w-full"
+                >
+                  <MessageCircle className="h-4 w-4 text-blue-600" />
+                  {user?.isLinked
+                    ? `Đã nối Telegram 1-1 (Chat ID: ${user.chatId}) — Bấm để đổi`
+                    : '📲 Cài đặt nhận phiếu lương ca qua Telegram 1-1'}
+                </Button>
+              </div>
+            </details>
           </div>
         )}
       </main>
@@ -2668,16 +2665,16 @@ export function WorkerPortal() {
       {/* ==================== FIXED 64PX BOTTOM NAVIGATION BAR ==================== */}
       <nav
         aria-label="Điều hướng Cổng Công Nhân"
-        className="no-print fixed bottom-0 left-0 right-0 z-40 h-16 border-t border-industrial-border bg-slate-950/95 backdrop-blur-md"
+        className="no-print fixed bottom-0 left-0 right-0 z-40 h-16 border-t border-slate-200 bg-white/95 backdrop-blur shadow-[0_-2px_10px_rgba(15,23,42,0.05)]"
       >
-        <div className="mx-auto grid h-full max-w-3xl grid-cols-3 gap-1 px-2">
+        <div className="mx-auto grid h-full max-w-3xl grid-cols-3 items-center gap-1 px-2">
           <button
             type="button"
             onClick={() => setActiveTab('REPORT')}
-            className={`flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-extrabold transition-colors ${
+            className={`flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs transition-colors ${
               activeTab === 'REPORT'
-                ? 'text-emerald-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-blue-50 font-extrabold text-blue-700'
+                : 'font-bold text-slate-500 hover:text-slate-800'
             }`}
           >
             <CheckCircle2 className="h-5 w-5" />
@@ -2687,10 +2684,10 @@ export function WorkerPortal() {
           <button
             type="button"
             onClick={() => setActiveTab('ORDERS_FAI')}
-            className={`relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-extrabold transition-colors ${
+            className={`relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs transition-colors ${
               activeTab === 'ORDERS_FAI'
-                ? 'text-sky-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-blue-50 font-extrabold text-blue-700'
+                : 'font-bold text-slate-500 hover:text-slate-800'
             }`}
           >
             <ClipboardCheck className="h-5 w-5" />
@@ -2705,10 +2702,10 @@ export function WorkerPortal() {
           <button
             type="button"
             onClick={() => setActiveTab('SALARY_HISTORY')}
-            className={`relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-extrabold transition-colors ${
+            className={`relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs transition-colors ${
               activeTab === 'SALARY_HISTORY'
-                ? 'text-emerald-300'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-blue-50 font-extrabold text-blue-700'
+                : 'font-bold text-slate-500 hover:text-slate-800'
             }`}
           >
             <Coins className="h-5 w-5" />

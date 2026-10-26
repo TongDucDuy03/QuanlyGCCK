@@ -63,53 +63,53 @@ function resolveMachineVisualState(m: AndonLivePayload['machines'][number]): {
   if (m.status === 'RUNNING' && m.isLightsOut) {
     return {
       badgeLabel: '🟣 ĐÊM LIGHTS-OUT',
-      cardCls: 'border-purple-500/70 bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950',
-      pillCls: 'border-purple-400/60 bg-purple-500/20 text-purple-200',
-      dotCls: 'bg-purple-400 animate-pulse',
+      cardCls: 'border-slate-200 border-l-4 border-l-violet-500 bg-white shadow-sm',
+      pillCls: 'border-violet-200 bg-violet-50 text-violet-700',
+      dotCls: 'bg-violet-600 animate-pulse',
     };
   }
 
   if (m.status === 'RUNNING') {
     return {
       badgeLabel: '🟢 ĐANG CHẠY',
-      cardCls: 'border-emerald-500/65 bg-gradient-to-br from-emerald-950/50 via-slate-900 to-slate-950',
-      pillCls: 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200',
-      dotCls: 'bg-emerald-400 animate-pulse',
+      cardCls: 'border-slate-200 border-l-4 border-l-emerald-500 bg-white shadow-sm',
+      pillCls: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      dotCls: 'bg-emerald-500 animate-pulse',
     };
   }
 
   if (m.status === 'SETUP') {
     return {
       badgeLabel: '🟡 SETUP / ĐO KIỂM',
-      cardCls: 'border-amber-500/70 bg-gradient-to-br from-amber-950/55 via-slate-900 to-slate-950',
-      pillCls: 'border-amber-400/60 bg-amber-500/20 text-amber-200',
-      dotCls: 'bg-amber-400',
+      cardCls: 'border-slate-200 border-l-4 border-l-amber-500 bg-white shadow-sm',
+      pillCls: 'border-amber-200 bg-amber-50 text-amber-800',
+      dotCls: 'bg-amber-500',
     };
   }
 
   if (isWaitingMaterial) {
     return {
       badgeLabel: '🟣 CHỜ PHÔI / CẨU',
-      cardCls: 'border-purple-500/70 bg-gradient-to-br from-purple-950/55 via-slate-900 to-slate-950',
-      pillCls: 'border-purple-400/60 bg-purple-500/20 text-purple-200',
-      dotCls: 'bg-purple-400',
+      cardCls: 'border-slate-200 border-l-4 border-l-violet-500 bg-white shadow-sm',
+      pillCls: 'border-violet-200 bg-violet-50 text-violet-700',
+      dotCls: 'bg-violet-500',
     };
   }
 
   if (m.status === 'STOPPED' || m.status === 'MAINTENANCE') {
     return {
       badgeLabel: '🔴 DỪNG SỰ CỐ / HỎNG',
-      cardCls: 'border-red-500/85 bg-gradient-to-br from-red-950/70 via-slate-900 to-slate-950 shadow-lg shadow-red-950/40',
-      pillCls: 'border-red-400/70 bg-red-500/25 text-red-100',
-      dotCls: 'bg-red-500 animate-ping',
+      cardCls: 'border-rose-200 border-l-4 border-l-rose-600 bg-rose-50/40 shadow-sm',
+      pillCls: 'border-rose-200 bg-rose-100/80 text-rose-800',
+      dotCls: 'bg-rose-600 animate-ping',
     };
   }
 
   return {
     badgeLabel: '⚪ ĐANG NGHỈ',
-    cardCls: 'border-slate-700/80 bg-slate-900/70',
-    pillCls: 'border-slate-600 bg-slate-800 text-slate-300',
-    dotCls: 'bg-slate-500',
+    cardCls: 'border-slate-200 border-l-4 border-l-slate-300 bg-white shadow-sm',
+    pillCls: 'border-slate-200 bg-slate-100 text-slate-600',
+    dotCls: 'bg-slate-400',
   };
 }
 
@@ -187,173 +187,243 @@ export function AndonTvBoard() {
     'Đang đồng bộ tín hiệu trực tuyến từ phân xưởng GCCK Thắng Lợi...',
   ];
 
+  const lightsOutOrWaitCount = useMemo(
+    () =>
+      machines.filter((m) => {
+        if (m.status === 'RUNNING' && m.isLightsOut) return true;
+        if (m.status === 'STOPPED') {
+          const stopAscii = removeVietnameseTones(m.stopReason || '').toLowerCase();
+          return stopAscii.includes('cho phoi') || stopAscii.includes('cho cau');
+        }
+        return false;
+      }).length,
+    [machines]
+  );
+
   const showZone1 = displayMode === 'ALL_ZONES' || slideIdx === 0;
   const showZone2 = displayMode === 'ALL_ZONES' || slideIdx === 1;
   const showZone3 = displayMode === 'ALL_ZONES' || slideIdx === 2;
 
   return (
-    <div className="flex min-h-[calc(100vh-49px)] w-full max-w-full flex-col justify-between overflow-x-hidden bg-[#060911] text-slate-50">
-      <div className="mx-auto w-full max-w-[1920px] flex-1 space-y-3 p-3 sm:p-4">
-        {/* ==================== ISA-101 KIOSK HEADER ==================== */}
-        <section className="rounded-2xl border border-industrial-border bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-3.5 shadow-2xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Title & Live Shift */}
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_12px_#10b981]" />
-                <h1 className="text-base font-black tracking-wider text-slate-50 sm:text-xl lg:text-2xl">
-                  GCCK THẮNG LỢI — LIVE SHOPFLOOR ANDON
-                </h1>
+    <div className="flex min-h-[calc(100vh-52px)] w-full max-w-full flex-col justify-between overflow-x-hidden bg-[#EEF2F6] text-slate-900">
+      {/* ==================== DAYLIGHT ANTI-GLARE KIOSK HEADER ==================== */}
+      <header className="w-full border-b border-slate-200 bg-white px-3 py-3 shadow-sm sm:px-5">
+        <div className="mx-auto flex w-full max-w-[1920px] flex-wrap items-center justify-between gap-3">
+          {/* Title & Live Shift */}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
+              <h1 className="text-base font-black tracking-wide text-slate-900 sm:text-xl lg:text-2xl">
+                GCCK THẮNG LỢI — LIVE SHOPFLOOR ANDON
+              </h1>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs font-bold sm:text-sm">
+              <span className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-blue-700">
+                {shiftLabel}
+              </span>
+              <span className="font-mono-num text-slate-600">
+                Ngày {formatDateVn(data?.vietnamDate)}
+              </span>
+            </div>
+          </div>
+
+          {/* Key KPI Strip: Spindle Run-time %, Today OK / NG, Live Clock, Kiosk Controls */}
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {/* Spindle Run-time % */}
+            <div className="rounded-xl border border-slate-200 border-l-4 border-l-emerald-500 bg-slate-50/80 px-3.5 py-1.5 shadow-sm">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                Spindle Run-time
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-sky-300 sm:text-sm">
-                <span>{shiftLabel}</span>
-                <span className="text-slate-600">|</span>
-                <span className="font-mono-num text-slate-300">
-                  Ngày {formatDateVn(data?.vietnamDate)}
+              <div className="flex items-baseline gap-2">
+                <span
+                  className={`font-mono-num tabular-nums text-xl font-black sm:text-2xl ${
+                    spindlePct >= 60
+                      ? 'text-emerald-700'
+                      : spindlePct >= 35
+                        ? 'text-amber-700'
+                        : 'text-rose-700'
+                  }`}
+                >
+                  {spindlePct}%
+                </span>
+                <span className="font-mono-num text-xs font-semibold text-slate-600">
+                  ({data?.summary.runningCount ?? 0}/{data?.summary.totalMachines ?? 0} máy)
                 </span>
               </div>
             </div>
 
-            {/* Key KPI Strip: Spindle Run-time %, Today OK / NG, Live Clock */}
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-              {/* Spindle Run-time % */}
-              <div className="rounded-xl border border-emerald-500/40 bg-slate-950/90 px-3.5 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Spindle Run-time
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span
-                    className={`font-mono-num tabular-nums text-xl font-black sm:text-2xl ${
-                      spindlePct >= 60
-                        ? 'text-emerald-400'
-                        : spindlePct >= 35
-                          ? 'text-amber-300'
-                          : 'text-red-400'
-                    }`}
-                  >
-                    {spindlePct}%
-                  </span>
-                  <span className="font-mono-num text-xs text-slate-400">
-                    ({data?.summary.runningCount ?? 0}/{data?.summary.totalMachines ?? 0} máy)
-                  </span>
-                </div>
+            {/* Today OK / NG */}
+            <div className="rounded-xl border border-slate-200 border-l-4 border-l-blue-600 bg-slate-50/80 px-3.5 py-1.5 shadow-sm">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                Sản lượng hôm nay
               </div>
-
-              {/* Today OK / NG */}
-              <div className="rounded-xl border border-industrial-border bg-slate-950/90 px-3.5 py-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Sản lượng hôm nay
-                </div>
-                <div className="font-mono-num tabular-nums text-lg font-black sm:text-2xl">
-                  <span className="text-emerald-400">
-                    {formatNumber(data?.summary.todayOkQty ?? 0)} OK
-                  </span>
-                  <span className="mx-1.5 text-slate-600">/</span>
-                  <span className="text-red-400">
-                    {formatNumber(data?.summary.todayScrapQty ?? 0)} NG
-                  </span>
-                </div>
-              </div>
-
-              {/* Digital Clock HH:MM:SS */}
-              <div className="rounded-xl border border-sky-500/40 bg-slate-950/90 px-3.5 py-2">
-                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-400">
-                  <Clock className="h-3 w-3" /> Giờ Xưởng
-                </div>
-                <div
-                  data-testid="andon-digital-clock"
-                  className="font-mono-num tabular-nums text-xl font-black tracking-wider text-sky-200 sm:text-2xl"
-                >
-                  {clockStr}
-                </div>
-              </div>
-
-              {/* Kiosk Controls */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDisplayMode((m) => (m === 'ALL_ZONES' ? 'CAROUSEL' : 'ALL_ZONES'))
-                  }
-                  className={`inline-flex min-h-[42px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-extrabold transition-colors ${
-                    displayMode === 'CAROUSEL'
-                      ? 'border-purple-400 bg-purple-500/20 text-purple-200'
-                      : 'border-sky-400/60 bg-sky-500/15 text-sky-200'
-                  }`}
-                >
-                  {displayMode === 'ALL_ZONES' ? (
-                    <>
-                      <PlayCircle className="h-4 w-4" />
-                      <span>Auto-Slide 15s</span>
-                    </>
-                  ) : (
-                    <>
-                      <LayoutGrid className="h-4 w-4" />
-                      <span>Xem Đủ 3 Vùng</span>
-                    </>
-                  )}
-                </button>
-
-                {displayMode === 'CAROUSEL' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setSlidePinned((p) => !p)}
-                      className={`inline-flex min-h-[42px] items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-extrabold ${
-                        slidePinned
-                          ? 'border-amber-400 bg-amber-500/25 text-amber-200'
-                          : 'border-industrial-border bg-slate-900 text-slate-300'
-                      }`}
-                    >
-                      <Pin className="h-3.5 w-3.5" />
-                      <span>{slidePinned ? 'Đã ghim' : 'Ghim Slide'}</span>
-                    </button>
-                    {([0, 1, 2] as const).map((idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setSlideIdx(idx)}
-                        className={`font-mono-num h-[42px] w-[38px] rounded-xl border text-xs font-black ${
-                          slideIdx === idx
-                            ? 'border-sky-400 bg-sky-500 text-slate-950'
-                            : 'border-industrial-border bg-slate-900 text-slate-300'
-                        }`}
-                      >
-                        {idx + 1}
-                      </button>
-                    ))}
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => void fetchAndon(false)}
-                  className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-industrial-border bg-slate-900 text-slate-300 hover:border-sky-400 hover:text-white"
-                  title="Làm mới ngay"
-                  aria-label="Làm mới bảng Andon"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-sky-400' : ''}`} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => void toggleFullscreen()}
-                  className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl border border-industrial-border bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white"
-                >
-                  {isFullscreen ? (
-                    <>
-                      <Minimize2 className="h-4 w-4 text-sky-400" />
-                      <span>Thu nhỏ</span>
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="h-4 w-4 text-sky-400" />
-                      <span>Toàn màn hình</span>
-                    </>
-                  )}
-                </button>
+              <div className="font-mono-num tabular-nums text-lg font-black sm:text-2xl">
+                <span className="text-emerald-700">
+                  {formatNumber(data?.summary.todayOkQty ?? 0)} OK
+                </span>
+                <span className="mx-1.5 text-slate-500">/</span>
+                <span className="text-rose-700">
+                  {formatNumber(data?.summary.todayScrapQty ?? 0)} NG
+                </span>
               </div>
             </div>
+
+            {/* Digital Clock HH:MM:SS */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-1.5 shadow-sm">
+              <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                <Clock className="h-3 w-3 text-blue-600" /> Giờ Xưởng
+              </div>
+              <div
+                data-testid="andon-digital-clock"
+                className="font-mono-num tabular-nums text-xl font-black tracking-wider text-slate-900 sm:text-2xl"
+              >
+                {clockStr}
+              </div>
+            </div>
+
+            {/* Kiosk Controls */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  setDisplayMode((m) => (m === 'ALL_ZONES' ? 'CAROUSEL' : 'ALL_ZONES'))
+                }
+                className={`inline-flex min-h-[42px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-extrabold shadow-sm transition-colors ${
+                  displayMode === 'CAROUSEL'
+                    ? 'border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100'
+                    : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                }`}
+              >
+                {displayMode === 'ALL_ZONES' ? (
+                  <>
+                    <PlayCircle className="h-4 w-4" />
+                    <span>Auto-Slide 15s</span>
+                  </>
+                ) : (
+                  <>
+                    <LayoutGrid className="h-4 w-4" />
+                    <span>Xem Đủ 3 Vùng</span>
+                  </>
+                )}
+              </button>
+
+              {displayMode === 'CAROUSEL' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSlidePinned((p) => !p)}
+                    className={`inline-flex min-h-[42px] items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-extrabold shadow-sm ${
+                      slidePinned
+                        ? 'border-amber-300 bg-amber-50 text-amber-800'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Pin className="h-3.5 w-3.5" />
+                    <span>{slidePinned ? 'Đã ghim' : 'Ghim Slide'}</span>
+                  </button>
+                  {([0, 1, 2] as const).map((idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSlideIdx(idx)}
+                      className={`font-mono-num h-[42px] w-[38px] rounded-xl border text-xs font-black shadow-sm ${
+                        slideIdx === idx
+                          ? 'border-blue-600 bg-blue-600 text-white'
+                          : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {idx + 1}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void fetchAndon(false)}
+                className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:bg-slate-50 hover:text-blue-700"
+                title="Làm mới ngay"
+                aria-label="Làm mới bảng Andon"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void toggleFullscreen()}
+                className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:border-blue-500 hover:bg-slate-50 hover:text-blue-700"
+              >
+                {isFullscreen ? (
+                  <>
+                    <Minimize2 className="h-4 w-4 text-blue-600" />
+                    <span>Thu nhỏ</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="h-4 w-4 text-blue-600" />
+                    <span>Toàn màn hình</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto w-full max-w-[1920px] flex-1 space-y-3 p-3 sm:p-4">
+        {/* ==================== SUMMARY KPI STRIP ==================== */}
+        <section
+          aria-label="Tóm tắt trạng thái máy công cụ"
+          className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5"
+        >
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-emerald-500 bg-white px-3.5 py-2 shadow-sm">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-slate-600">Đang chạy</div>
+              <div className="text-xs font-semibold text-emerald-700">🟢 Hoạt động tốt</div>
+            </div>
+            <span className="font-mono-num text-2xl font-black text-emerald-700">
+              {data?.summary.runningCount ?? 0}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-amber-500 bg-white px-3.5 py-2 shadow-sm">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-slate-600">Setup / Đo kiểm</div>
+              <div className="text-xs font-semibold text-amber-800">🟡 Chuẩn bị gá</div>
+            </div>
+            <span className="font-mono-num text-2xl font-black text-amber-700">
+              {data?.summary.setupCount ?? 0}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-rose-600 bg-white px-3.5 py-2 shadow-sm">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-slate-600">Sự cố / Dừng</div>
+              <div className="text-xs font-semibold text-rose-700">🔴 Cần xử lý</div>
+            </div>
+            <span className="font-mono-num text-2xl font-black text-rose-700">
+              {data?.summary.stoppedCount ?? 0}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-violet-500 bg-white px-3.5 py-2 shadow-sm">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-slate-600">Ca đêm / Chờ phôi</div>
+              <div className="text-xs font-semibold text-violet-700">🟣 Lights-out</div>
+            </div>
+            <span className="font-mono-num text-2xl font-black text-violet-700">
+              {lightsOutOrWaitCount}
+            </span>
+          </div>
+
+          <div className="col-span-2 flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-slate-400 bg-white px-3.5 py-2 shadow-sm sm:col-span-1">
+            <div>
+              <div className="text-[11px] font-bold uppercase text-slate-600">Đang nghỉ</div>
+              <div className="text-xs font-semibold text-slate-600">⚪ Chờ điều độ</div>
+            </div>
+            <span className="font-mono-num text-2xl font-black text-slate-700">
+              {data?.summary.idleCount ?? 0}
+            </span>
           </div>
         </section>
 
@@ -369,33 +439,33 @@ export function AndonTvBoard() {
           {showZone1 && (
             <section
               aria-label="Lưới trạng thái máy gia công"
-              className={`rounded-2xl border border-industrial-border bg-industrial-surface/95 p-3.5 shadow-xl ${
+              className={`rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-card ${
                 displayMode === 'ALL_ZONES' ? 'xl:col-span-7' : ''
               }`}
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Cpu className="h-5 w-5 text-emerald-400" />
-                  <h2 className="text-sm font-black uppercase tracking-wider text-slate-100 sm:text-base">
+                  <Cpu className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 sm:text-base">
                     Vùng 1 · Trạng Thái {machines.length} Máy Gia Công Cơ Khí
                   </h2>
                 </div>
 
                 {/* Color Legend */}
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
-                  <span className="rounded border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
+                  <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">
                     🟢 Chạy: {data?.summary.runningCount ?? 0}
                   </span>
-                  <span className="rounded border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-amber-300">
+                  <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-800">
                     🟡 Setup: {data?.summary.setupCount ?? 0}
                   </span>
-                  <span className="rounded border border-red-500/45 bg-red-500/20 px-2 py-0.5 text-red-300">
+                  <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">
                     🔴 Sự cố: {data?.summary.stoppedCount ?? 0}
                   </span>
-                  <span className="rounded border border-purple-500/45 bg-purple-500/15 px-2 py-0.5 text-purple-300">
+                  <span className="rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-violet-700">
                     🟣 Chờ phôi / Đêm
                   </span>
-                  <span className="rounded border border-slate-600 bg-slate-800 px-2 py-0.5 text-slate-300">
+                  <span className="rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-slate-700">
                     ⚪ Nghỉ: {data?.summary.idleCount ?? 0}
                   </span>
                 </div>
@@ -413,17 +483,19 @@ export function AndonTvBoard() {
                       <div>
                         <div className="flex items-start justify-between gap-1.5">
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-black text-slate-50">
+                            <div className="truncate text-sm font-black text-slate-900">
                               {m.name}
                             </div>
-                            <div className="truncate text-[11px] text-slate-400">{m.group}</div>
+                            <div className="truncate text-[11px] font-medium text-slate-500">
+                              {m.group}
+                            </div>
                           </div>
                           {m.isBottleneck && (
                             <span
                               title="Máy cổ chai quá tải"
-                              className="inline-flex shrink-0 items-center gap-0.5 rounded bg-red-500/25 px-1.5 py-0.5 font-mono-num text-[10px] font-black text-red-200"
+                              className="inline-flex shrink-0 items-center gap-0.5 rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 font-mono-num text-[10px] font-black text-rose-700"
                             >
-                              <Flame className="h-3 w-3 text-red-400" />
+                              <Flame className="h-3 w-3 text-rose-600" />
                               {m.loadPct}%
                             </span>
                           )}
@@ -440,16 +512,16 @@ export function AndonTvBoard() {
 
                         {m.currentPoId ? (
                           <div className="mt-2 space-y-0.5 text-xs">
-                            <div className="truncate font-mono-num font-bold text-sky-300">
+                            <div className="truncate font-mono-num font-bold text-blue-700">
                               {m.currentPoId} {m.currentNcId ? `· ${m.currentNcId}` : ''}
                             </div>
                             {m.currentProductName && (
-                              <div className="truncate text-[11px] text-slate-200">
+                              <div className="truncate text-[11px] font-medium text-slate-700">
                                 {m.currentProductName}
                               </div>
                             )}
                             {m.currentWorkerName && (
-                              <div className="truncate text-[11px] font-semibold text-emerald-300">
+                              <div className="truncate text-[11px] font-semibold text-slate-700">
                                 👷 {m.currentWorkerName}
                               </div>
                             )}
@@ -461,7 +533,7 @@ export function AndonTvBoard() {
                         )}
 
                         {m.stopReason && m.status !== 'RUNNING' && (
-                          <div className="mt-1.5 truncate rounded bg-black/40 px-2 py-1 text-[11px] font-bold text-amber-200">
+                          <div className="mt-1.5 truncate rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">
                             ⚠️ {m.stopReason}
                           </div>
                         )}
@@ -469,18 +541,18 @@ export function AndonTvBoard() {
 
                       {/* Load Bar */}
                       <div className="mt-2.5">
-                        <div className="flex justify-between font-mono-num text-[10px] text-slate-400">
+                        <div className="flex justify-between font-mono-num text-[10px] font-semibold text-slate-500">
                           <span>Tải KH</span>
                           <span>{m.loadPct}%</span>
                         </div>
-                        <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div className="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                           <div
                             className={`h-full rounded-full ${
                               m.loadPct > 100
-                                ? 'bg-red-500'
+                                ? 'bg-rose-600'
                                 : m.loadPct >= 85
-                                  ? 'bg-amber-400'
-                                  : 'bg-sky-400'
+                                  ? 'bg-amber-500'
+                                  : 'bg-blue-600'
                             }`}
                             style={{ width: `${Math.min(100, m.loadPct)}%` }}
                           />
@@ -504,12 +576,12 @@ export function AndonTvBoard() {
               {showZone2 && (
                 <section
                   aria-label="Cảnh báo đơn hàng PO gấp"
-                  className="rounded-2xl border border-industrial-border bg-industrial-surface/95 p-3.5 shadow-xl"
+                  className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-card"
                 >
                   <div className="mb-2.5 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-amber-400" />
-                      <h2 className="text-sm font-black uppercase tracking-wider text-slate-100 sm:text-base">
+                      <Activity className="h-5 w-5 text-amber-600" />
+                      <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 sm:text-base">
                         Vùng 2 · Đơn Hàng PO Khẩn &amp; Sắp Đến Hạn
                       </h2>
                     </div>
@@ -520,49 +592,49 @@ export function AndonTvBoard() {
                     {urgentOrders.slice(0, displayMode === 'ALL_ZONES' ? 6 : 12).map((po) => (
                       <div
                         key={po.poId}
-                        className={`rounded-xl border p-2.5 ${
+                        className={`rounded-xl border p-2.5 shadow-sm ${
                           po.isOverdue
-                            ? 'border-red-500/60 bg-red-950/30'
-                            : 'border-industrial-border bg-slate-950/80'
+                            ? 'border-rose-300 bg-rose-50/50'
+                            : 'border-slate-200 bg-white'
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-1.5">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono-num text-xs font-black text-sky-300">
+                            <span className="font-mono-num text-xs font-black text-blue-700">
                               {po.poId}
                             </span>
-                            <span className="text-xs font-bold text-slate-300">
+                            <span className="text-xs font-bold text-slate-600">
                               · {po.customer}
                             </span>
                             {po.isOverdue && (
-                              <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-black text-white">
+                              <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-black text-white">
                                 QUÁ HẠN
                               </span>
                             )}
                           </div>
-                          <span className="font-mono-num text-xs font-semibold text-slate-400">
+                          <span className="font-mono-num text-xs font-semibold text-slate-600">
                             Giao: {formatDateVn(po.dueDate)}
                           </span>
                         </div>
 
-                        <div className="mt-1 truncate text-xs font-bold text-slate-100 sm:text-sm">
+                        <div className="mt-1 truncate text-xs font-bold text-slate-900 sm:text-sm">
                           {po.productName}
                         </div>
 
                         <div className="mt-1.5 flex items-center gap-2.5">
-                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
                             <div
                               className={`h-full rounded-full ${
                                 po.progressPct >= 80
-                                  ? 'bg-emerald-400'
+                                  ? 'bg-emerald-500'
                                   : po.isOverdue
-                                    ? 'bg-red-400'
-                                    : 'bg-sky-400'
+                                    ? 'bg-rose-600'
+                                    : 'bg-blue-600'
                               }`}
                               style={{ width: `${po.progressPct}%` }}
                             />
                           </div>
-                          <span className="font-mono-num shrink-0 text-xs font-extrabold text-slate-200">
+                          <span className="font-mono-num shrink-0 text-xs font-extrabold text-slate-800">
                             {po.finishedQty}/{po.qtyPo} SP ({po.progressPct}%)
                           </span>
                         </div>
@@ -572,16 +644,16 @@ export function AndonTvBoard() {
                 </section>
               )}
 
-              {/* ZONE 3: TOP WORKER STANDARD-HOUR LEADERBOARD (STRICT ZERO SALARY LEAK!) */}
+              {/* ZONE 3: TOP WORKER STANDARD-HOUR LEADERBOARD (STRICT PRIVACY) */}
               {showZone3 && (
                 <section
                   aria-label="Bảng vàng thi đua thợ xuất sắc"
-                  className="rounded-2xl border border-amber-500/35 bg-gradient-to-b from-slate-900 to-industrial-surface p-3.5 shadow-xl"
+                  className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-card"
                 >
                   <div className="mb-2.5 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-amber-400" />
-                      <h2 className="text-sm font-black uppercase tracking-wider text-amber-200 sm:text-base">
+                      <Trophy className="h-5 w-5 text-amber-500" />
+                      <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 sm:text-base">
                         Vùng 3 · 🏆 Bảng Vàng Giờ Chuẩn Định Mức
                       </h2>
                     </div>
@@ -598,14 +670,22 @@ export function AndonTvBoard() {
                             : w.rank === 3
                               ? '🥉'
                               : `#${w.rank}`;
+                      const rankBadgeCls =
+                        w.rank === 1
+                          ? 'bg-amber-100 text-amber-800 border-amber-200'
+                          : w.rank === 2
+                            ? 'bg-slate-200 text-slate-800 border-slate-300'
+                            : w.rank === 3
+                              ? 'bg-orange-100 text-orange-800 border-orange-200'
+                              : 'bg-slate-100 text-slate-700 border-slate-200';
                       const rowCls =
                         w.rank === 1
-                          ? 'border-amber-400/70 bg-amber-950/35'
+                          ? 'border-amber-300 bg-amber-50/30 shadow-sm'
                           : w.rank === 2
-                            ? 'border-slate-300/50 bg-slate-800/60'
+                            ? 'border-slate-300 bg-slate-50/70 shadow-sm'
                             : w.rank === 3
-                              ? 'border-orange-400/50 bg-orange-950/30'
-                              : 'border-industrial-border bg-slate-950/75';
+                              ? 'border-orange-300 bg-orange-50/30 shadow-sm'
+                              : 'border-slate-200 bg-white shadow-sm';
 
                       return (
                         <div
@@ -614,14 +694,16 @@ export function AndonTvBoard() {
                           className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${rowCls}`}
                         >
                           <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="font-mono-num w-7 shrink-0 text-center text-base font-black text-amber-300">
+                            <span
+                              className={`font-mono-num inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm font-black ${rankBadgeCls}`}
+                            >
                               {medal}
                             </span>
                             <div className="min-w-0">
-                              <div className="truncate text-sm font-extrabold text-slate-50">
+                              <div className="truncate text-sm font-extrabold text-slate-900">
                                 {w.workerName}
                               </div>
-                              <div className="font-mono-num text-[11px] text-slate-400">
+                              <div className="font-mono-num text-[11px] font-medium text-slate-600">
                                 {w.workerId} · Sản lượng: {formatNumber(w.okQtyTotal)} SP
                               </div>
                             </div>
@@ -629,14 +711,14 @@ export function AndonTvBoard() {
 
                           <div className="flex shrink-0 items-center gap-2 text-right">
                             <div>
-                              <div className="font-mono-num tabular-nums text-sm font-black text-emerald-400 sm:text-base">
+                              <div className="font-mono-num tabular-nums text-sm font-black text-emerald-700 sm:text-base">
                                 {formatNumber(w.earnedStdHours, 1)} giờ ĐM
                               </div>
-                              <div className="font-mono-num text-[11px] font-bold text-sky-300">
+                              <div className="font-mono-num text-[11px] font-bold text-blue-700">
                                 Hiệu suất {w.kpiPct}% ĐM
                               </div>
                             </div>
-                            <Award className="h-5 w-5 text-amber-400/80" />
+                            <Award className="h-5 w-5 text-amber-500" />
                           </div>
                         </div>
                       );
@@ -650,13 +732,13 @@ export function AndonTvBoard() {
       </div>
 
       {/* ==================== BOTTOM LIVE ALERT TICKER ==================== */}
-      <footer className="sticky bottom-0 z-20 border-t border-amber-500/40 bg-slate-950/95 px-4 py-2.5">
+      <footer className="sticky bottom-0 z-20 border-t border-slate-300 bg-white px-4 py-2.5 shadow-sm">
         <div className="mx-auto flex max-w-[1920px] items-center gap-3 overflow-hidden">
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-red-600 px-2.5 py-1 text-xs font-black uppercase tracking-wider text-white">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-black uppercase tracking-wider text-white">
             <AlertOctagon className="h-4 w-4" />
             ANDON LIVE
           </span>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-1 text-xs font-bold text-amber-200 sm:text-sm">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-1 text-xs font-bold text-slate-800 sm:text-sm">
             {tickerItems.map((msg, idx) => (
               <span key={idx} className="truncate">
                 {msg}
