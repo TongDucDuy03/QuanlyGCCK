@@ -1237,7 +1237,7 @@ export function WorkerPortal() {
                 className="flex min-h-[56px] w-full min-w-0 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-black tracking-wide text-white shadow-md shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] sm:text-base"
               >
                 <QrCode className="h-6 w-6 shrink-0" />
-                <span className="truncate">📷 QUÉT MÃ QR PHIẾU CÔNG NGHỆ</span>
+                <span className="truncate">QUÉT MÃ QR PHIẾU CÔNG NGHỆ</span>
               </button>
 
               <button

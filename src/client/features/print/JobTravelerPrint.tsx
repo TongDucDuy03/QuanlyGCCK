@@ -175,7 +175,7 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
               disabled={!traveler}
             >
               <Printer className="h-5 w-5" />
-              <span>🖨️ IN PHIẾU CÔNG NGHỆ NGAY</span>
+              <span>IN PHIẾU CÔNG NGHỆ NGAY</span>
             </Button>
           </div>
         </div>
@@ -335,7 +335,7 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
                   <thead>
                     <tr className="border-b-2 border-black bg-neutral-100 text-[10px] font-black uppercase">
                       <th className="w-12 border-r border-black p-1.5 text-center">Bước</th>
-                      <th className="w-24 border-r border-black p-1.5 text-center">Mã QR NC</th>
+                      <th className="w-28 border-r border-black p-1.5 text-center">Mã QR NC</th>
                       <th className="border-r border-black p-1.5">
                         Nguyên Công · Máy Chỉ Định · Định Mức
                       </th>
@@ -378,8 +378,8 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
                                 bgColor="#FFFFFF"
                                 fgColor="#000000"
                               />
-                              <span className="mt-1 break-all font-mono text-[9px] font-bold leading-tight">
-                                {op.qrPayload}
+                              <span className="mt-1 break-words font-mono text-[9px] font-bold leading-tight">
+                                {op.qrPayload.replace(/\|/g, '|\u200B')}
                               </span>
                             </div>
                           </td>

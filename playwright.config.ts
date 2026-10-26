@@ -24,7 +24,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'npx tsx src/server/index.ts',
+    command:
+      'node -e "for(const s of [\'\',\'-wal\',\'-shm\'])try{require(\'fs\').rmSync(\'data/e2e_test.sqlite\'+s,{force:true})}catch{}" && npx tsx src/server/index.ts',
     url: 'http://localhost:3101/api/v1/health',
     reuseExistingServer: false,
     timeout: 60_000,

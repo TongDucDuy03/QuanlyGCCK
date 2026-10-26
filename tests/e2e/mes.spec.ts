@@ -138,7 +138,7 @@ test.describe('GCCK Thắng Lợi MES — End-to-End Verification Suite', () => 
 
     // Capture required high-res Mobile Worker screenshot at 390x844 showing selected op & live salary
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByText(/1\. Lệnh Sản Xuất/i).scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, 'preview_worker_mobile.png'),
       fullPage: false,
@@ -451,7 +451,7 @@ test.describe('GCCK Thắng Lợi MES — End-to-End Verification Suite', () => 
     const spoofWedRes = await request.post('/api/v1/reports', {
       headers: workerHeaders,
       data: {
-        recordUid: 'E2E-WED-SPOOF-CHECK',
+        recordUid: `E2E-WED-SPOOF-${Date.now()}`,
         workDate: '2026-10-28', // Wednesday
         isSunday: true,
         poId: 'PO485-01',

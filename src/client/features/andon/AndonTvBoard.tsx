@@ -408,7 +408,7 @@ export function AndonTvBoard() {
 
           <div className="flex items-center justify-between rounded-xl border border-slate-200 border-l-4 border-l-violet-500 bg-white px-3.5 py-2 shadow-sm">
             <div>
-              <div className="text-[11px] font-bold uppercase text-slate-600">Ca đêm / Chờ phôi</div>
+              <div className="text-[11px] font-bold uppercase text-slate-600">Trong đó: Đêm / Chờ phôi</div>
               <div className="text-xs font-semibold text-violet-700">🟣 Lights-out</div>
             </div>
             <span className="font-mono-num text-2xl font-black text-violet-700">
