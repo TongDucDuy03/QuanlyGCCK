@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle,
   Camera,
   CheckCircle2,
   ClipboardCheck,
@@ -28,7 +27,6 @@ import { apiClient } from '@client/lib/apiClient';
 import { downloadDailyLogsExcel } from '@client/lib/excelService';
 import {
   formatDateVn,
-  formatNumber,
   formatVnd,
   normalizeQcMeasuredDims,
 } from '@client/lib/formatters';
@@ -367,21 +365,28 @@ export function LogsQcTraceTab({
     return filteredQc.slice(start, start + qcPageSize);
   }, [filteredQc, qcPage, qcPageSize]);
 
+  const filterInputCls =
+    'h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15';
+  const modalInputCls =
+    'h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15';
+
   return (
     <div className="space-y-4">
       {/* ==================== SUB-VIEW NAVIGATION BAR ==================== */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-industrial-border bg-industrial-surface p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-card">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setSubView('LOGS')}
             className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-extrabold transition-all ${
               subView === 'LOGS'
-                ? 'border-sky-400 bg-sky-500/20 text-sky-200 shadow'
-                : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:text-white'
+                ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
-            <FileSpreadsheet className="h-4 w-4 text-sky-400" />
+            <FileSpreadsheet
+              className={`h-4 w-4 ${subView === 'LOGS' ? 'text-blue-600' : 'text-slate-500'}`}
+            />
             A. Nhật Ký Sản Lượng Realtime ({logs.filter((l) => !l.isVoided).length})
           </button>
 
@@ -390,11 +395,13 @@ export function LogsQcTraceTab({
             onClick={() => setSubView('QC')}
             className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-extrabold transition-all ${
               subView === 'QC'
-                ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200 shadow'
-                : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:text-white'
+                ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
-            <Microscope className="h-4 w-4 text-emerald-400" />
+            <Microscope
+              className={`h-4 w-4 ${subView === 'QC' ? 'text-emerald-600' : 'text-slate-500'}`}
+            />
             B. Kiểm Soát Chất Lượng 3 Tầng — FAI / IPQC / OQC ({qcList.length})
             {pendingFaiPos.length > 0 && (
               <Badge variant="warning">{pendingFaiPos.length} chờ FAI</Badge>
@@ -406,11 +413,13 @@ export function LogsQcTraceTab({
             onClick={() => setSubView('TRACE')}
             className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-extrabold transition-all ${
               subView === 'TRACE'
-                ? 'border-purple-400 bg-purple-500/20 text-purple-200 shadow'
-                : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:text-white'
+                ? 'border-violet-600 bg-violet-50 text-violet-800 shadow-sm'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
-            <GitCommit className="h-4 w-4 text-purple-400" />
+            <GitCommit
+              className={`h-4 w-4 ${subView === 'TRACE' ? 'text-violet-600' : 'text-slate-500'}`}
+            />
             C. Truy Vết Nguồn Gốc 100% Theo Mã PO
           </button>
         </div>
@@ -438,7 +447,7 @@ export function LogsQcTraceTab({
       {/* ==================== SUB-VIEW A: PRODUCTION LOGS ==================== */}
       {subView === 'LOGS' && (
         <Card noPadding>
-          <div className="space-y-3 border-b border-industrial-border bg-slate-950/50 p-4">
+          <div className="space-y-3 border-b border-slate-200 bg-slate-50/70 p-4">
             <div className="flex flex-wrap items-center gap-1.5">
               {(
                 [
@@ -456,10 +465,10 @@ export function LogsQcTraceTab({
                     setLogIssueFilter(k);
                     setLogPage(1);
                   }}
-                  className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${
                     logIssueFilter === k
-                      ? 'border-sky-400 bg-sky-500/20 text-sky-200'
-                      : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                      ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
                   {lbl}
@@ -478,7 +487,7 @@ export function LogsQcTraceTab({
                     setLogPage(1);
                   }}
                   placeholder="Tìm mã phiếu, PO, Sản phẩm, Nguyên công, Công nhân..."
-                  className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-xs text-slate-100"
+                  className={`${filterInputCls} w-full pl-9 pr-3`}
                 />
               </div>
 
@@ -489,7 +498,7 @@ export function LogsQcTraceTab({
                   setLogDateFilter(e.target.value);
                   setLogPage(1);
                 }}
-                className="h-9 rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 text-xs text-slate-100"
+                className={filterInputCls}
               />
 
               <select
@@ -498,7 +507,7 @@ export function LogsQcTraceTab({
                   setLogWorkerFilter(e.target.value);
                   setLogPage(1);
                 }}
-                className="h-9 rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 text-xs text-slate-200"
+                className={`${filterInputCls} font-medium`}
               >
                 <option value="ALL">Tất cả Công nhân</option>
                 {bootstrap.workers.map((w) => (
@@ -515,7 +524,7 @@ export function LogsQcTraceTab({
                     setLogMachineFilter(e.target.value);
                     setLogPage(1);
                   }}
-                  className="h-9 flex-1 rounded-lg border border-industrial-border bg-industrial-elevated px-2 text-xs text-slate-200"
+                  className={`${filterInputCls} flex-1 font-medium`}
                 >
                   <option value="ALL">Tất cả Máy</option>
                   {bootstrap.machines.map((m) => (
@@ -530,7 +539,7 @@ export function LogsQcTraceTab({
                     setLogShiftFilter(e.target.value);
                     setLogPage(1);
                   }}
-                  className="h-9 w-24 rounded-lg border border-industrial-border bg-industrial-elevated px-2 text-xs text-slate-200"
+                  className={`${filterInputCls} w-24 font-medium`}
                 >
                   <option value="ALL">Mọi ca</option>
                   <option value="Ca 1">Ca 1</option>
@@ -544,8 +553,8 @@ export function LogsQcTraceTab({
 
           <div className="max-h-[560px] overflow-auto">
             <table className="w-full min-w-[1180px] border-collapse text-left text-xs">
-              <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400 shadow">
-                <tr className="border-b border-industrial-border">
+              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                <tr>
                   <th className="px-3 py-2.5">Thời Gian / Ca</th>
                   <th className="px-3 py-2.5">Công Nhân &amp; Máy</th>
                   <th className="px-3 py-2.5">PO / Sản Phẩm / Nguyên Công</th>
@@ -557,28 +566,30 @@ export function LogsQcTraceTab({
                   <th className="px-3 py-2.5 text-right">Sửa / Hủy</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-industrial-border/60">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {pagedLogs.map((l) => (
                   <tr
                     key={l.id}
-                    className={`hover:bg-slate-800/40 ${
-                      l.isVoided ? 'bg-red-950/20 opacity-65 line-through' : ''
+                    className={`transition-colors ${
+                      l.isVoided
+                        ? 'bg-rose-50/40 opacity-70 line-through'
+                        : 'hover:bg-blue-50/40'
                     }`}
                   >
                     <td className="px-3 py-2.5">
-                      <div className="font-mono-num font-bold text-slate-100">
+                      <div className="font-mono-num font-bold text-slate-900">
                         {formatDateVn(l.workDate)} • {l.timeStr}
                       </div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">
+                      <div className="mt-0.5 text-[11px] text-slate-500">
                         {l.shiftType.split('(')[0].trim()} ({l.startTime}–{l.endTime})
                         {l.isLightsOut === 1 && (
-                          <span className="ml-1 text-purple-300">🌙 Lights-out</span>
+                          <span className="ml-1 font-semibold text-violet-700">🌙 Lights-out</span>
                         )}
                       </div>
                     </td>
 
                     <td className="px-3 py-2.5">
-                      <div className="font-bold text-slate-100">{l.workerName}</div>
+                      <div className="font-bold text-slate-900">{l.workerName}</div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
                         <Badge variant="neutral">{l.machineName}</Badge>
                         {l.machineMode === 'SECOND' && (
@@ -596,41 +607,49 @@ export function LogsQcTraceTab({
                             setSubView('TRACE');
                             void fetchTraceability(l.poId);
                           }}
-                          className="font-mono-num font-bold text-amber-300 hover:underline"
+                          className="font-mono-num font-bold text-blue-700 hover:underline"
                           title="Bấm truy vết PO này"
                         >
                           {l.poId}
                         </button>
-                        <span className="text-slate-400">• {l.customer}</span>
+                        <span className="text-slate-500">• {l.customer}</span>
                       </div>
-                      <div className="mt-0.5 font-semibold text-sky-300">{l.productName}</div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="mt-0.5 font-semibold text-slate-900">{l.productName}</div>
+                      <div className="text-[11px] text-slate-500">
                         [{l.ncId}] {l.opName} {l.isFinalOp === 1 ? '🏁(End)' : ''}
                       </div>
                     </td>
 
                     <td className="font-mono-num px-3 py-2.5 text-center">
-                      <span className="font-extrabold text-emerald-400">{l.okQty}</span>
-                      {' / '}
-                      <span className="font-semibold text-amber-300">{l.reworkQty}</span>
-                      {' / '}
-                      <span
-                        className={
-                          l.scrapQty > 0 ? 'font-extrabold text-red-400' : 'text-slate-500'
-                        }
-                      >
-                        {l.scrapQty}
-                      </span>
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="font-bold text-emerald-700">{l.okQty}</span>
+                        <span className="text-slate-400">/</span>
+                        {l.reworkQty > 0 ? (
+                          <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800">
+                            {l.reworkQty}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                        <span className="text-slate-400">/</span>
+                        {l.scrapQty > 0 ? (
+                          <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-rose-700">
+                            {l.scrapQty}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="font-mono-num px-3 py-2.5 text-center text-[11px]">
                       {l.stopMinutes > 0 ? (
-                        <div className="font-bold text-amber-300">{l.stopMinutes}p dừng</div>
+                        <div className="font-bold text-amber-700">{l.stopMinutes}p dừng</div>
                       ) : (
-                        <div className="text-slate-500">0p dừng</div>
+                        <div className="text-slate-400">0p dừng</div>
                       )}
                       {l.toolCode && (
-                        <div className="text-slate-400">
+                        <div className="text-slate-500">
                           {l.toolCode} ({l.edgesUsed} cạnh)
                         </div>
                       )}
@@ -648,11 +667,15 @@ export function LogsQcTraceTab({
                       >
                         {l.qcStatus}
                       </Badge>
-                      <div className="mt-1 text-[11px] text-slate-400">{l.kpiStatus}</div>
+                      <div className="mt-1 text-[11px] text-slate-500">{l.kpiStatus}</div>
                     </td>
 
-                    <td className="font-mono-num px-3 py-2.5 text-right font-bold text-emerald-300">
-                      {l.income > 0 ? formatVnd(l.income) : '—'}
+                    <td className="font-mono-num px-3 py-2.5 text-right font-bold">
+                      {l.income > 0 ? (
+                        <span className="text-blue-700">{formatVnd(l.income)}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
 
                     <td className="px-3 py-2.5">
@@ -661,17 +684,17 @@ export function LogsQcTraceTab({
                           <button
                             type="button"
                             onClick={() => setPreviewPhotoLog(l)}
-                            className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-300"
+                            className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
                           >
                             <Camera className="h-3 w-3" /> Ảnh SP
                           </button>
                         )}
                         {l.handoverNote ? (
-                          <span className="max-w-[180px] truncate text-[11px] font-medium text-amber-200">
+                          <span className="max-w-[180px] truncate rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
                             📝 {l.handoverNote}
                           </span>
                         ) : (
-                          !l.photoUrl && <span className="text-slate-600">—</span>
+                          !l.photoUrl && <span className="text-slate-400">—</span>
                         )}
                       </div>
                     </td>
@@ -713,16 +736,16 @@ export function LogsQcTraceTab({
       {subView === 'QC' && (
         <div className="space-y-4">
           {pendingFaiPos.length > 0 && (
-            <Card className="border-amber-500/45 bg-amber-950/20">
+            <Card className="border-amber-200 bg-amber-50/50">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                  <ShieldAlert className="h-4 w-4" />
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-amber-800">
+                  <ShieldAlert className="h-4 w-4 text-amber-600" />
                   <span>
                     Danh Sách Đơn Hàng Lô Lớn (SL ≥ 5) Đang Chờ Duyệt Mẫu Đầu FAI (
                     {pendingFaiPos.length} PO)
                   </span>
                 </div>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-600">
                   Bấm 1-click để mở bảng đo dung sai ±0.01mm &amp; cấp phép chạy loạt
                 </span>
               </div>
@@ -732,12 +755,12 @@ export function LogsQcTraceTab({
                     key={po.poId}
                     type="button"
                     onClick={() => openNewQcModalForPo(po.poId, 'FAI')}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-slate-950 px-3 py-1.5 text-xs font-bold text-amber-200 hover:border-amber-400 hover:bg-amber-500/15"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-sm transition-colors hover:border-amber-400 hover:bg-amber-50"
                   >
-                    <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" />
+                    <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" />
                     <span>{po.poId}</span>
-                    <span className="text-slate-400">({po.qtyPo} SP)</span>
-                    <span className="text-sky-300">→ Duyệt FAI</span>
+                    <span className="text-slate-500">({po.qtyPo} SP)</span>
+                    <span className="text-blue-700">→ Duyệt FAI</span>
                   </button>
                 ))}
               </div>
@@ -745,7 +768,7 @@ export function LogsQcTraceTab({
           )}
 
           <Card noPadding>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border bg-slate-950/50 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-3">
               <div className="flex flex-wrap items-center gap-1.5">
                 {(['ALL', 'FAI', 'IPQC', 'OQC', 'NG_REVIEW'] as const).map((tp) => (
                   <button
@@ -755,10 +778,10 @@ export function LogsQcTraceTab({
                       setQcTypeFilter(tp);
                       setQcPage(1);
                     }}
-                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold ${
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${
                       qcTypeFilter === tp
-                        ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200'
-                        : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                        ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
                     {tp === 'ALL'
@@ -784,15 +807,15 @@ export function LogsQcTraceTab({
                     setQcPage(1);
                   }}
                   placeholder="Tìm PO, Sản phẩm, Người duyệt QC..."
-                  className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-xs text-slate-100"
+                  className={`${filterInputCls} w-full pl-9 pr-3`}
                 />
               </div>
             </div>
 
             <div className="max-h-[520px] overflow-auto">
               <table className="w-full min-w-[1050px] border-collapse text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  <tr className="border-b border-industrial-border">
+                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  <tr>
                     <th className="px-3.5 py-2.5">Loại &amp; Thời Gian</th>
                     <th className="px-3 py-2.5">Mã PO / Sản Phẩm / Công Đoạn</th>
                     <th className="px-3 py-2.5">Máy &amp; Người Kiểm Tra</th>
@@ -802,7 +825,7 @@ export function LogsQcTraceTab({
                     <th className="px-3.5 py-2.5">Nguyên Nhân &amp; Đối Sách</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-industrial-border/60">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {pagedQc.map((q) => {
                     const dims = normalizeQcMeasuredDims(q.measuredDimsJson);
                     const resVariant =
@@ -815,7 +838,7 @@ export function LogsQcTraceTab({
                             : 'danger';
 
                     return (
-                      <tr key={q.id} className="hover:bg-slate-800/40">
+                      <tr key={q.id} className="transition-colors hover:bg-blue-50/40">
                         <td className="px-3.5 py-2.5">
                           <Badge
                             variant={
@@ -828,33 +851,35 @@ export function LogsQcTraceTab({
                           >
                             {q.inspectionType}
                           </Badge>
-                          <div className="font-mono-num mt-1 text-[11px] text-slate-400">
+                          <div className="font-mono-num mt-1 text-[11px] text-slate-500">
                             {q.createdAt}
                           </div>
                         </td>
 
                         <td className="px-3 py-2.5">
-                          <div className="font-mono-num font-bold text-amber-300">{q.poId}</div>
-                          <div className="font-semibold text-sky-300">{q.productName || '—'}</div>
+                          <div className="font-mono-num font-bold text-blue-700">{q.poId}</div>
+                          <div className="font-semibold text-slate-900">{q.productName || '—'}</div>
                           {q.opName && (
-                            <div className="text-[11px] text-slate-400">
+                            <div className="text-[11px] text-slate-500">
                               [{q.ncId}] {q.opName}
                             </div>
                           )}
                         </td>
 
                         <td className="px-3 py-2.5">
-                          <div className="font-semibold text-slate-200">{q.machineName || '—'}</div>
-                          <div className="text-[11px] text-slate-400">
-                            QC: <strong className="text-emerald-300">{q.inspectorName}</strong>
+                          <div className="font-semibold text-slate-800">
+                            {q.machineName || '—'}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            QC: <strong className="text-emerald-700">{q.inspectorName}</strong>
                           </div>
                         </td>
 
                         <td className="font-mono-num px-3 py-2.5 text-center">
-                          <span className="font-bold text-slate-100">{q.sampleSize}</span> mẫu /{' '}
+                          <span className="font-bold text-slate-900">{q.sampleSize}</span> mẫu /{' '}
                           <span
                             className={
-                              q.defectQty > 0 ? 'font-bold text-red-400' : 'text-slate-500'
+                              q.defectQty > 0 ? 'font-bold text-rose-700' : 'text-slate-400'
                             }
                           >
                             {q.defectQty} lỗi
@@ -884,9 +909,11 @@ export function LogsQcTraceTab({
                         <td className="px-3.5 py-2.5 text-[11px]">
                           {q.rootCause ? (
                             <div>
-                              <span className="text-red-300">NN: {q.rootCause}</span>
+                              <span className="font-medium text-rose-700">NN: {q.rootCause}</span>
                               {q.correctiveAction && (
-                                <div className="text-emerald-300">ĐS: {q.correctiveAction}</div>
+                                <div className="font-medium text-emerald-700">
+                                  ĐS: {q.correctiveAction}
+                                </div>
                               )}
                             </div>
                           ) : (
@@ -927,7 +954,7 @@ export function LogsQcTraceTab({
               className="flex flex-wrap items-end gap-3"
             >
               <div className="min-w-[260px] flex-1">
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
                   Nhập hoặc Chọn Mã Đơn Hàng PO Cần Truy Vết 100% Nguồn Gốc
                 </label>
                 <div className="flex gap-2">
@@ -937,7 +964,7 @@ export function LogsQcTraceTab({
                     value={tracePoInput}
                     onChange={(e) => setTracePoInput(e.target.value)}
                     placeholder="VD: PO485-01..."
-                    className="font-mono-num h-10 flex-1 rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-amber-300 focus:border-purple-400 focus:outline-none"
+                    className="font-mono-num h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-blue-700 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
                   />
                   <datalist id="gcck-trace-pos">
                     {bootstrap.ordersList.map((po) => (
@@ -962,7 +989,7 @@ export function LogsQcTraceTab({
                     navigateTo(`/print/traveler/${encodeURIComponent(traceData.po.poId)}`)
                   }
                 >
-                  <Printer className="h-4 w-4 text-sky-300" />
+                  <Printer className="h-4 w-4 text-blue-600" />
                   🖨️ In Phiếu Công Nghệ QR
                 </Button>
               )}
@@ -970,7 +997,7 @@ export function LogsQcTraceTab({
 
             {/* Quick select recent active POs */}
             <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="text-slate-400">Chọn nhanh PO tiêu biểu:</span>
+              <span className="font-medium text-slate-500">Chọn nhanh PO tiêu biểu:</span>
               {bootstrap.ordersList.slice(0, 8).map((po) => (
                 <button
                   key={po.poId}
@@ -979,10 +1006,10 @@ export function LogsQcTraceTab({
                     setTracePoInput(po.poId);
                     void fetchTraceability(po.poId);
                   }}
-                  className={`font-mono-num rounded-md border px-2 py-0.5 font-semibold ${
+                  className={`font-mono-num rounded-md border px-2 py-0.5 font-semibold transition-colors ${
                     traceData?.po.poId === po.poId
-                      ? 'border-purple-400 bg-purple-500/20 text-purple-200'
-                      : 'border-industrial-border bg-slate-900 text-slate-300 hover:border-slate-500'
+                      ? 'border-violet-600 bg-violet-50 text-violet-800 shadow-sm'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
                   {po.poId}
@@ -992,7 +1019,7 @@ export function LogsQcTraceTab({
           </Card>
 
           {traceError && (
-            <Card className="border-red-500/50 bg-red-950/30 text-sm text-red-200">
+            <Card className="border-rose-200 bg-rose-50 text-sm font-medium text-rose-800">
               {traceError}
             </Card>
           )}
@@ -1001,53 +1028,68 @@ export function LogsQcTraceTab({
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {/* Stage 1 & 2 & 4 Left Column */}
               <div className="space-y-4">
-                <Card className="border-sky-500/35">
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-sky-400">
-                    1. Lô Phôi Đầu Vào &amp; Nhà Cung Cấp
+                <Card className="border-slate-200 border-l-4 border-l-blue-600">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-extrabold uppercase tracking-wider text-blue-700">
+                      1. Lô Phôi Đầu Vào &amp; Nhà Cung Cấp
+                    </div>
+                    {traceData.po.faiStatus && (
+                      <Badge
+                        variant={
+                          traceData.po.faiStatus === 'FAI_PASSED'
+                            ? 'success'
+                            : traceData.po.faiStatus === 'PENDING_FAI'
+                              ? 'warning'
+                              : 'neutral'
+                        }
+                      >
+                        {traceData.po.faiStatus}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="mt-2 space-y-2 text-xs">
+                  <div className="mt-2.5 space-y-2 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Mã Lệnh SX / PO:</span>
-                      <span className="font-mono-num font-extrabold text-amber-300">
+                      <span className="text-slate-500">Mã Lệnh SX / PO:</span>
+                      <span className="font-mono-num font-extrabold text-blue-700">
                         {traceData.po.poId}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Khách hàng:</span>
-                      <span className="font-bold text-slate-100">{traceData.po.customer}</span>
+                      <span className="text-slate-500">Khách hàng:</span>
+                      <span className="font-bold text-slate-900">{traceData.po.customer}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Sản phẩm:</span>
-                      <span className="font-bold text-sky-300">{traceData.po.productName}</span>
+                      <span className="text-slate-500">Sản phẩm:</span>
+                      <span className="font-bold text-slate-900">{traceData.po.productName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Mã Lô Phôi (Heat Lot):</span>
+                      <span className="text-slate-500">Mã Lô Phôi (Heat Lot):</span>
                       <Badge variant="info">{traceData.materialInfo.materialLot}</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Nhà cung cấp phôi:</span>
-                      <span className="font-semibold text-slate-200">
+                      <span className="text-slate-500">Nhà cung cấp phôi:</span>
+                      <span className="font-semibold text-slate-700">
                         {traceData.materialInfo.supplierName}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Ngày đúc / Nhập phôi:</span>
-                      <span className="font-mono-num text-slate-200">
+                      <span className="text-slate-500">Ngày đúc / Nhập phôi:</span>
+                      <span className="font-mono-num text-slate-700">
                         {formatDateVn(traceData.materialInfo.castDate)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Mác vật liệu:</span>
-                      <span className="font-semibold text-emerald-300">
+                      <span className="text-slate-500">Mác vật liệu:</span>
+                      <span className="font-semibold text-emerald-700">
                         {traceData.materialInfo.matName}
                       </span>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="border-emerald-500/35">
+                <Card className="border-slate-200 border-l-4 border-l-emerald-500">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">
+                    <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
                       2. Hồ Sơ Duyệt FAI &amp; QC ({traceData.qcRecords.length})
                     </div>
                     <Button
@@ -1060,14 +1102,14 @@ export function LogsQcTraceTab({
                   </div>
                   <div className="mt-2 space-y-2 text-xs">
                     {traceData.qcRecords.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-industrial-border p-3 text-slate-400">
+                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 p-3 text-slate-500">
                         Chưa có biên bản kiểm tra FAI/IPQC cho PO này.
                       </div>
                     ) : (
                       traceData.qcRecords.map((qc) => (
                         <div
                           key={qc.id}
-                          className="rounded-lg border border-industrial-border bg-slate-950 p-2.5"
+                          className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5"
                         >
                           <div className="flex items-center justify-between">
                             <Badge variant="success">{qc.inspectionType}</Badge>
@@ -1075,10 +1117,10 @@ export function LogsQcTraceTab({
                               {qc.result}
                             </Badge>
                           </div>
-                          <div className="mt-1 font-semibold text-slate-200">
+                          <div className="mt-1 font-semibold text-slate-800">
                             Người duyệt: {qc.inspectorName} ({qc.machineName || 'QC Room'})
                           </div>
-                          <div className="font-mono-num text-[11px] text-slate-400">
+                          <div className="font-mono-num text-[11px] text-slate-500">
                             {qc.createdAt} • Mẫu: {qc.sampleSize}
                           </div>
                         </div>
@@ -1087,24 +1129,27 @@ export function LogsQcTraceTab({
                   </div>
                 </Card>
 
-                <Card className="border-amber-500/35">
-                  <div className="text-xs font-extrabold uppercase tracking-wider text-amber-400">
-                    4. Lịch Sử Xuất Kho Giao Hàng ({traceData.deliveries.length})
+                <Card className="border-slate-200 border-l-4 border-l-amber-500">
+                  <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-amber-700">
+                    <PackageCheck className="h-4 w-4 text-amber-600" />
+                    <span>4. Lịch Sử Xuất Kho Giao Hàng ({traceData.deliveries.length})</span>
                   </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-slate-950 p-2 text-center text-xs">
+                  <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-center text-xs">
                     <div>
-                      <div className="text-[10px] text-slate-400">SL Đặt</div>
-                      <div className="font-mono-num font-bold">{traceData.po.qtyPo}</div>
+                      <div className="text-[10px] font-medium text-slate-500">SL Đặt</div>
+                      <div className="font-mono-num font-bold text-slate-900">
+                        {traceData.po.qtyPo}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-400">Đã Giao</div>
-                      <div className="font-mono-num font-bold text-emerald-400">
+                      <div className="text-[10px] font-medium text-slate-500">Đã Giao</div>
+                      <div className="font-mono-num font-bold text-emerald-700">
                         {traceData.po.deliveredQty}
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-400">Còn Lại</div>
-                      <div className="font-mono-num font-bold text-amber-300">
+                      <div className="text-[10px] font-medium text-slate-500">Còn Lại</div>
+                      <div className="font-mono-num font-bold text-amber-700">
                         {traceData.po.remainQty}
                       </div>
                     </div>
@@ -1116,18 +1161,18 @@ export function LogsQcTraceTab({
                       traceData.deliveries.map((d) => (
                         <div
                           key={d.id}
-                          className="flex items-center justify-between rounded-lg border border-industrial-border bg-slate-950 px-2.5 py-2"
+                          className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-2.5 py-2"
                         >
                           <div>
-                            <div className="font-bold text-emerald-300">
+                            <div className="font-bold text-emerald-700">
                               <Truck className="mr-1 inline h-3.5 w-3.5" />
                               Giao +{d.qtyDeliver} SP
                             </div>
-                            <div className="text-[11px] text-slate-400">
+                            <div className="text-[11px] text-slate-500">
                               Bởi {d.deliveredBy} • {d.note || 'Phiếu xuất chuẩn'}
                             </div>
                           </div>
-                          <span className="font-mono-num text-[11px] text-slate-400">
+                          <span className="font-mono-num text-[11px] text-slate-500">
                             {d.deliveredAt}
                           </span>
                         </div>
@@ -1140,12 +1185,12 @@ export function LogsQcTraceTab({
               {/* Stage 3 Right 2 Columns: Full Step-by-Step Operations Genealogy */}
               <div className="lg:col-span-2">
                 <Card>
-                  <div className="flex items-center justify-between border-b border-industrial-border pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                     <div>
-                      <div className="text-xs font-extrabold uppercase tracking-wider text-purple-300">
+                      <div className="text-xs font-extrabold uppercase tracking-wider text-violet-700">
                         3. Hành Trình Gia Công Từng Nguyên Công (Máy — Thợ — Giờ — Dao — Ảnh)
                       </div>
-                      <div className="mt-0.5 text-xs text-slate-400">
+                      <div className="mt-0.5 text-xs text-slate-500">
                         Theo dõi xuyên suốt từ Bước 1 tới Công đoạn Cuối (End)
                       </div>
                     </div>
@@ -1154,95 +1199,101 @@ export function LogsQcTraceTab({
                     </Badge>
                   </div>
 
-                  <div className="mt-4 space-y-4">
+                  <div className="mt-4">
                     {traceData.operationsTimeline.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-industrial-border p-6 text-center text-xs text-slate-400">
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-6 text-center text-xs text-slate-500">
                         Sản phẩm của PO này chưa khai báo danh sách nguyên công chuẩn.
                       </div>
                     ) : (
-                      traceData.operationsTimeline.map((step) => (
-                        <div
-                          key={step.ncId}
-                          className="rounded-xl border border-industrial-border bg-slate-950/70 p-3.5"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant={step.isFinalOp === 1 ? 'success' : 'info'}>
-                                {step.isFinalOp === 1
-                                  ? `🏁 Bước Cuối (${step.stepOrder})`
-                                  : `Bước ${step.stepOrder}`}
-                              </Badge>
-                              <span className="font-mono-num text-xs font-bold text-sky-400">
-                                {step.ncId}
-                              </span>
-                              <span className="text-sm font-bold text-slate-100">
-                                {step.opName}
-                              </span>
+                      <div className="space-y-4 border-l-2 border-slate-300 pl-4">
+                        {traceData.operationsTimeline.map((step) => (
+                          <div
+                            key={step.ncId}
+                            className="relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="absolute -left-[23px] top-4 h-3 w-3 rounded-full border-2 border-blue-600 bg-white"
+                            />
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={step.isFinalOp === 1 ? 'success' : 'info'}>
+                                  {step.isFinalOp === 1
+                                    ? `🏁 Bước Cuối (${step.stepOrder})`
+                                    : `Bước ${step.stepOrder}`}
+                                </Badge>
+                                <span className="font-mono-num text-xs font-bold text-blue-700">
+                                  {step.ncId}
+                                </span>
+                                <span className="text-sm font-bold text-slate-900">
+                                  {step.opName}
+                                </span>
+                              </div>
+
+                              <div className="font-mono-num flex items-center gap-2 text-xs">
+                                <Badge variant="success">OK: {step.totalOk}</Badge>
+                                {step.totalRework > 0 && (
+                                  <Badge variant="warning">RW: {step.totalRework}</Badge>
+                                )}
+                                {step.totalScrap > 0 && (
+                                  <Badge variant="danger">NG: {step.totalScrap}</Badge>
+                                )}
+                              </div>
                             </div>
 
-                            <div className="font-mono-num flex items-center gap-2 text-xs">
-                              <Badge variant="success">OK: {step.totalOk}</Badge>
-                              {step.totalRework > 0 && (
-                                <Badge variant="warning">RW: {step.totalRework}</Badge>
-                              )}
-                              {step.totalScrap > 0 && (
-                                <Badge variant="danger">NG: {step.totalScrap}</Badge>
-                              )}
-                            </div>
+                            {step.logs.length === 0 ? (
+                              <div className="mt-2 text-xs text-slate-500">
+                                Chưa có phiếu ghi nhận sản lượng ở bước này.
+                              </div>
+                            ) : (
+                              <div className="mt-3 space-y-2">
+                                {step.logs.map((lg) => (
+                                  <div
+                                    key={lg.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs"
+                                  >
+                                    <div>
+                                      <div className="font-semibold text-slate-900">
+                                        👷 {lg.workerName} • 🖥️{' '}
+                                        <span className="text-blue-700">{lg.machineName}</span>
+                                      </div>
+                                      <div className="font-mono-num mt-0.5 text-[11px] text-slate-500">
+                                        {formatDateVn(lg.workDate)} ({lg.startTime}–{lg.endTime}) •
+                                        Dao: {lg.toolCode || 'Chuẩn'} ({lg.edgesUsed} cạnh)
+                                      </div>
+                                      {lg.handoverNote && (
+                                        <div className="mt-0.5 text-[11px] font-medium text-amber-800">
+                                          📝 Bàn giao: {lg.handoverNote}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      {lg.photoUrl && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewPhotoLog(lg)}
+                                          className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
+                                        >
+                                          📷 Xem ảnh
+                                        </button>
+                                      )}
+                                      <div className="font-mono-num text-right">
+                                        <div className="font-bold text-emerald-700">
+                                          +{lg.okQty} OK
+                                        </div>
+                                        <div className="text-[10px] text-slate-500">
+                                          {lg.recordUid}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-
-                          {step.logs.length === 0 ? (
-                            <div className="mt-2 text-xs text-slate-500">
-                              Chưa có phiếu ghi nhận sản lượng ở bước này.
-                            </div>
-                          ) : (
-                            <div className="mt-3 space-y-2">
-                              {step.logs.map((lg) => (
-                                <div
-                                  key={lg.id}
-                                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-industrial-border/80 bg-industrial-surface px-3 py-2 text-xs"
-                                >
-                                  <div>
-                                    <div className="font-semibold text-slate-100">
-                                      👷 {lg.workerName} • 🖥️{' '}
-                                      <span className="text-sky-300">{lg.machineName}</span>
-                                    </div>
-                                    <div className="font-mono-num mt-0.5 text-[11px] text-slate-400">
-                                      {formatDateVn(lg.workDate)} ({lg.startTime}–{lg.endTime}) •
-                                      Dao: {lg.toolCode || 'Chuẩn'} ({lg.edgesUsed} cạnh)
-                                    </div>
-                                    {lg.handoverNote && (
-                                      <div className="mt-0.5 text-[11px] text-amber-300">
-                                        📝 Bàn giao: {lg.handoverNote}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    {lg.photoUrl && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setPreviewPhotoLog(lg)}
-                                        className="rounded border border-emerald-500/40 bg-emerald-500/15 px-2 py-1 text-[11px] font-bold text-emerald-300"
-                                      >
-                                        📷 Xem ảnh
-                                      </button>
-                                    )}
-                                    <div className="font-mono-num text-right">
-                                      <div className="font-bold text-emerald-400">
-                                        +{lg.okQty} OK
-                                      </div>
-                                      <div className="text-[10px] text-slate-400">
-                                        {lg.recordUid}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 </Card>
@@ -1267,39 +1318,42 @@ export function LogsQcTraceTab({
         <form noValidate onSubmit={handleSaveLogEdit} className="space-y-4 text-xs">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-emerald-400">SL Đạt (OK)</label>
+              <label className="mb-1 block font-bold uppercase text-emerald-700">SL Đạt (OK)</label>
               <input
                 type="number"
                 min={0}
+                step="any"
                 value={editOkQty}
                 onChange={(e) => setEditOkQty(Math.max(0, Number(e.target.value) || 0))}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-base font-bold text-emerald-300"
+                className={`${modalInputCls} font-mono-num text-base font-bold text-emerald-700`}
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-amber-400">SL Rework</label>
+              <label className="mb-1 block font-bold uppercase text-amber-700">SL Rework</label>
               <input
                 type="number"
                 min={0}
+                step="any"
                 value={editReworkQty}
                 onChange={(e) => setEditReworkQty(Math.max(0, Number(e.target.value) || 0))}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-base font-bold text-amber-300"
+                className={`${modalInputCls} font-mono-num text-base font-bold text-amber-700`}
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-red-400">SL Hủy (NG)</label>
+              <label className="mb-1 block font-bold uppercase text-rose-700">SL Hủy (NG)</label>
               <input
                 type="number"
                 min={0}
+                step="any"
                 value={editScrapQty}
                 onChange={(e) => setEditScrapQty(Math.max(0, Number(e.target.value) || 0))}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-base font-bold text-red-300"
+                className={`${modalInputCls} font-mono-num text-base font-bold text-rose-700`}
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block font-bold uppercase text-slate-400">
+            <label className="mb-1 block font-bold uppercase text-slate-700">
               Trạng Thái Phê Duyệt QC
             </label>
             <select
@@ -1307,7 +1361,7 @@ export function LogsQcTraceTab({
               onChange={(e) =>
                 setEditQcStatus(e.target.value as 'PASSED' | 'PENDING_QC' | 'NG_HOLD')
               }
-              className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+              className={modalInputCls}
             >
               <option value="PASSED">PASSED — Đạt chất lượng</option>
               <option value="PENDING_QC">PENDING_QC — Đang chờ hậu kiểm</option>
@@ -1315,18 +1369,18 @@ export function LogsQcTraceTab({
             </select>
           </div>
 
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-red-500/40 bg-red-950/25 p-3">
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/70 p-3">
             <input
               type="checkbox"
               checked={editIsVoided}
               onChange={(e) => setEditIsVoided(e.target.checked)}
-              className="h-4 w-4 rounded border-red-400 bg-slate-950 text-red-500"
+              className="h-4 w-4 rounded border-rose-300 bg-white text-rose-600 focus:ring-rose-500"
             />
             <div>
-              <div className="font-bold text-red-300">
+              <div className="font-bold text-rose-800">
                 🚫 Đánh dấu Hủy phiếu báo cáo nhầm (Void Ticket)
               </div>
-              <div className="text-[11px] text-slate-400">
+              <div className="text-[11px] text-slate-600">
                 Phiếu bị hủy sẽ không tính vào lương tháng, giá thành thực tế và tự động hoàn trừ SL
                 thành phẩm trên PO nếu là công đoạn cuối.
               </div>
@@ -1364,13 +1418,13 @@ export function LogsQcTraceTab({
         <form noValidate onSubmit={handleSubmitQc} className="space-y-3.5 text-xs">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Tầng Kiểm Tra (*)
               </label>
               <select
                 value={qcInspType}
                 onChange={(e) => setQcInspType(e.target.value as any)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 font-bold text-emerald-300"
+                className={`${modalInputCls} font-bold text-emerald-700`}
               >
                 <option value="FAI">FAI — Duyệt mẫu đầu tiên</option>
                 <option value="IPQC">IPQC — Tuần kiểm trong ca</option>
@@ -1380,13 +1434,13 @@ export function LogsQcTraceTab({
             </div>
 
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Mã Lệnh PO (*)
               </label>
               <select
                 value={qcPoId}
                 onChange={(e) => setQcPoId(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 font-bold text-amber-300"
+                className={`${modalInputCls} font-bold text-blue-700`}
               >
                 {bootstrap.ordersList.map((po) => (
                   <option key={po.poId} value={po.poId}>
@@ -1397,11 +1451,11 @@ export function LogsQcTraceTab({
             </div>
 
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Nguyên Công</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Nguyên Công</label>
               <select
                 value={qcNcId}
                 onChange={(e) => setQcNcId(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 text-slate-100"
+                className={modalInputCls}
               >
                 <option value="">-- Chung toàn PO --</option>
                 {opsForQcPo.map((op) => (
@@ -1415,11 +1469,11 @@ export function LogsQcTraceTab({
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Máy gia công</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Máy gia công</label>
               <select
                 value={qcMachineName}
                 onChange={(e) => setQcMachineName(e.target.value)}
-                className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated px-2 text-slate-100"
+                className={`${filterInputCls} w-full font-medium`}
               >
                 {bootstrap.machines.map((m) => (
                   <option key={m.id} value={m.name}>
@@ -1429,11 +1483,11 @@ export function LogsQcTraceTab({
               </select>
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Thợ đứng máy</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Thợ đứng máy</label>
               <select
                 value={qcOperatorId}
                 onChange={(e) => setQcOperatorId(e.target.value)}
-                className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated px-2 text-slate-100"
+                className={`${filterInputCls} w-full font-medium`}
               >
                 {bootstrap.workers.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -1443,31 +1497,35 @@ export function LogsQcTraceTab({
               </select>
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Cỡ mẫu đo</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Cỡ mẫu đo</label>
               <input
                 type="number"
                 min={1}
+                step="any"
                 value={qcSampleSize}
                 onChange={(e) => setQcSampleSize(Math.max(1, Number(e.target.value) || 1))}
-                className="font-mono-num h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 font-bold text-slate-100"
+                className={`${filterInputCls} font-mono-num w-full font-bold`}
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">SL Lỗi phát hiện</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">
+                SL Lỗi phát hiện
+              </label>
               <input
                 type="number"
                 min={0}
+                step="any"
                 value={qcDefectQty}
                 onChange={(e) => setQcDefectQty(Math.max(0, Number(e.target.value) || 0))}
-                className="font-mono-num h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 font-bold text-red-300"
+                className={`${filterInputCls} font-mono-num w-full font-bold text-rose-700`}
               />
             </div>
           </div>
 
           {/* Precision Tolerance Table ±0.01mm */}
-          <div className="rounded-xl border border-sky-500/30 bg-slate-950 p-3">
+          <div className="rounded-xl border border-blue-200 bg-slate-50/80 p-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="font-bold uppercase text-sky-300">
+              <span className="font-bold uppercase text-blue-800">
                 📏 Bảng Đo Kích Thước Dung Sai Thực Tế (Panme / Đồng Hồ So ±0.01mm)
               </span>
               <button
@@ -1475,10 +1533,15 @@ export function LogsQcTraceTab({
                 onClick={() =>
                   setQcDims((prev) => [
                     ...prev,
-                    { feature: `Kích thước KT${prev.length + 1}`, nominal: 50, tolPlusMinus: 0.01, measured: 50.0 },
+                    {
+                      feature: `Kích thước KT${prev.length + 1}`,
+                      nominal: 50,
+                      tolPlusMinus: 0.01,
+                      measured: 50.0,
+                    },
                   ])
                 }
-                className="rounded border border-sky-400/50 bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold text-sky-300"
+                className="rounded border border-blue-300 bg-white px-2 py-0.5 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-50"
               >
                 + Thêm dòng đo
               </button>
@@ -1498,12 +1561,12 @@ export function LogsQcTraceTab({
                           prev.map((r, i) => (i === idx ? { ...r, feature: e.target.value } : r))
                         )
                       }
-                      className="col-span-5 h-8 rounded border border-industrial-border bg-industrial-elevated px-2 text-xs text-slate-100"
+                      className="col-span-5 h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
                       placeholder="Tên kích thước"
                     />
                     <input
                       type="number"
-                      step="0.001"
+                      step="any"
                       value={dim.nominal}
                       onChange={(e) =>
                         setQcDims((prev) =>
@@ -1512,12 +1575,12 @@ export function LogsQcTraceTab({
                           )
                         )
                       }
-                      className="font-mono-num col-span-2 h-8 rounded border border-industrial-border bg-industrial-elevated px-2 text-right text-xs text-slate-100"
+                      className="font-mono-num col-span-2 h-8 rounded border border-slate-300 bg-white px-2 text-right text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
                       title="Danh nghĩa (mm)"
                     />
                     <input
                       type="number"
-                      step="0.005"
+                      step="any"
                       value={dim.tolPlusMinus}
                       onChange={(e) =>
                         setQcDims((prev) =>
@@ -1526,12 +1589,12 @@ export function LogsQcTraceTab({
                           )
                         )
                       }
-                      className="font-mono-num col-span-2 h-8 rounded border border-industrial-border bg-industrial-elevated px-2 text-right text-xs text-amber-300"
+                      className="font-mono-num col-span-2 h-8 rounded border border-slate-300 bg-white px-2 text-right text-xs font-semibold text-amber-700 focus:border-blue-500 focus:outline-none"
                       title="Dung sai ± (mm)"
                     />
                     <input
                       type="number"
-                      step="0.001"
+                      step="any"
                       value={dim.measured}
                       onChange={(e) =>
                         setQcDims((prev) =>
@@ -1540,7 +1603,7 @@ export function LogsQcTraceTab({
                           )
                         )
                       }
-                      className="font-mono-num col-span-2 h-8 rounded border border-sky-500/40 bg-slate-900 px-2 text-right text-xs font-bold text-sky-300"
+                      className="font-mono-num col-span-2 h-8 rounded border border-blue-300 bg-white px-2 text-right text-xs font-bold text-blue-700 focus:border-blue-500 focus:outline-none"
                       title="Thực đo (mm)"
                     />
                     <div className="col-span-1 text-center">
@@ -1554,13 +1617,13 @@ export function LogsQcTraceTab({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Kết Luận Phê Duyệt (*)
               </label>
               <select
                 value={qcResult}
                 onChange={(e) => setQcResult(e.target.value as any)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 font-bold text-slate-100"
+                className={`${modalInputCls} font-bold`}
               >
                 <option value="PASS">✅ PASS — Đạt chuẩn cho chạy loạt</option>
                 <option value="CONCESSION">🔵 CONCESSION — Nhân nhượng kỹ thuật</option>
@@ -1569,7 +1632,7 @@ export function LogsQcTraceTab({
               </select>
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Nguyên Nhân (nếu lỗi)
               </label>
               <input
@@ -1577,11 +1640,11 @@ export function LogsQcTraceTab({
                 value={qcRootCause}
                 onChange={(e) => setQcRootCause(e.target.value)}
                 placeholder="Mòn mảnh dao tinh, lệch gốc G54..."
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+                className={modalInputCls}
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Đối Sách Khắc Phục
               </label>
               <input
@@ -1589,7 +1652,7 @@ export function LogsQcTraceTab({
                 value={qcCorrective}
                 onChange={(e) => setQcCorrective(e.target.value)}
                 placeholder="Bù dao -0.015mm, thay chíp mới..."
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+                className={modalInputCls}
               />
             </div>
           </div>
@@ -1620,7 +1683,7 @@ export function LogsQcTraceTab({
       >
         {previewPhotoLog && (
           <div className="space-y-3 text-xs">
-            <div className="overflow-hidden rounded-xl border border-industrial-border bg-slate-950">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
               <img
                 src={previewPhotoLog.photoUrl}
                 alt={previewPhotoLog.productName}
@@ -1628,7 +1691,7 @@ export function LogsQcTraceTab({
               />
             </div>
             {previewPhotoLog.handoverNote && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-2.5 text-amber-200">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 font-medium text-amber-900">
                 📝 Ghi chú bàn giao: {previewPhotoLog.handoverNote}
               </div>
             )}

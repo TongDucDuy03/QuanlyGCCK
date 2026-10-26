@@ -206,7 +206,9 @@ export function CockpitAndLoadTab({
   const openReassignModal = (mach: MachineLoadSummary) => {
     setReassignModalMachine(mach);
     const matchingOps = bootstrap.operations.filter(
-      (o) => normalizeVn(o.defaultMachine).toLowerCase() === normalizeVn(mach.machineName).toLowerCase()
+      (o) =>
+        normalizeVn(o.defaultMachine).toLowerCase() ===
+        normalizeVn(mach.machineName).toLowerCase()
     );
     setSelectedReassignNcId(matchingOps[0]?.ncId || bootstrap.operations[0]?.ncId || '');
     const defaultAlt =
@@ -322,7 +324,9 @@ export function CockpitAndLoadTab({
         `/operations/${encodeURIComponent(selectedReassignNcId)}/assign-machine`,
         { machineName: targetMachineName }
       );
-      toast.success(res.message || `Đã điều chuyển ${selectedReassignNcId} sang ${targetMachineName}`);
+      toast.success(
+        res.message || `Đã điều chuyển ${selectedReassignNcId} sang ${targetMachineName}`
+      );
       setReassignModalMachine(null);
       await onRefreshBootstrap();
       await reloadSchedulesAndLoads();
@@ -403,7 +407,10 @@ export function CockpitAndLoadTab({
         const weightedPct =
           totalStdSec > 0
             ? Math.min(100, Number(((weightedSecDone / totalStdSec) * 100).toFixed(1)))
-            : Math.min(100, Number((((Number(po.finishedQty) || 0) / qtyTarget) * 100).toFixed(1)));
+            : Math.min(
+                100,
+                Number((((Number(po.finishedQty) || 0) / qtyTarget) * 100).toFixed(1))
+              );
 
         return {
           key: po.poId,
@@ -506,89 +513,95 @@ export function CockpitAndLoadTab({
     return filteredWip.slice(start, start + wipPageSize);
   }, [filteredWip, wipPage, wipPageSize]);
 
+  const modalInputCls =
+    'h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15';
+
   return (
     <div className="space-y-5">
       {/* ==================== 1. 4 EXECUTIVE KPI CARDS ==================== */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-emerald-500/35 bg-gradient-to-br from-slate-900 to-emerald-950/25">
+        <Card className="border-slate-200 border-l-4 border-l-emerald-500 bg-white shadow-card">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Tổng Sản Lượng Đạt (OK)
               </div>
-              <div className="font-mono-num mt-1.5 text-3xl font-extrabold text-emerald-400">
-                {formatNumber(kpi.totalOk)} <span className="text-sm font-semibold">SP</span>
+              <div className="font-mono-num mt-1.5 text-3xl font-black text-slate-900">
+                {formatNumber(kpi.totalOk)}{' '}
+                <span className="text-sm font-semibold text-slate-500">SP</span>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-300">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
                 <Badge variant="info">{kpi.openOrders} PO đang mở</Badge>
                 {kpi.overdueOrders > 0 && (
                   <Badge variant="danger">🔥 {kpi.overdueOrders} PO trễ hạn</Badge>
                 )}
               </div>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600">
               <CheckCircle2 className="h-6 w-6" />
             </div>
           </div>
         </Card>
 
-        <Card className="border-amber-500/35 bg-gradient-to-br from-slate-900 to-amber-950/25">
+        <Card className="border-slate-200 border-l-4 border-l-amber-500 bg-white shadow-card">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Tổng Hàng Xử Lý (Rework)
               </div>
-              <div className="font-mono-num mt-1.5 text-3xl font-extrabold text-amber-300">
-                {formatNumber(kpi.totalRework)} <span className="text-sm font-semibold">SP</span>
+              <div className="font-mono-num mt-1.5 text-3xl font-black text-slate-900">
+                {formatNumber(kpi.totalRework)}{' '}
+                <span className="text-sm font-semibold text-slate-500">SP</span>
               </div>
-              <div className="mt-2 text-xs text-slate-400">
+              <div className="mt-2 text-xs text-slate-600">
                 Tỷ lệ sửa hàng:{' '}
-                <strong className="font-mono-num text-amber-300">{reworkRatePct}%</strong> tổng phôi
+                <strong className="font-mono-num text-amber-700">{reworkRatePct}%</strong> tổng phôi
               </div>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600">
               <Wrench className="h-6 w-6" />
             </div>
           </div>
         </Card>
 
-        <Card className="border-red-500/35 bg-gradient-to-br from-slate-900 to-red-950/25">
+        <Card className="border-slate-200 border-l-4 border-l-rose-500 bg-white shadow-card">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Tổng Phế Phẩm Hủy (Scrap NG)
               </div>
-              <div className="font-mono-num mt-1.5 text-3xl font-extrabold text-red-400">
-                {formatNumber(kpi.totalScrap)} <span className="text-sm font-semibold">SP</span>
+              <div className="font-mono-num mt-1.5 text-3xl font-black text-slate-900">
+                {formatNumber(kpi.totalScrap)}{' '}
+                <span className="text-sm font-semibold text-slate-500">SP</span>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+              <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
                 <span>
-                  Tỷ lệ NG: <strong className="font-mono-num text-red-300">{scrapRatePct}%</strong>
+                  Tỷ lệ NG: <strong className="font-mono-num text-rose-700">{scrapRatePct}%</strong>
                 </span>
                 <button
                   type="button"
                   onClick={() => onNavigateTab('logs_qc', { logsSubView: 'QC' })}
-                  className="text-sky-400 underline hover:text-sky-300"
+                  className="font-semibold text-blue-600 underline hover:text-blue-800"
                 >
                   Xem biên bản QC
                 </button>
               </div>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/15 text-red-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600">
               <AlertOctagon className="h-6 w-6" />
             </div>
           </div>
         </Card>
 
-        <Card className="border-sky-500/35 bg-gradient-to-br from-slate-900 to-sky-950/25">
+        <Card className="border-slate-200 border-l-4 border-l-blue-600 bg-white shadow-card">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Dừng Máy &amp; Tỷ Lệ Chạy Spindle
               </div>
-              <div className="font-mono-num mt-1.5 text-3xl font-extrabold text-sky-300">
+              <div className="font-mono-num mt-1.5 text-3xl font-black text-slate-900">
                 {formatNumber(kpi.totalStopMinutes)}{' '}
-                <span className="text-sm font-semibold">phút</span>
+                <span className="text-sm font-semibold text-slate-500">phút</span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
                 <Badge variant="success">
@@ -599,7 +612,7 @@ export function CockpitAndLoadTab({
                 )}
               </div>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-sky-500/30 bg-sky-500/15 text-sky-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-600">
               <Activity className="h-6 w-6" />
             </div>
           </div>
@@ -608,13 +621,15 @@ export function CockpitAndLoadTab({
 
       {/* ==================== GEMBA SHIFT HANDOVER ALERTS ==================== */}
       {bootstrap.shiftHandoverAlerts.length > 0 && (
-        <Card className="border-amber-500/40 bg-amber-950/15 py-3">
+        <Card className="border-amber-200 bg-amber-50/50 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-300">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>Bàn Giao Ca Gemba Mới Nhất Từ Xưởng ({bootstrap.shiftHandoverAlerts.length})</span>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+              <span>
+                Bàn Giao Ca Gemba Mới Nhất Từ Xưởng ({bootstrap.shiftHandoverAlerts.length})
+              </span>
             </div>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-600">
               Nhắc nhở gá đặt G54, dao mòn &amp; bán thành phẩm dở dang giữa các ca
             </span>
           </div>
@@ -622,20 +637,20 @@ export function CockpitAndLoadTab({
             {bootstrap.shiftHandoverAlerts.slice(0, 3).map((alert) => (
               <div
                 key={alert.id}
-                className="rounded-lg border border-amber-500/25 bg-slate-950/80 px-3 py-2 text-xs"
+                className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs shadow-sm"
               >
-                <div className="flex items-center justify-between gap-2 font-semibold text-amber-200">
+                <div className="flex items-center justify-between gap-2 font-bold text-amber-900">
                   <span>
                     {alert.machineName} • {alert.workerName}
                   </span>
-                  <span className="font-mono-num text-[11px] text-slate-400">
+                  <span className="font-mono-num text-[11px] font-medium text-slate-500">
                     {formatDateVn(alert.workDate)}
                   </span>
                 </div>
-                <div className="mt-0.5 truncate text-[11px] text-sky-300">
+                <div className="mt-0.5 truncate text-[11px] font-semibold text-blue-700">
                   [{alert.poId}] {alert.productName} — {alert.opName}
                 </div>
-                <div className="mt-1 font-medium text-slate-100">“{alert.handoverNote}”</div>
+                <div className="mt-1 font-medium text-slate-800">“{alert.handoverNote}”</div>
               </div>
             ))}
           </div>
@@ -644,15 +659,15 @@ export function CockpitAndLoadTab({
 
       {/* ==================== 2. LEAN MACHINE LOADING & BOTTLENECK BOARD ==================== */}
       <Card noPadding>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
           <div>
             <div className="flex items-center gap-2">
-              <Cpu className="h-5 w-5 text-sky-400" />
-              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-50">
-                Bảng Cân Bằng Tải Máy, Gom Nhóm SMED &amp; Phát Hiện Cổ Chai ({loads.length} Máy)
+              <Cpu className="h-5 w-5 text-blue-600" />
+              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">
+                Bảng Cân Bằng Tải Máy, Gom Nhóm SMED &amp; Phát Hiện Cổ Chai ({loads.length} máy)
               </h2>
             </div>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500">
               Quỹ năng lực chuẩn 2 ca/tuần (96h/máy). Tự động phát hiện máy quá tải &gt;100%, gợi ý
               gom phôi cùng mác vật liệu SMED và chạy đêm Lights-out.
             </p>
@@ -666,7 +681,7 @@ export function CockpitAndLoadTab({
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border bg-slate-950/50 px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
@@ -684,8 +699,8 @@ export function CockpitAndLoadTab({
                 onClick={() => setLoadFilter(mode)}
                 className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${
                   loadFilter === mode
-                    ? 'border-sky-400 bg-sky-500/20 text-sky-200'
-                    : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:border-slate-500'
+                    ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 {label}
@@ -700,7 +715,7 @@ export function CockpitAndLoadTab({
               value={machineQuery}
               onChange={(e) => setMachineQuery(e.target.value)}
               placeholder="Tìm máy, nhóm CNC, mác vật liệu SKD11..."
-              className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
+              className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
             />
           </div>
         </div>
@@ -708,8 +723,8 @@ export function CockpitAndLoadTab({
         {/* 23+ Machine Capacity Table */}
         <div className="max-h-[480px] overflow-auto">
           <table className="w-full min-w-[1040px] border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400 shadow">
-              <tr className="border-b border-industrial-border">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+              <tr>
                 <th className="px-3.5 py-2.5">Máy Gia Công &amp; Nhóm</th>
                 <th className="px-3 py-2.5 text-center">Trạng Thái Live</th>
                 <th className="w-[300px] px-3 py-2.5">Thanh Tải Năng Lực (Capacity %)</th>
@@ -718,16 +733,27 @@ export function CockpitAndLoadTab({
                 <th className="px-3.5 py-2.5 text-right">Điều Chuyển San Tải</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-industrial-border/60">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {filteredLoads.map((m) => {
                 const barWidth = Math.min(100, Math.max(0, m.loadPct));
-                const barColor = m.isBottleneck
-                  ? 'bg-red-500'
-                  : m.isWarning
-                    ? 'bg-amber-400'
+                const isOverloaded = m.isBottleneck || m.loadPct > 85;
+                const isElevatedLoad = !isOverloaded && (m.isWarning || m.loadPct >= 70);
+
+                const barColor = isOverloaded
+                  ? 'bg-rose-500'
+                  : isElevatedLoad
+                    ? 'bg-amber-500'
                     : m.loadLevel === 'IDLE'
-                      ? 'bg-slate-600'
-                      : 'bg-emerald-400';
+                      ? 'bg-slate-400'
+                      : 'bg-emerald-500';
+
+                const pctColor = isOverloaded
+                  ? 'text-rose-700'
+                  : isElevatedLoad
+                    ? 'text-amber-700'
+                    : m.loadLevel === 'IDLE'
+                      ? 'text-slate-600'
+                      : 'text-emerald-700';
 
                 const levelBadge = m.isBottleneck ? (
                   <Badge variant="danger">🔴 &gt;100% CỔ CHAI QUÁ TẢI</Badge>
@@ -751,16 +777,18 @@ export function CockpitAndLoadTab({
                 return (
                   <tr
                     key={m.machineId}
-                    className={`transition-colors hover:bg-slate-800/40 ${
-                      m.isBottleneck ? 'bg-red-950/15' : ''
+                    className={`border-b transition-colors ${
+                      isOverloaded
+                        ? 'border-rose-300 bg-rose-50/50 hover:bg-rose-50/80'
+                        : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
                     }`}
                   >
                     <td className="px-3.5 py-2.5">
-                      <div className="font-bold text-slate-100">
-                        <span className="font-mono-num mr-1.5 text-sky-400">{m.machineId}</span>
+                      <div className="font-bold text-slate-900">
+                        <span className="font-mono-num mr-1.5 text-blue-700">{m.machineId}</span>
                         {m.machineName}
                       </div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">
+                      <div className="mt-0.5 text-[11px] text-slate-500">
                         {m.group} • {m.jobCount} PO chờ gia công
                       </div>
                     </td>
@@ -772,19 +800,11 @@ export function CockpitAndLoadTab({
                     <td className="px-3 py-2.5">
                       <div className="flex items-center justify-between gap-2">
                         {levelBadge}
-                        <span
-                          className={`font-mono-num text-sm font-extrabold ${
-                            m.isBottleneck
-                              ? 'text-red-400'
-                              : m.isWarning
-                                ? 'text-amber-300'
-                                : 'text-emerald-300'
-                          }`}
-                        >
+                        <span className={`font-mono-num text-sm font-extrabold ${pctColor}`}>
                           {m.loadPct.toFixed(1)}%
                         </span>
                       </div>
-                      <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+                      <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full border border-slate-200/80 bg-slate-100">
                         <div
                           className={`h-full rounded-full transition-all ${barColor}`}
                           style={{ width: `${barWidth}%` }}
@@ -793,13 +813,13 @@ export function CockpitAndLoadTab({
                     </td>
 
                     <td className="font-mono-num px-3 py-2.5 text-right">
-                      <div className="font-bold text-slate-100">
+                      <div className="font-bold text-slate-900">
                         {m.totalDemandHours.toFixed(1)}h / {m.capacityHours}h
                       </div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">
+                      <div className="mt-0.5 text-[11px] text-slate-500">
                         PO: {m.openPoHours.toFixed(1)}h | Ca: {m.scheduledHours.toFixed(1)}h
                         {m.lightsOutHours > 0 && (
-                          <span className="ml-1 text-purple-300">
+                          <span className="ml-1 font-semibold text-violet-700">
                             (🌙 {m.lightsOutHours.toFixed(1)}h)
                           </span>
                         )}
@@ -825,7 +845,7 @@ export function CockpitAndLoadTab({
                         )}
                       </div>
                       {m.smedSuggestion && (
-                        <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-300">
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
                           <Sparkles className="h-3 w-3 shrink-0" />
                           <span>{m.smedSuggestion}</span>
                         </div>
@@ -842,7 +862,7 @@ export function CockpitAndLoadTab({
                         San tải NC
                       </Button>
                       {m.alternativeMachines.length > 0 && (m.isBottleneck || m.isWarning) && (
-                        <div className="mt-1 text-[11px] text-slate-400">
+                        <div className="mt-1 text-[11px] text-slate-500">
                           Gợi ý: {m.alternativeMachines.slice(0, 2).join(', ')}
                         </div>
                       )}
@@ -855,22 +875,22 @@ export function CockpitAndLoadTab({
         </div>
 
         {/* ==================== SCHEDULE GANTT BLOCKS BOARD ==================== */}
-        <div className="border-t border-industrial-border bg-slate-950/40 p-4">
+        <div className="border-t border-slate-200 bg-slate-50/60 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-purple-400" />
-              <h3 className="text-sm font-bold text-slate-100">
+              <CalendarClock className="h-4 w-4 text-violet-600" />
+              <h3 className="text-sm font-bold text-slate-900">
                 Kế Hoạch Điều Độ Ca &amp; Chế Độ Chạy Đêm Tự Động (🌙 Lights-out)
               </h3>
               <Badge variant="purple">{filteredSchedules.length} block lịch</Badge>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <label className="text-slate-400">Lọc ngày:</label>
+              <label className="font-semibold text-slate-600">Lọc ngày:</label>
               <input
                 type="date"
                 value={scheduleDateFilter}
                 onChange={(e) => setScheduleDateFilter(e.target.value)}
-                className="h-8 rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 text-xs text-slate-100"
+                className="h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-900 focus:border-blue-500 focus:outline-none"
               />
               {scheduleDateFilter && (
                 <Button variant="ghost" size="sm" onClick={() => setScheduleDateFilter('')}>
@@ -881,15 +901,16 @@ export function CockpitAndLoadTab({
           </div>
 
           {filteredSchedules.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-industrial-border p-6 text-center text-xs text-slate-400">
-              Chưa có block điều độ ca nào khớp bộ lọc. Bấm <strong>Thêm Lịch Điều Độ Ca</strong> để
-              xếp kế hoạch chạy máy hoặc kích hoạt chạy đêm Lights-out.
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-xs text-slate-500">
+              Chưa có block điều độ ca nào khớp bộ lọc. Bấm{' '}
+              <strong className="text-slate-800">Thêm Lịch Điều Độ Ca</strong> để xếp kế hoạch chạy
+              máy hoặc kích hoạt chạy đêm Lights-out.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-industrial-border">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
               <table className="w-full min-w-[980px] border-collapse text-left text-xs">
-                <thead className="bg-slate-950 text-[11px] font-bold uppercase text-slate-400">
-                  <tr className="border-b border-industrial-border">
+                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase text-slate-600">
+                  <tr>
                     <th className="px-3 py-2">Ngày &amp; Ca</th>
                     <th className="px-3 py-2">Máy Phân Công (Đổi Nhanh)</th>
                     <th className="px-3 py-2">Lệnh PO / Sản Phẩm / Nguyên Công</th>
@@ -899,23 +920,23 @@ export function CockpitAndLoadTab({
                     <th className="px-3 py-2 text-right">Xóa</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-industrial-border/60 bg-industrial-surface">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {filteredSchedules.map((sb) => {
                     const isLo = Number(sb.isLightsOut) === 1;
                     return (
-                      <tr key={sb.id} className="hover:bg-slate-800/40">
+                      <tr key={sb.id} className="transition-colors hover:bg-blue-50/40">
                         <td className="px-3 py-2">
-                          <div className="font-mono-num font-bold text-slate-100">
+                          <div className="font-mono-num font-bold text-slate-900">
                             {formatDateVn(sb.workDate)}
                           </div>
-                          <div className="text-[11px] text-slate-400">{sb.shiftType}</div>
+                          <div className="text-[11px] text-slate-500">{sb.shiftType}</div>
                         </td>
                         <td className="px-3 py-2">
                           <select
                             disabled={busyScheduleId === sb.id}
                             value={sb.machineId}
                             onChange={(e) => void handleChangeScheduleMachine(sb, e.target.value)}
-                            className="h-8 rounded-lg border border-industrial-border bg-industrial-elevated px-2 text-xs font-semibold text-sky-300 focus:border-sky-400 focus:outline-none"
+                            className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-blue-700 focus:border-blue-500 focus:outline-none"
                           >
                             {bootstrap.machines.map((m) => (
                               <option key={m.id} value={m.id}>
@@ -930,14 +951,14 @@ export function CockpitAndLoadTab({
                             <Badge variant="info">{sb.ncId}</Badge>
                             {sb.matName && <Badge variant="neutral">{sb.matName}</Badge>}
                           </div>
-                          <div className="mt-1 font-semibold text-slate-100">
+                          <div className="mt-1 font-semibold text-slate-900">
                             {sb.productName || 'Sản phẩm theo PO'}{' '}
                             {sb.opName ? `— ${sb.opName}` : ''}
                           </div>
                         </td>
                         <td className="font-mono-num px-3 py-2 text-center">
-                          <div className="font-bold text-emerald-300">{sb.plannedQty} SP</div>
-                          <div className="text-[11px] text-slate-400">{sb.plannedHours} giờ</div>
+                          <div className="font-bold text-emerald-700">{sb.plannedQty} SP</div>
+                          <div className="text-[11px] text-slate-500">{sb.plannedHours} giờ</div>
                         </td>
                         <td className="px-3 py-2 text-center">
                           <button
@@ -946,8 +967,8 @@ export function CockpitAndLoadTab({
                             onClick={() => void handleToggleLightsOut(sb)}
                             className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all ${
                               isLo
-                                ? 'border-purple-400/70 bg-purple-500/25 text-purple-200 shadow-sm'
-                                : 'border-industrial-border bg-slate-900 text-slate-400 hover:border-purple-400/50 hover:text-purple-200'
+                                ? 'border-violet-300 bg-violet-50 text-violet-700 shadow-sm'
+                                : 'border-slate-300 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700'
                             }`}
                           >
                             <Moon className="h-3.5 w-3.5" />
@@ -959,7 +980,7 @@ export function CockpitAndLoadTab({
                             disabled={busyScheduleId === sb.id}
                             value={sb.status}
                             onChange={(e) => void handleChangeScheduleStatus(sb, e.target.value)}
-                            className="h-8 rounded-lg border border-industrial-border bg-industrial-elevated px-2 text-xs font-semibold text-slate-200"
+                            className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
                           >
                             <option value="PLANNED">PLANNED</option>
                             <option value="RUNNING">RUNNING</option>
@@ -970,7 +991,7 @@ export function CockpitAndLoadTab({
                           <button
                             type="button"
                             onClick={() => setDeleteTargetSched(sb)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-industrial-border bg-slate-900 text-slate-400 hover:border-red-500/60 hover:text-red-300"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
                             title="Xóa lịch ca"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -988,17 +1009,18 @@ export function CockpitAndLoadTab({
 
       {/* ==================== 3. WEIGHTED WIP PROGRESS TABLE (ACCURATE BY qtyPo) ==================== */}
       <Card noPadding>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
           <div>
             <div className="flex items-center gap-2">
-              <Flame className="h-5 w-5 text-emerald-400" />
-              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-50">
+              <Flame className="h-5 w-5 text-emerald-600" />
+              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">
                 Bảng Tiến Độ WIP Trọng Số Chuẩn Xác Theo Từng Bước Nguyên Công
               </h2>
             </div>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Tính % hoàn thành thực tế từng công đoạn chia chuẩn theo <strong>SL Đặt PO (qtyPo)</strong>{' '}
-              nhân trọng số giây định mức (đã khử triệt để lỗi báo 100% ảo khi mới chạy 1 chi tiết).
+            <p className="mt-0.5 text-xs text-slate-500">
+              Tính % hoàn thành thực tế từng công đoạn chia chuẩn theo{' '}
+              <strong className="text-slate-700">SL Đặt PO (qtyPo)</strong> nhân trọng số giây định
+              mức (đã khử triệt để lỗi báo 100% ảo khi mới chạy 1 chi tiết).
             </p>
           </div>
 
@@ -1009,10 +1031,10 @@ export function CockpitAndLoadTab({
                 setWipMode('PO_WEIGHTED');
                 setWipPage(1);
               }}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
+              className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${
                 wipMode === 'PO_WEIGHTED'
-                  ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200'
-                  : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                  ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               Theo Đơn Hàng PO ({bootstrap.ordersList.length})
@@ -1023,10 +1045,10 @@ export function CockpitAndLoadTab({
                 setWipMode('PRODUCT_CATALOG');
                 setWipPage(1);
               }}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
+              className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${
                 wipMode === 'PRODUCT_CATALOG'
-                  ? 'border-sky-400 bg-sky-500/20 text-sky-200'
-                  : 'border-industrial-border bg-industrial-elevated text-slate-300'
+                  ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               Theo Danh Mục SP ({bootstrap.products.length})
@@ -1034,7 +1056,7 @@ export function CockpitAndLoadTab({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border bg-slate-950/50 px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5">
           <div className="relative min-w-[260px] flex-1 sm:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -1045,10 +1067,10 @@ export function CockpitAndLoadTab({
                 setWipPage(1);
               }}
               placeholder="Tìm PO, Mã SP, Khách hàng, Tên bản vẽ không dấu..."
-              className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
+              className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
             />
           </div>
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-300">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700">
             <input
               type="checkbox"
               checked={wipOnlyActive}
@@ -1056,7 +1078,7 @@ export function CockpitAndLoadTab({
                 setWipOnlyActive(e.target.checked);
                 setWipPage(1);
               }}
-              className="h-4 w-4 rounded border-industrial-border bg-slate-900 text-sky-500"
+              className="h-4 w-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-500"
             />
             Chỉ hiện mã đã phát sinh sản lượng (&gt;0%)
           </label>
@@ -1064,8 +1086,8 @@ export function CockpitAndLoadTab({
 
         <div className="max-h-[500px] overflow-auto">
           <table className="w-full min-w-[980px] border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400 shadow">
-              <tr className="border-b border-industrial-border">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+              <tr>
                 <th className="px-3.5 py-2.5">PO / Mã SP &amp; Khách Hàng</th>
                 <th className="px-3 py-2.5">Sản Phẩm</th>
                 <th className="px-3 py-2.5 text-center">SL Đích (qtyPo)</th>
@@ -1074,28 +1096,31 @@ export function CockpitAndLoadTab({
                 <th className="w-[210px] px-3.5 py-2.5">% Hoàn Thành Trọng Số</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-industrial-border/60">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {pagedWip.map((w) => (
-                <tr key={w.key} className="hover:bg-slate-800/40">
+                <tr key={w.key} className="transition-colors hover:bg-blue-50/40">
                   <td className="px-3.5 py-2.5">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {w.poId && <Badge variant="warning">{w.poId}</Badge>}
                       {w.spId && <Badge variant="neutral">{w.spId}</Badge>}
                     </div>
-                    <div className="mt-1 text-[11px] text-slate-300">{w.customer}</div>
+                    <div className="mt-1 text-[11px] font-medium text-slate-600">{w.customer}</div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="font-bold text-sky-300">{w.productName}</div>
+                    <div className="font-bold text-blue-700">{w.productName}</div>
                     {w.dueDate && (
-                      <div className="mt-0.5 text-[11px] text-slate-400">
-                        Hạn giao: <span className="font-mono-num">{formatDateVn(w.dueDate)}</span>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        Hạn giao:{' '}
+                        <span className="font-mono-num font-medium text-slate-700">
+                          {formatDateVn(w.dueDate)}
+                        </span>
                       </div>
                     )}
                   </td>
-                  <td className="font-mono-num px-3 py-2.5 text-center font-bold text-slate-100">
+                  <td className="font-mono-num px-3 py-2.5 text-center font-bold text-slate-900">
                     {formatNumber(w.qtyTarget)} SP
                   </td>
-                  <td className="font-mono-num px-3 py-2.5 text-center text-slate-200">
+                  <td className="font-mono-num px-3 py-2.5 text-center text-slate-700">
                     {w.totalStdSec > 0 ? formatDurationSec(w.totalStdSec) : '—'}
                   </td>
                   <td className="px-3 py-2.5">
@@ -1123,19 +1148,27 @@ export function CockpitAndLoadTab({
                   </td>
                   <td className="px-3.5 py-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full border border-slate-200/80 bg-slate-100">
                         <div
                           className={`h-full rounded-full ${
                             w.weightedPct >= 100
-                              ? 'bg-emerald-400'
+                              ? 'bg-emerald-500'
                               : w.weightedPct > 0
-                                ? 'bg-sky-400'
-                                : 'bg-slate-600'
+                                ? 'bg-blue-600'
+                                : 'bg-slate-300'
                           }`}
                           style={{ width: `${Math.min(100, w.weightedPct)}%` }}
                         />
                       </div>
-                      <span className="font-mono-num w-12 text-right font-bold text-emerald-300">
+                      <span
+                        className={`font-mono-num w-12 text-right font-bold ${
+                          w.weightedPct >= 100
+                            ? 'text-emerald-700'
+                            : w.weightedPct > 0
+                              ? 'text-blue-700'
+                              : 'text-slate-500'
+                        }`}
+                      >
                         {w.weightedPct}%
                       </span>
                     </div>
@@ -1169,13 +1202,13 @@ export function CockpitAndLoadTab({
         <form noValidate onSubmit={handleCreateSchedule} className="space-y-3.5 text-xs">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Máy gia công (*)
               </label>
               <select
                 value={schedMachineId}
                 onChange={(e) => setSchedMachineId(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={modalInputCls}
               >
                 {bootstrap.machines.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -1185,21 +1218,21 @@ export function CockpitAndLoadTab({
               </select>
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Ngày chạy kế hoạch (*)
               </label>
               <input
                 type="date"
                 value={schedDate}
                 onChange={(e) => setSchedDate(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={modalInputCls}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Đơn hàng PO (*)
               </label>
               <select
@@ -1218,7 +1251,7 @@ export function CockpitAndLoadTab({
                     if (firstOp) setSchedNcId(firstOp.ncId);
                   }
                 }}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={modalInputCls}
               >
                 {bootstrap.ordersList.map((po) => (
                   <option key={po.poId} value={po.poId}>
@@ -1229,13 +1262,13 @@ export function CockpitAndLoadTab({
             </div>
 
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Nguyên công thực hiện (*)
               </label>
               <select
                 value={schedNcId}
                 onChange={(e) => setSchedNcId(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={modalInputCls}
               >
                 {opsForSelectedPo.map((op) => (
                   <option key={op.ncId} value={op.ncId}>
@@ -1248,11 +1281,11 @@ export function CockpitAndLoadTab({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Ca làm việc</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Ca làm việc</label>
               <select
                 value={schedShift}
                 onChange={(e) => setSchedShift(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 font-semibold text-slate-100"
+                className={modalInputCls}
               >
                 {SHIFT_OPTIONS.map((s) => (
                   <option key={s} value={s}>
@@ -1262,17 +1295,18 @@ export function CockpitAndLoadTab({
               </select>
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">SL Kế hoạch</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">SL Kế hoạch</label>
               <input
                 type="number"
                 min={1}
+                step="any"
                 value={schedQty}
                 onChange={(e) => setSchedQty(Math.max(1, Number(e.target.value) || 1))}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-bold text-emerald-300"
+                className={`${modalInputCls} font-mono-num font-bold text-emerald-700`}
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Số giờ dự kiến (h)
               </label>
               <input
@@ -1281,12 +1315,12 @@ export function CockpitAndLoadTab({
                 step="any"
                 value={schedHours}
                 onChange={(e) => setSchedHours(Math.max(0.25, Number(e.target.value) || 1))}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-bold text-sky-300"
+                className={`${modalInputCls} font-mono-num font-bold text-blue-700`}
               />
             </div>
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-purple-500/40 bg-purple-500/10 p-3">
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-violet-200 bg-violet-50/70 p-3">
             <input
               type="checkbox"
               checked={schedLightsOut}
@@ -1294,13 +1328,13 @@ export function CockpitAndLoadTab({
                 setSchedLightsOut(e.target.checked);
                 if (e.target.checked) setSchedShift('Ca 3 (Đêm 22h-06h)');
               }}
-              className="h-4 w-4 rounded border-purple-400 bg-slate-900 text-purple-500"
+              className="h-4 w-4 rounded border-violet-300 bg-white text-violet-600 focus:ring-violet-500"
             />
             <div>
-              <div className="font-bold text-purple-200">
+              <div className="font-bold text-violet-900">
                 🌙 Kích hoạt chạy đêm tự động (Lights-out Machining)
               </div>
-              <div className="text-[11px] text-slate-400">
+              <div className="text-[11px] text-slate-600">
                 Dành cho nguyên công chu kỳ dài trên máy CNC / Cắt dây EDM chạy tự động không người
                 đứng máy
               </div>
@@ -1308,13 +1342,13 @@ export function CockpitAndLoadTab({
           </label>
 
           <div>
-            <label className="mb-1 block font-bold uppercase text-slate-400">Ghi chú gá đặt</label>
+            <label className="mb-1 block font-bold uppercase text-slate-700">Ghi chú gá đặt</label>
             <input
               type="text"
               value={schedNote}
               onChange={(e) => setSchedNote(e.target.value)}
               placeholder="Gom nhóm phôi cùng đồ gá SMED, kiểm tra chíp T01 trước ca..."
-              className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+              className={modalInputCls}
             />
           </div>
 
@@ -1340,13 +1374,13 @@ export function CockpitAndLoadTab({
       >
         <form noValidate onSubmit={handleReassignOperationMachine} className="space-y-4 text-xs">
           <div>
-            <label className="mb-1.5 block font-bold uppercase text-slate-400">
+            <label className="mb-1.5 block font-bold uppercase text-slate-700">
               Chọn nguyên công đang gán trên {reassignModalMachine?.machineName}
             </label>
             <select
               value={selectedReassignNcId}
               onChange={(e) => setSelectedReassignNcId(e.target.value)}
-              className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+              className={modalInputCls}
             >
               {(opsOnReassignMachine.length > 0 ? opsOnReassignMachine : bootstrap.operations).map(
                 (op) => (
@@ -1359,13 +1393,13 @@ export function CockpitAndLoadTab({
           </div>
 
           <div>
-            <label className="mb-1.5 block font-bold uppercase text-slate-400">
+            <label className="mb-1.5 block font-bold uppercase text-slate-700">
               Chuyển sang máy nhận tải (ưu tiên máy &lt;80% tải)
             </label>
             <select
               value={targetMachineName}
               onChange={(e) => setTargetMachineName(e.target.value)}
-              className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-emerald-300"
+              className={`${modalInputCls} font-bold text-emerald-700`}
             >
               {bootstrap.machines.map((m) => {
                 const ml = loads.find((l) => l.machineId === m.id);
@@ -1397,11 +1431,11 @@ export function CockpitAndLoadTab({
         title="Xác Nhận Xóa Block Điều Độ Ca"
         maxWidthClass="max-w-md"
       >
-        <div className="space-y-4 text-sm text-slate-200">
+        <div className="space-y-4 text-sm text-slate-700">
           <p>
             Bạn có chắc muốn xóa lịch chạy máy{' '}
-            <strong className="text-sky-300">{deleteTargetSched?.machineName}</strong> cho đơn{' '}
-            <strong className="text-amber-300">{deleteTargetSched?.poId}</strong> (
+            <strong className="text-blue-700">{deleteTargetSched?.machineName}</strong> cho đơn{' '}
+            <strong className="text-amber-700">{deleteTargetSched?.poId}</strong> (
             {deleteTargetSched?.ncId})?
           </p>
           <div className="flex justify-end gap-2">

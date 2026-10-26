@@ -20,6 +20,10 @@ export const AUDITED_CLIENT_FILES: string[] = [
   'src/client/features/worker/FaiInspectionModal.tsx',
   'src/client/features/worker/TelegramLinkModal.tsx',
   'src/client/features/andon/AndonTvBoard.tsx',
+  'src/client/features/admin/AdminPortal.tsx',
+  'src/client/features/admin/tabs/CockpitAndLoadTab.tsx',
+  'src/client/features/admin/tabs/OrdersAndTravelerTab.tsx',
+  'src/client/features/admin/tabs/LogsQcTraceTab.tsx',
 ];
 
 const FORBIDDEN_DARK_SURFACE_PATTERNS: Array<{ label: string; regex: RegExp }> = [
@@ -216,5 +220,19 @@ describe('Bright Daylight Design System — Static Source Audit', () => {
     expect(andonSource).toContain('bg-[#EEF2F6]');
     expect(andonSource).toContain('text-slate-900');
     expect(withoutComments).not.toMatch(/₫|VNĐ|\bVND\b|đ\/s|Lương|Thu nhập/i);
+  });
+
+  it('AdminPortal uses Bright SaaS canvas/sidebar aligned to lg:top-[52px] and omits technical jargon (scrypt, Cloud Sync Outbox, 60fps)', () => {
+    const adminSource = readRepoFile('src/client/features/admin/AdminPortal.tsx');
+    const withoutComments = adminSource
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+
+    expect(withoutComments).not.toMatch(/\bscrypt\b/i);
+    expect(withoutComments).not.toMatch(/Cloud\s+Sync\s+Outbox/i);
+    expect(withoutComments).not.toMatch(/\b60fps\b/i);
+    expect(adminSource).toContain('bg-industrial-canvas');
+    expect(adminSource).toContain('text-slate-900');
+    expect(adminSource).toContain('lg:top-[52px]');
   });
 });

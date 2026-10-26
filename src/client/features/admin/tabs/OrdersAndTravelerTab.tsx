@@ -219,7 +219,9 @@ export function OrdersAndTravelerTab({
     setNewProductName(firstProd);
     setCustomProductMode(false);
     setNewQtyPo(20);
-    setNewMaterialLot(`LOT-VICO-${bootstrap.vietnamToday.replace(/-/g, '').slice(2)}-${randSuffix}`);
+    setNewMaterialLot(
+      `LOT-VICO-${bootstrap.vietnamToday.replace(/-/g, '').slice(2)}-${randSuffix}`
+    );
     setCreateOpen(true);
   };
 
@@ -265,9 +267,9 @@ export function OrdersAndTravelerTab({
         ? Math.min(po.stockQty, Math.max(1, po.remainQty))
         : Math.max(1, po.remainQty || 1);
     setDeliverQty(defaultDeliver);
-    setDeliverNote(`Phiếu xuất kho giao hàng đợt ${
-      deliveries.filter((d) => d.poId === po.poId).length + 1
-    }`);
+    setDeliverNote(
+      `Phiếu xuất kho giao hàng đợt ${deliveries.filter((d) => d.poId === po.poId).length + 1}`
+    );
   };
 
   const handleRecordDelivery = async (e: React.FormEvent) => {
@@ -336,26 +338,29 @@ export function OrdersAndTravelerTab({
     return deliveries.filter((d) => d.poId === deliverTargetPo.poId);
   }, [deliveries, deliverTargetPo]);
 
+  const modalInputCls =
+    'h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15';
+
   return (
     <div className="space-y-4">
       <Card noPadding>
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
           <div>
             <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-amber-400" />
-              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-50">
+              <Package className="h-5 w-5 text-blue-600" />
+              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">
                 Quản Lý Đơn Hàng PO, Lô Phôi Đầu Vào, Xuất Giao Kho &amp; Phiếu Công Nghệ QR
               </h2>
             </div>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Hiển thị 100% toàn bộ <strong className="text-amber-300">{orders.length} PO</strong>{' '}
+            <p className="mt-0.5 text-xs text-slate-500">
+              Hiển thị 100% toàn bộ <strong className="text-blue-700">{orders.length} PO</strong>{' '}
               (không cắt cụt 60 dòng). Đối soát SL Hoàn thành công đoạn Cuối vs SL Đã Xuất Giao Kho
               &amp; In Lệnh SX QR 1-Click.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="warning" size="md" onClick={openCreateModal}>
+            <Button variant="primary" size="md" onClick={openCreateModal}>
               <Plus className="h-4 w-4" />
               Tạo Đơn Hàng / PO Mới
             </Button>
@@ -363,7 +368,7 @@ export function OrdersAndTravelerTab({
         </div>
 
         {/* Smart Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-industrial-border bg-slate-950/60 px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 bg-slate-50/70 px-4 py-2.5">
           {(
             [
               ['ALL', `Tất cả (${filterCounts.all})`],
@@ -383,8 +388,8 @@ export function OrdersAndTravelerTab({
               }}
               className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${
                 filterMode === key
-                  ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                  : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:border-slate-500'
+                  ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               {label}
@@ -393,7 +398,7 @@ export function OrdersAndTravelerTab({
         </div>
 
         {/* Search & Customer Filter */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border bg-slate-950/30 px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
           <div className="relative min-w-[260px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -404,7 +409,7 @@ export function OrdersAndTravelerTab({
                 setPage(1);
               }}
               placeholder="Gõ Mã PO, Khách hàng, Tên bản vẽ SP (có hoặc không dấu), Mã lô phôi..."
-              className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
+              className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
             />
           </div>
 
@@ -414,7 +419,7 @@ export function OrdersAndTravelerTab({
               setCustomerFilter(e.target.value);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs font-semibold text-slate-200 focus:border-sky-400 focus:outline-none"
+            className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
           >
             <option value="ALL">Tất cả Khách hàng ({customersList.length})</option>
             {customersList.map((c) => (
@@ -428,8 +433,8 @@ export function OrdersAndTravelerTab({
         {/* Full PO Table */}
         <div className="max-h-[600px] overflow-auto">
           <table className="w-full min-w-[1220px] border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400 shadow">
-              <tr className="border-b border-industrial-border">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+              <tr>
                 <th className="px-3.5 py-2.5">Mã PO &amp; Lô Phôi</th>
                 <th className="px-3 py-2.5">Khách Hàng</th>
                 <th className="px-3 py-2.5">Sản Phẩm &amp; Quy Trình</th>
@@ -444,7 +449,7 @@ export function OrdersAndTravelerTab({
                 <th className="px-3.5 py-2.5 text-right">Thao Tác (Giao / QR / Truy Vết)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-industrial-border/60">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {pagedOrders.map((po) => {
                 const c = classifyPoHelpers(po);
                 const statusVariant = c.isDelivered
@@ -457,14 +462,30 @@ export function OrdersAndTravelerTab({
                         ? 'warning'
                         : 'neutral';
 
+                const finishRatioPct = Math.min(
+                  100,
+                  Math.max(
+                    0,
+                    Math.round(
+                      ((Math.max(po.finishedQty, po.deliveredQty) || 0) /
+                        Math.max(1, po.qtyPo || 1)) *
+                        100
+                    )
+                  )
+                );
+
                 return (
                   <tr
                     key={po.poId}
-                    className={`hover:bg-slate-800/40 ${c.isOverdue ? 'bg-red-950/10' : ''}`}
+                    className={`transition-colors ${
+                      c.isOverdue
+                        ? 'bg-rose-50/40 hover:bg-rose-50/70'
+                        : 'hover:bg-blue-50/40'
+                    }`}
                   >
                     <td className="px-3.5 py-2.5">
-                      <div className="font-mono-num font-extrabold text-amber-300">{po.poId}</div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
+                      <div className="font-mono-num font-bold text-blue-700">{po.poId}</div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
                         <span>{po.materialLot || 'LOT-VICO'}</span>
                         {po.faiStatus === 'PENDING_FAI' && (
                           <Badge variant="warning" className="text-[10px]">
@@ -479,12 +500,12 @@ export function OrdersAndTravelerTab({
                       </div>
                     </td>
 
-                    <td className="px-3 py-2.5 font-medium text-slate-200">{po.customer}</td>
+                    <td className="px-3 py-2.5 font-medium text-slate-700">{po.customer}</td>
 
                     <td className="px-3 py-2.5">
-                      <div className="font-bold text-sky-300">{po.productName}</div>
+                      <div className="font-bold text-slate-900">{po.productName}</div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px]">
-                        {po.spId && <span className="font-mono-num text-slate-400">{po.spId}</span>}
+                        {po.spId && <span className="font-mono-num text-slate-500">{po.spId}</span>}
                         {c.hasNoRouting ? (
                           <button
                             type="button"
@@ -494,45 +515,78 @@ export function OrdersAndTravelerTab({
                                 masterSearch: po.productName,
                               })
                             }
-                            className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-500/25"
+                            className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-100"
                           >
                             <Wrench className="h-3 w-3" /> Chưa có NC (+ Khai báo)
                           </button>
                         ) : (
-                          <span className="text-emerald-400">{c.opCount} công đoạn NC</span>
+                          <span className="font-medium text-emerald-700">
+                            {c.opCount} công đoạn NC
+                          </span>
                         )}
+                      </div>
+                      <div className="mt-1.5 flex max-w-[180px] items-center gap-1.5">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className={`h-full rounded-full ${
+                              finishRatioPct >= 100 || c.isDelivered
+                                ? 'bg-emerald-500'
+                                : 'bg-blue-600'
+                            }`}
+                            style={{ width: `${finishRatioPct}%` }}
+                          />
+                        </div>
+                        <span className="font-mono-num text-[10px] font-semibold text-slate-500">
+                          {finishRatioPct}%
+                        </span>
                       </div>
                     </td>
 
-                    <td className="font-mono-num px-2.5 py-2.5 text-center font-bold text-slate-100">
+                    <td className="font-mono-num px-2.5 py-2.5 text-center font-bold text-slate-900">
                       {formatNumber(po.qtyPo)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2.5 text-center font-semibold text-amber-300">
+                    <td
+                      className={`font-mono-num px-2.5 py-2.5 text-center ${
+                        po.wipQty > 0 ? 'font-semibold text-amber-700' : 'text-slate-400'
+                      }`}
+                    >
                       {formatNumber(po.wipQty)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2.5 text-center font-bold text-emerald-400">
+                    <td
+                      className={`font-mono-num px-2.5 py-2.5 text-center ${
+                        po.finishedQty > 0 ? 'font-bold text-emerald-700' : 'text-slate-400'
+                      }`}
+                    >
                       {formatNumber(po.finishedQty)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2.5 text-center font-bold text-cyan-300">
+                    <td
+                      className={`font-mono-num px-2.5 py-2.5 text-center ${
+                        po.stockQty > 0 ? 'font-bold text-blue-700' : 'text-slate-400'
+                      }`}
+                    >
                       {formatNumber(po.stockQty)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2.5 text-center font-bold text-sky-300">
+                    <td
+                      className={`font-mono-num px-2.5 py-2.5 text-center ${
+                        po.deliveredQty > 0 ? 'font-bold text-indigo-700' : 'text-slate-400'
+                      }`}
+                    >
                       {formatNumber(po.deliveredQty)}
                     </td>
                     <td
-                      className={`font-mono-num px-2.5 py-2.5 text-center font-extrabold ${
-                        po.remainQty > 0 ? 'text-red-400' : 'text-slate-500'
+                      className={`font-mono-num px-2.5 py-2.5 text-center ${
+                        po.remainQty > 0 ? 'font-extrabold text-rose-700' : 'text-slate-400'
                       }`}
                     >
                       {formatNumber(po.remainQty)}
                     </td>
 
                     <td className="font-mono-num px-3 py-2.5">
-                      <div className={c.isOverdue ? 'font-bold text-red-400' : 'text-slate-200'}>
+                      <div className={c.isOverdue ? 'font-bold text-rose-700' : 'text-slate-700'}>
                         {formatDateVn(po.dueDate)}
                       </div>
                       {c.isOverdue && (
-                        <div className="text-[10px] font-bold text-red-400">🔥 Quá hạn giao</div>
+                        <div className="text-[10px] font-bold text-rose-600">🔥 Quá hạn giao</div>
                       )}
                     </td>
 
@@ -560,7 +614,7 @@ export function OrdersAndTravelerTab({
                           }
                           title="In Phiếu Công Nghệ kèm Mã QR từng nguyên công"
                         >
-                          <Printer className="h-3.5 w-3.5 text-sky-300" />
+                          <Printer className="h-3.5 w-3.5 text-blue-600" />
                           🖨️ In Phiếu QR
                         </Button>
 
@@ -572,7 +626,7 @@ export function OrdersAndTravelerTab({
                               tracePoId: po.poId,
                             })
                           }
-                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-industrial-border bg-slate-900 px-2 text-xs font-semibold text-purple-300 hover:border-purple-400"
+                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-violet-700 transition-colors hover:border-violet-400 hover:bg-violet-50"
                           title="Truy vết 100% phôi - FAI - máy - công nhân - giao hàng"
                         >
                           <FileSearch className="h-3.5 w-3.5" />
@@ -581,7 +635,7 @@ export function OrdersAndTravelerTab({
                         <button
                           type="button"
                           onClick={() => openEditModal(po)}
-                          className="inline-flex h-8 items-center justify-center rounded-lg border border-industrial-border bg-slate-900 px-2 text-slate-300 hover:border-sky-400 hover:text-white"
+                          className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-300 bg-white px-2 text-slate-600 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
                           title="Chỉnh sửa thông tin PO"
                         >
                           <Edit3 className="h-3.5 w-3.5" />
@@ -615,10 +669,10 @@ export function OrdersAndTravelerTab({
         subtitle="Khai báo đầy đủ Mã lô phôi & Nhà cung cấp phôi đầu vào phục vụ truy vết nguồn gốc 100%"
         maxWidthClass="max-w-2xl"
       >
-        <form onSubmit={handleCreatePo} className="space-y-3.5 text-xs">
+        <form noValidate onSubmit={handleCreatePo} className="space-y-3.5 text-xs">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Mã Đơn Hàng / Lệnh PO (*)
               </label>
               <input
@@ -627,12 +681,12 @@ export function OrdersAndTravelerTab({
                 value={newPoId}
                 onChange={(e) => setNewPoId(e.target.value)}
                 placeholder="VD: PO2610-190"
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-bold text-amber-300"
+                className={`${modalInputCls} font-mono-num font-bold text-blue-700`}
               />
             </div>
 
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Khách Hàng (*)
               </label>
               <input
@@ -647,7 +701,7 @@ export function OrdersAndTravelerTab({
                     if (matchProd) setNewProductName(matchProd.productName);
                   }
                 }}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={modalInputCls}
               />
               <datalist id="gcck-po-customers">
                 {customersList.map((c) => (
@@ -659,14 +713,16 @@ export function OrdersAndTravelerTab({
 
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="font-bold uppercase text-slate-400">Tên Sản Phẩm / Bản Vẽ (*)</label>
+              <label className="font-bold uppercase text-slate-700">
+                Tên Sản Phẩm / Bản Vẽ (*)
+              </label>
               <button
                 type="button"
                 onClick={() => {
                   setCustomProductMode((v) => !v);
                   if (!customProductMode) setNewProductName('');
                 }}
-                className="text-[11px] font-bold text-sky-400 hover:underline"
+                className="text-[11px] font-bold text-blue-600 hover:underline"
               >
                 {customProductMode
                   ? '← Chọn từ danh mục 334+ SP có sẵn'
@@ -680,13 +736,13 @@ export function OrdersAndTravelerTab({
                 value={newProductName}
                 onChange={(e) => setNewProductName(e.target.value)}
                 placeholder="Nhập tên sản phẩm / mã bản vẽ mới..."
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-sky-300"
+                className={modalInputCls}
               />
             ) : (
               <select
                 value={newProductName}
                 onChange={(e) => setNewProductName(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-sky-300"
+                className={modalInputCls}
               >
                 {productsForSelectedCustomer.map((p) => (
                   <option key={p.spId} value={p.productName}>
@@ -699,21 +755,22 @@ export function OrdersAndTravelerTab({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 SL Đặt Hàng (*)
               </label>
               <input
                 type="number"
                 min={1}
+                step="any"
                 required
                 value={newQtyPo}
                 onChange={(e) => setNewQtyPo(Math.max(1, Number(e.target.value) || 1))}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-bold text-emerald-300"
+                className={`${modalInputCls} font-mono-num font-bold text-emerald-700`}
               />
             </div>
 
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Hạn Giao Hàng (*)
               </label>
               <input
@@ -721,27 +778,27 @@ export function OrdersAndTravelerTab({
                 required
                 value={newDueDate}
                 onChange={(e) => setNewDueDate(e.target.value)}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={`${modalInputCls} font-mono-num`}
               />
             </div>
 
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Ngày Nhập / Đúc Phôi
               </label>
               <input
                 type="date"
                 value={newCastDate}
                 onChange={(e) => setNewCastDate(e.target.value)}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={`${modalInputCls} font-mono-num`}
               />
             </div>
           </div>
 
           {/* Traceability Material Lot & Supplier */}
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-sky-500/30 bg-sky-950/15 p-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block font-bold uppercase text-sky-300">
+              <label className="mb-1 block font-bold uppercase text-blue-800">
                 🧬 Mã Lô Phôi Đầu Vào (Heat / Lot No.)
               </label>
               <input
@@ -749,11 +806,11 @@ export function OrdersAndTravelerTab({
                 value={newMaterialLot}
                 onChange={(e) => setNewMaterialLot(e.target.value)}
                 placeholder="VD: LOT-VICO-2610-088"
-                className="font-mono-num h-9 w-full rounded-lg border border-industrial-border bg-slate-950 px-3 font-semibold text-slate-100"
+                className="font-mono-num h-9 w-full rounded-lg border border-slate-300 bg-white px-3 font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-sky-300">
+              <label className="mb-1 block font-bold uppercase text-blue-800">
                 🏭 Nhà Cung Cấp Phôi / Xưởng Đúc
               </label>
               <input
@@ -761,19 +818,21 @@ export function OrdersAndTravelerTab({
                 value={newSupplierName}
                 onChange={(e) => setNewSupplierName(e.target.value)}
                 placeholder="VD: Xưởng Đúc VICO Thắng Lợi"
-                className="h-9 w-full rounded-lg border border-industrial-border bg-slate-950 px-3 font-semibold text-slate-100"
+                className="h-9 w-full rounded-lg border border-slate-300 bg-white px-3 font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block font-bold uppercase text-slate-400">Ghi Chú Đơn Hàng</label>
+            <label className="mb-1 block font-bold uppercase text-slate-700">
+              Ghi Chú Đơn Hàng
+            </label>
             <input
               type="text"
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
               placeholder="Giao thành 2 đợt, yêu cầu chứng chỉ siêu âm mối đúc..."
-              className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+              className={modalInputCls}
             />
           </div>
 
@@ -781,7 +840,7 @@ export function OrdersAndTravelerTab({
             <Button variant="secondary" onClick={() => setCreateOpen(false)}>
               Hủy
             </Button>
-            <Button type="submit" variant="warning" disabled={creatingPo}>
+            <Button type="submit" variant="primary" disabled={creatingPo}>
               <QrCode className="h-4 w-4" />
               {creatingPo ? 'Đang lưu...' : 'Lưu Lệnh PO Mới'}
             </Button>
@@ -803,36 +862,36 @@ export function OrdersAndTravelerTab({
       >
         {deliverTargetPo && (
           <div className="space-y-4 text-xs">
-            <div className="grid grid-cols-4 gap-2 rounded-xl border border-industrial-border bg-slate-950 p-3 text-center">
+            <div className="grid grid-cols-4 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
               <div>
-                <div className="text-[11px] text-slate-400">SL Đặt PO</div>
-                <div className="font-mono-num text-base font-extrabold text-slate-100">
+                <div className="text-[11px] font-medium text-slate-500">SL Đặt PO</div>
+                <div className="font-mono-num text-base font-extrabold text-slate-900">
                   {deliverTargetPo.qtyPo}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-400">Xong CK (End)</div>
-                <div className="font-mono-num text-base font-extrabold text-emerald-400">
+                <div className="text-[11px] font-medium text-slate-500">Xong CK (End)</div>
+                <div className="font-mono-num text-base font-extrabold text-emerald-700">
                   {deliverTargetPo.finishedQty}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-400">Đã Xuất Giao</div>
-                <div className="font-mono-num text-base font-extrabold text-sky-400">
+                <div className="text-[11px] font-medium text-slate-500">Đã Xuất Giao</div>
+                <div className="font-mono-num text-base font-extrabold text-blue-700">
                   {deliverTargetPo.deliveredQty}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-400">Còn Nợ Khách</div>
-                <div className="font-mono-num text-base font-extrabold text-red-400">
+                <div className="text-[11px] font-medium text-slate-500">Còn Nợ Khách</div>
+                <div className="font-mono-num text-base font-extrabold text-rose-700">
                   {deliverTargetPo.remainQty}
                 </div>
               </div>
             </div>
 
             {deliverQty > deliverTargetPo.stockQty && deliverTargetPo.stockQty >= 0 && (
-              <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-2.5 text-amber-200">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-amber-900">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                 <span>
                   Lưu ý: SL xuất giao ({deliverQty}) lớn hơn Tồn kho thành phẩm hiện ghi nhận ở công
                   đoạn cuối ({deliverTargetPo.stockQty} SP). Vẫn cho phép xuất nếu lấy từ tồn đầu kỳ.
@@ -840,23 +899,24 @@ export function OrdersAndTravelerTab({
               </div>
             )}
 
-            <form onSubmit={handleRecordDelivery} className="space-y-3">
+            <form noValidate onSubmit={handleRecordDelivery} className="space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="mb-1 block font-bold uppercase text-slate-400">
+                  <label className="mb-1 block font-bold uppercase text-slate-700">
                     SL Giao Đợt Này (*)
                   </label>
                   <input
                     type="number"
                     min={1}
+                    step="any"
                     required
                     value={deliverQty}
                     onChange={(e) => setDeliverQty(Math.max(1, Number(e.target.value) || 1))}
-                    className="font-mono-num h-10 w-full rounded-xl border border-emerald-500/50 bg-slate-950 px-3 text-base font-extrabold text-emerald-300"
+                    className="font-mono-num h-10 w-full rounded-xl border border-emerald-400 bg-white px-3 text-base font-extrabold text-emerald-700 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="mb-1 block font-bold uppercase text-slate-400">
+                  <label className="mb-1 block font-bold uppercase text-slate-700">
                     Số Phiếu Xuất / Biển Số Xe / Ghi Chú
                   </label>
                   <input
@@ -864,7 +924,7 @@ export function OrdersAndTravelerTab({
                     value={deliverNote}
                     onChange={(e) => setDeliverNote(e.target.value)}
                     placeholder="VD: PXK-2610-09, Xe 15C-123.45 nhận hàng..."
-                    className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+                    className={modalInputCls}
                   />
                 </div>
               </div>
@@ -881,18 +941,18 @@ export function OrdersAndTravelerTab({
             </form>
 
             {/* Delivery History for this PO */}
-            <div className="border-t border-industrial-border pt-3">
-              <div className="mb-2 font-bold uppercase tracking-wider text-slate-400">
+            <div className="border-t border-slate-200 pt-3">
+              <div className="mb-2 font-bold uppercase tracking-wider text-slate-600">
                 📜 Lịch Sử Các Đợt Đã Xuất Giao ({targetPoDeliveries.length} đợt)
               </div>
               {targetPoDeliveries.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-industrial-border p-3 text-center text-slate-500">
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 p-3 text-center text-slate-500">
                   Chưa có đợt giao hàng nào được ghi nhận cho đơn {deliverTargetPo.poId}.
                 </div>
               ) : (
-                <div className="max-h-44 overflow-y-auto rounded-lg border border-industrial-border">
+                <div className="max-h-44 overflow-y-auto rounded-lg border border-slate-200 bg-white">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950 text-[11px] text-slate-400">
+                    <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600">
                       <tr>
                         <th className="px-2.5 py-1.5">Thời gian xuất</th>
                         <th className="px-2.5 py-1.5 text-center">SL Giao</th>
@@ -900,17 +960,19 @@ export function OrdersAndTravelerTab({
                         <th className="px-2.5 py-1.5">Ghi chú</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-industrial-border/50">
+                    <tbody className="divide-y divide-slate-100 bg-white">
                       {targetPoDeliveries.map((d) => (
                         <tr key={d.id}>
-                          <td className="font-mono-num px-2.5 py-1.5 text-slate-300">
+                          <td className="font-mono-num px-2.5 py-1.5 text-slate-600">
                             {d.deliveredAt}
                           </td>
-                          <td className="font-mono-num px-2.5 py-1.5 text-center font-bold text-emerald-400">
+                          <td className="font-mono-num px-2.5 py-1.5 text-center font-bold text-emerald-700">
                             +{d.qtyDeliver}
                           </td>
-                          <td className="px-2.5 py-1.5 text-slate-200">{d.deliveredBy}</td>
-                          <td className="px-2.5 py-1.5 text-slate-400">{d.note || '—'}</td>
+                          <td className="px-2.5 py-1.5 font-medium text-slate-800">
+                            {d.deliveredBy}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-slate-500">{d.note || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -930,59 +992,60 @@ export function OrdersAndTravelerTab({
         subtitle={editTargetPo?.productName}
         maxWidthClass="max-w-lg"
       >
-        <form onSubmit={handleSaveEditPo} className="space-y-3 text-xs">
+        <form noValidate onSubmit={handleSaveEditPo} className="space-y-3 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">SL Đặt PO</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">SL Đặt PO</label>
               <input
                 type="number"
                 min={1}
+                step="any"
                 value={editQtyPo}
                 onChange={(e) => setEditQtyPo(Math.max(1, Number(e.target.value) || 1))}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-bold text-slate-100"
+                className={`${modalInputCls} font-mono-num font-bold`}
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Hạn Giao</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Hạn Giao</label>
               <input
                 type="date"
                 value={editDueDate}
                 onChange={(e) => setEditDueDate(e.target.value)}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                className={`${modalInputCls} font-mono-num`}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Mã Lô Phôi</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Mã Lô Phôi</label>
               <input
                 type="text"
                 value={editMaterialLot}
                 onChange={(e) => setEditMaterialLot(e.target.value)}
-                className="font-mono-num h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+                className={`${modalInputCls} font-mono-num`}
               />
             </div>
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">
+              <label className="mb-1 block font-bold uppercase text-slate-700">
                 Nhà Cung Cấp Phôi
               </label>
               <input
                 type="text"
                 value={editSupplierName}
                 onChange={(e) => setEditSupplierName(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+                className={modalInputCls}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block font-bold uppercase text-slate-400">Độ ưu tiên</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Độ ưu tiên</label>
               <select
                 value={editPriority}
                 onChange={(e) => setEditPriority(Number(e.target.value))}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-2.5 text-slate-100"
+                className={modalInputCls}
               >
                 <option value={1}>1 — Khẩn cấp (VIP)</option>
                 <option value={2}>2 — Bình thường</option>
@@ -990,12 +1053,12 @@ export function OrdersAndTravelerTab({
               </select>
             </div>
             <div className="col-span-2">
-              <label className="mb-1 block font-bold uppercase text-slate-400">Ghi chú</label>
+              <label className="mb-1 block font-bold uppercase text-slate-700">Ghi chú</label>
               <input
                 type="text"
                 value={editNote}
                 onChange={(e) => setEditNote(e.target.value)}
-                className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 text-slate-100"
+                className={modalInputCls}
               />
             </div>
           </div>
