@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { Card } from '../../src/client/components/ui/IndustrialPrimitives';
 
 const ROOT_DIR = path.resolve(__dirname, '../..');
 
@@ -8,23 +11,28 @@ function readRepoFile(relPath: string): string {
   return fs.readFileSync(path.join(ROOT_DIR, relPath), 'utf8');
 }
 
-export const AUDITED_CLIENT_FILES: string[] = [
-  'src/client/App.tsx',
-  'src/client/components/ui/IndustrialPrimitives.tsx',
-  'src/client/components/TopRoleBar.tsx',
-  'src/client/context/AuthContext.tsx',
-  'src/client/features/print/JobTravelerPrint.tsx',
-  'src/client/features/worker/WorkerPortal.tsx',
-  'src/client/features/worker/SearchablePickerSheet.tsx',
-  'src/client/features/worker/QrScannerModal.tsx',
-  'src/client/features/worker/FaiInspectionModal.tsx',
-  'src/client/features/worker/TelegramLinkModal.tsx',
-  'src/client/features/andon/AndonTvBoard.tsx',
-  'src/client/features/admin/AdminPortal.tsx',
-  'src/client/features/admin/tabs/CockpitAndLoadTab.tsx',
-  'src/client/features/admin/tabs/OrdersAndTravelerTab.tsx',
-  'src/client/features/admin/tabs/LogsQcTraceTab.tsx',
-];
+function discoverClientFiles(relDir: string = 'src/client'): string[] {
+  const absDir = path.join(ROOT_DIR, relDir);
+  const results: string[] = [];
+
+  function walk(currentAbs: string) {
+    const entries = fs.readdirSync(currentAbs, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentAbs, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && /\.(?:ts|tsx)$/.test(entry.name)) {
+        const rel = path.relative(ROOT_DIR, fullPath).split(path.sep).join('/');
+        results.push(rel);
+      }
+    }
+  }
+
+  walk(absDir);
+  return results.sort();
+}
+
+export const AUDITED_CLIENT_FILES: string[] = discoverClientFiles('src/client');
 
 const FORBIDDEN_DARK_SURFACE_PATTERNS: Array<{ label: string; regex: RegExp }> = [
   {
@@ -50,12 +58,12 @@ const FORBIDDEN_DARK_SURFACE_PATTERNS: Array<{ label: string; regex: RegExp }> =
   {
     label: 'dark gradient stop (from/via/to-*-900|950)',
     regex:
-      /\b(?:from|via|to)-(?:slate|gray|zinc|sky|blue|cyan|teal|emerald|green|amber|yellow|orange|red|rose|purple|violet|indigo)-9[05]0\b/g,
+      /\b(?:from|via|to)-(?:slate|gray|zinc|sky|blue|cyan|teal|emerald|green|amber|yellow|orange|red|rose|pink|fuchsia|purple|violet|indigo)-9[05]0\b/g,
   },
   {
     label: 'dark tinted surface (bg-*-900|950)',
     regex:
-      /\bbg-(?:sky|blue|cyan|teal|emerald|green|amber|yellow|orange|red|rose|purple|violet|indigo)-9[05]0\b/g,
+      /\bbg-(?:sky|blue|cyan|teal|emerald|green|amber|yellow|orange|red|rose|pink|fuchsia|purple|violet|indigo)-9[05]0\b/g,
   },
   {
     label: 'dark black backdrop/overlay (bg-black/40..95)',
@@ -75,7 +83,7 @@ const FORBIDDEN_LIGHT_TEXT_PATTERNS: Array<{ label: string; regex: RegExp }> = [
   {
     label: 'washed-out semantic text on light surface (text-*-50..400)',
     regex:
-      /\btext-(?:sky|blue|cyan|teal|emerald|green|amber|yellow|orange|red|rose|purple|violet|indigo)-(?:50|100|200|300|400)\b/g,
+      /\btext-(?:sky|blue|cyan|teal|emerald|green|amber|yellow|orange|red|rose|pink|fuchsia|purple|violet|indigo)-(?:50|100|200|300|400)\b/g,
   },
 ];
 
@@ -101,6 +109,13 @@ function collectPatternMatches(
 }
 
 describe('Bright Daylight Design System — Static Source Audit', () => {
+  it('recursively discovers and audits 100% of .ts and .tsx files in src/client/ (>= 18 files)', () => {
+    expect(AUDITED_CLIENT_FILES.length).toBeGreaterThanOrEqual(18);
+    expect(AUDITED_CLIENT_FILES).toContain('src/client/features/admin/tabs/CostingPnlTab.tsx');
+    expect(AUDITED_CLIENT_FILES).toContain('src/client/features/admin/tabs/AttendancePayrollTab.tsx');
+    expect(AUDITED_CLIENT_FILES).toContain('src/client/features/admin/tabs/MasterAndConfigTab.tsx');
+  });
+
   it('configures index.html for Bright Daylight mode without dark class or light-on-dark body text', () => {
     const html = readRepoFile('index.html');
 
@@ -134,6 +149,28 @@ describe('Bright Daylight Design System — Static Source Audit', () => {
     expect(tw).toMatch(/accent:\s*['"]#2563EB['"]/i);
     expect(tw).toMatch(/boxShadow:\s*\{[\s\S]*?\bcard:\s*['"][^'"]+['"]/);
     expect(tw).toMatch(/boxShadow:\s*\{[\s\S]*?\belevated:\s*['"][^'"]+['"]/);
+  });
+
+  it('Card primitive avoids Tailwind v3 bg-white / border-slate-200 cascade conflicts when tinted classes are passed', () => {
+    const defaultHtml = renderToStaticMarkup(React.createElement(Card, null, 'Default'));
+    expect(defaultHtml).toContain('bg-white');
+    expect(defaultHtml).toContain('border-slate-200');
+
+    const tintedHtml = renderToStaticMarkup(
+      React.createElement(Card, { className: 'bg-amber-50/50 border-amber-200' }, 'Tinted')
+    );
+    expect(tintedHtml).toContain('bg-amber-50/50');
+    expect(tintedHtml).toContain('border-amber-200');
+    expect(tintedHtml).not.toContain('bg-white');
+    expect(tintedHtml).not.toContain('border-slate-200');
+
+    const leftAccentHtml = renderToStaticMarkup(
+      React.createElement(Card, { className: 'border-l-4 border-l-blue-600' }, 'Accent')
+    );
+    expect(leftAccentHtml).toContain('bg-white');
+    expect(leftAccentHtml).toContain('border-slate-200');
+    expect(leftAccentHtml).toContain('border-l-4');
+    expect(leftAccentHtml).toContain('border-l-blue-600');
   });
 
   describe.each(AUDITED_CLIENT_FILES)('Client component audit: %s', (relPath) => {
@@ -234,5 +271,85 @@ describe('Bright Daylight Design System — Static Source Audit', () => {
     expect(adminSource).toContain('bg-industrial-canvas');
     expect(adminSource).toContain('text-slate-900');
     expect(adminSource).toContain('lg:top-[52px]');
+  });
+
+  it('CostingPnlTab preserves SP095 placeholder and zero-fake-margin WIP badge copy', () => {
+    const costingSource = readRepoFile('src/client/features/admin/tabs/CostingPnlTab.tsx');
+    expect(costingSource).toContain('SP095');
+    expect(costingSource).toContain('Đang WIP: {c.wipQty} (Xong: 0 SP)');
+  });
+
+  it('AttendancePayrollTab preserves 6 Radar cards, cell aria-labels, sync button, and uses opaque sticky left columns + z-30 corners on wide sheets', () => {
+    const attSource = readRepoFile('src/client/features/admin/tabs/AttendancePayrollTab.tsx');
+
+    for (const radarTitle of [
+      '🏆 Chuyên cần cao',
+      '⚡ Top Tăng ca',
+      '🚨 Có nghỉ KP',
+      '⏰ Đi muộn / Về sớm',
+      '🏖️ Nghỉ nhiều',
+      '🌙 Chuyên Ca 3 Đêm',
+    ]) {
+      expect(attSource).toContain(radarTitle);
+    }
+
+    expect(attSource).toContain('aria-label={`Chấm công ${empId} ngày ${dayIndex + 1}`}');
+    expect(attSource).toContain('Lưu Đồng Bộ');
+    expect(attSource).toContain('6. Bảng Chốt Lương Tháng KPI 3P');
+
+    // Sticky top-left corner headers on wide sheets (Sub-tab 1, Sub-tab 3, Sub-tab 6) use z-30 bg-slate-50
+    const z30Corners = attSource.match(/sticky\s+left-0\s+z-30\b[^\n"]*?\bbg-slate-50\b/g) || [];
+    expect(z30Corners.length).toBeGreaterThanOrEqual(3);
+
+    // Sticky left body cells use opaque bg-white group-hover:bg-blue-50 (never /40 translucent)
+    const opaqueStickyCells =
+      attSource.match(/sticky\s+left-0\s+z-10\b[^\n"]*?\bbg-white\b[^\n"]*?\bgroup-hover:bg-blue-50\b(?!\/)/g) || [];
+    expect(opaqueStickyCells.length).toBeGreaterThanOrEqual(3);
+    expect(attSource).not.toMatch(/sticky\s+left-0\s+z-10[^\n"]*\/40/);
+  });
+
+  it('MasterAndConfigTab removes SQLite ACID Master Store badge, drops Telegram column from Workers table, and tucks Webhook/Telegram/Cloud Outbox into default-closed <details> while keeping Strict PIN & primary save visible', () => {
+    const masterSource = readRepoFile('src/client/features/admin/tabs/MasterAndConfigTab.tsx');
+
+    expect(masterSource).not.toContain('SQLite ACID Master Store');
+    expect(masterSource).not.toMatch(/4\.\s*Cấu Hình Hệ Thống\s*&\s*Cloud Sync/i);
+    expect(masterSource).toContain('4. Cấu Hình Hệ Thống');
+
+    // Main Workers table should not have a Telegram column header
+    expect(masterSource).not.toMatch(/<th\b[^>]*>\s*Telegram\s*<\/th>/i);
+
+    const detailsBlocks = Array.from(
+      masterSource.matchAll(/<details\b([^>]*)>([\s\S]*?)<\/details>/g)
+    );
+    expect(detailsBlocks.length).toBeGreaterThanOrEqual(2);
+
+    // Ensure every <details> accordion is closed by default (no open attribute)
+    for (const match of detailsBlocks) {
+      expect(match[1]).not.toMatch(/\bopen\b/);
+    }
+
+    // Worker modal optional Telegram chatId is tucked inside <details>
+    expect(detailsBlocks.some((m) => m[2].includes('wChatId'))).toBe(true);
+
+    // System Config Webhook + Telegram Bot + Cloud Outbox queue are tucked inside <details>
+    const integrationDetails = detailsBlocks.find(
+      (m) =>
+        m[2].includes('WEB_APP_URL') &&
+        m[2].includes('TELEGRAM_BOT_TOKEN') &&
+        m[2].includes('outboxItems')
+    );
+    expect(
+      integrationDetails,
+      'Expected WEB_APP_URL, TELEGRAM_BOT_TOKEN, and outboxItems to be tucked inside a default-closed <details> block'
+    ).toBeDefined();
+
+    // Outside <details> in JSX: Strict PIN Mode button AND primary Lưu Cấu Hình Hệ Thống submit button remain visible
+    const jsxSection = masterSource.slice(masterSource.indexOf('return ('));
+    const outsideDetailsJsx = jsxSection.replace(/<details\b[\s\S]*?<\/details>/g, '');
+    expect(outsideDetailsJsx).toContain('Bật Strict PIN Mode');
+    expect(outsideDetailsJsx).toContain('Lưu Cấu Hình Hệ Thống');
+    expect(outsideDetailsJsx).not.toContain('WEB_APP_URL');
+    expect(outsideDetailsJsx).not.toContain('TELEGRAM_BOT_TOKEN');
+    expect(outsideDetailsJsx).not.toContain('outboxItems');
   });
 });

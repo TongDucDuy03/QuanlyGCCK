@@ -4,7 +4,6 @@ import {
   Calculator,
   CheckCircle2,
   CloudUpload,
-  Cog,
   Cpu,
   Download,
   Edit3,
@@ -107,7 +106,10 @@ const TOOL_SWAP_REASONS = [
   'Gãy dao / vỡ mảnh sự cố (cần lập biên bản)',
 ];
 
-const MACHINE_STATUS_LABELS: Record<MachineStatus, { label: string; badge: 'success' | 'warning' | 'danger' | 'neutral' | 'purple' }> = {
+const MACHINE_STATUS_LABELS: Record<
+  MachineStatus,
+  { label: string; badge: 'success' | 'warning' | 'danger' | 'neutral' | 'purple' }
+> = {
   RUNNING: { label: 'ĐANG CHẠY', badge: 'success' },
   SETUP: { label: 'ĐANG GÁ ĐẶT', badge: 'warning' },
   STOPPED: { label: 'DỪNG SỰ CỐ', badge: 'danger' },
@@ -525,7 +527,10 @@ export function MasterAndConfigTab({
         {
           status: editMachStatus,
           costPerHour: Math.max(50000, Number(editMachCostHour) || 250000),
-          stopReason: editMachStatus === 'STOPPED' || editMachStatus === 'MAINTENANCE' ? editMachStopReason.trim() : '',
+          stopReason:
+            editMachStatus === 'STOPPED' || editMachStatus === 'MAINTENANCE'
+              ? editMachStopReason.trim()
+              : '',
         }
       );
       setMachines(res.items || []);
@@ -684,7 +689,7 @@ export function MasterAndConfigTab({
       setWorkers(res.workers || []);
       toast.success(
         editingWorkerMode
-          ? `Đã cập nhật hồ sơ nhân sự ${wName.trim()}${wPin.trim() ? ' & đổi PIN scrypt mới' : ''}.`
+          ? `Đã cập nhật hồ sơ nhân sự ${wName.trim()}${wPin.trim() ? ' & đổi mã PIN mới' : ''}.`
           : `Đã tạo tài khoản nhân sự ${wName.trim()} (${wId.trim()}).`
       );
       setWorkerModalOpen(false);
@@ -696,7 +701,7 @@ export function MasterAndConfigTab({
     }
   };
 
-  // ==================== SUB-TAB 4: SYSTEM CONFIG & CLOUD SYNC OUTBOX ====================
+  // ==================== SUB-TAB 4: SYSTEM CONFIG & OPTIONAL INTEGRATIONS ====================
   const [cfgLoading, setCfgLoading] = useState(false);
   const [savingCfg, setSavingCfg] = useState(false);
   const [showBotToken, setShowBotToken] = useState(false);
@@ -791,31 +796,34 @@ export function MasterAndConfigTab({
       }>('/sync/flush', {});
       setOutboxItems(res.items || []);
       toast.success(
-        `Đồng bộ Outbox hoàn tất: Gửi ${res.sentCount ?? 0} | Bỏ qua ${res.skippedCount ?? 0} | Lỗi ${res.failedCount ?? 0}`
+        `Đồng bộ đám mây hoàn tất: Gửi ${res.sentCount ?? 0} | Bỏ qua ${res.skippedCount ?? 0} | Lỗi ${res.failedCount ?? 0}`
       );
     } catch (err: any) {
-      toast.error(err?.message || 'Lỗi đẩy hàng đợi đồng bộ Cloud.');
+      toast.error(err?.message || 'Lỗi đẩy hàng đợi đồng bộ đám mây.');
     } finally {
       setFlushingOutbox(false);
     }
   };
 
+  const fieldInputCls =
+    'min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15';
+
   return (
     <div className="space-y-4">
       {/* SUB-TAB NAVIGATION BAR */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-industrial-border bg-industrial-surface p-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-card">
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => setSubTab('OPS')}
             className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
               subTab === 'OPS'
-                ? 'bg-sky-500 text-slate-950 shadow'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <Wrench className="h-4 w-4" />
-            1. Nguyên Công Master ({operations.length} NC)
+            1. Định Mức Công Nghệ ({operations.length} NC)
           </button>
 
           <button
@@ -823,12 +831,12 @@ export function MasterAndConfigTab({
             onClick={() => setSubTab('MACHINES_TOOLS')}
             className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
               subTab === 'MACHINES_TOOLS'
-                ? 'bg-sky-500 text-slate-950 shadow'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <Cpu className="h-4 w-4" />
-            2. Máy Móc ({machines.length}) & Tủ Dao 1-Đổi-1 ({tools.length} mã)
+            2. Máy Móc ({machines.length}) &amp; Tủ Dao ({tools.length} mã)
           </button>
 
           <button
@@ -836,12 +844,12 @@ export function MasterAndConfigTab({
             onClick={() => setSubTab('WORKERS')}
             className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
               subTab === 'WORKERS'
-                ? 'bg-sky-500 text-slate-950 shadow'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <Users className="h-4 w-4" />
-            3. Nhân Sự & Tài Khoản PIN ({workers.length})
+            3. Nhân Sự &amp; Tài Khoản PIN ({workers.length})
           </button>
 
           <button
@@ -849,20 +857,18 @@ export function MasterAndConfigTab({
             onClick={() => setSubTab('CONFIG')}
             className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
               subTab === 'CONFIG'
-                ? 'bg-sky-500 text-slate-950 shadow'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            <Cog className="h-4 w-4" />
-            4. Cấu Hình Hệ Thống & Cloud Sync
+            ⚙️ 4. Cấu Hình Hệ Thống
           </button>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-400 px-2">
+        <div className="flex items-center gap-2 px-2 text-xs text-slate-600">
           <Badge variant={authMode === 'STRICT_PIN' ? 'warning' : 'info'}>
             {authMode === 'STRICT_PIN' ? '🔒 STRICT PIN' : '⚡ DEMO QUICK'}
           </Badge>
-          <span>SQLite ACID Master Store</span>
         </div>
       </div>
 
@@ -872,11 +878,12 @@ export function MasterAndConfigTab({
           <Card className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-slate-100">
-                  Danh Mục Quy Trình & Định Mức Nguyên Công ({operations.length} NC)
+                <h2 className="text-base font-bold text-slate-900">
+                  Danh Mục Quy Trình &amp; Định Mức Nguyên Công ({operations.length} NC)
                 </h2>
-                <p className="text-xs text-slate-400">
-                  Tự động đánh thứ tự Bước 1..N, khóa chốt Thành phẩm tại bước cuối cùng và tính đơn giá tiêu chuẩn Giờ công / Máy / Dao cụ.
+                <p className="text-xs text-slate-500">
+                  Tự động đánh thứ tự Bước 1..N, khóa chốt Thành phẩm tại bước cuối cùng và tính đơn
+                  giá tiêu chuẩn Giờ công / Máy / Dao cụ.
                 </p>
               </div>
 
@@ -892,7 +899,7 @@ export function MasterAndConfigTab({
                       .catch((e) => toast.error(String(e)));
                   }}
                 >
-                  <Download className="h-4 w-4 text-emerald-400" />
+                  <Download className="h-4 w-4 text-emerald-600" />
                   📄 Tải File Excel Mẫu (7 cột)
                 </Button>
 
@@ -910,7 +917,7 @@ export function MasterAndConfigTab({
                       size="sm"
                       onClick={() => xlsxInputRef.current?.click()}
                     >
-                      <Upload className="h-4 w-4 text-sky-400" />
+                      <Upload className="h-4 w-4 text-blue-600" />
                       Nạp từ Excel (.xlsx)
                     </Button>
 
@@ -930,13 +937,13 @@ export function MasterAndConfigTab({
             {/* Search & Filters */}
             <div className="grid grid-cols-1 gap-2.5 md:grid-cols-12">
               <div className="relative md:col-span-5">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
                   value={opSearch}
                   onChange={(e) => setOpSearch(e.target.value)}
                   placeholder="Tìm không dấu: mã NC, SP, tên chi tiết, nguyên công, máy, dao cụ..."
-                  className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none"
+                  className="min-h-[40px] w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                 />
               </div>
 
@@ -944,7 +951,7 @@ export function MasterAndConfigTab({
                 <select
                   value={opCustomerFilter}
                   onChange={(e) => setOpCustomerFilter(e.target.value)}
-                  className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+                  className="min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
                 >
                   <option value="ALL">Tất cả Khách hàng ({uniqueCustomers.length})</option>
                   {uniqueCustomers.map((c) => (
@@ -959,7 +966,7 @@ export function MasterAndConfigTab({
                 <select
                   value={opMachineFilter}
                   onChange={(e) => setOpMachineFilter(e.target.value)}
-                  className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+                  className="min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
                 >
                   <option value="ALL">Tất cả Máy ({machines.length})</option>
                   {machines.map((m) => (
@@ -976,11 +983,11 @@ export function MasterAndConfigTab({
                   onClick={() => setOpCriticalOnly((v) => !v)}
                   className={`flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition-colors ${
                     opCriticalOnly
-                      ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                      : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:bg-slate-700'
+                      ? 'border-amber-500 bg-amber-50 text-amber-800'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <Star className="h-3.5 w-3.5 text-amber-400" />
+                  <Star className="h-3.5 w-3.5 text-amber-500" />
                   Điểm đo ★ Kiểm chặt
                 </button>
               </div>
@@ -990,19 +997,19 @@ export function MasterAndConfigTab({
           <Card noPadding className="overflow-hidden">
             <div className="max-h-[620px] overflow-auto">
               <table className="w-full border-collapse text-left text-xs">
-                <thead className="sticky top-0 z-20 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-300 backdrop-blur">
-                  <tr className="border-b border-industrial-border">
+                <thead className="sticky top-0 z-20 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600 shadow-sm">
+                  <tr className="border-b border-slate-200">
                     <th className="px-3 py-2.5">Mã NC / SP</th>
-                    <th className="px-3 py-2.5">Khách hàng & Tên Sản Phẩm</th>
-                    <th className="px-3 py-2.5">Thứ tự & Tên Nguyên Công</th>
+                    <th className="px-3 py-2.5">Khách hàng &amp; Tên Sản Phẩm</th>
+                    <th className="px-3 py-2.5">Thứ tự &amp; Tên Nguyên Công</th>
                     <th className="px-3 py-2.5 text-right">ĐM Giây (Giờ)</th>
                     <th className="px-3 py-2.5">Máy Mặc Định</th>
-                    <th className="px-3 py-2.5">Dao Cụ & Chế Độ Cắt</th>
+                    <th className="px-3 py-2.5">Dao Cụ &amp; Chế Độ Cắt</th>
                     <th className="px-3 py-2.5 text-right">Đơn Giá ĐM/SP</th>
                     <th className="px-3 py-2.5 text-center">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-200 bg-white">
                   {pagedOperations.map((op) => {
                     const stdUnitSum =
                       Number(op.stdLaborCost || 0) +
@@ -1011,21 +1018,21 @@ export function MasterAndConfigTab({
                     return (
                       <tr
                         key={op.ncId}
-                        className="hover:bg-slate-800/50 transition-colors"
+                        className="transition-colors hover:bg-blue-50/50"
                       >
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <div className="font-mono-num font-bold text-sky-300">
+                        <td className="whitespace-nowrap px-3 py-2.5">
+                          <div className="font-mono-num font-bold text-blue-700">
                             {op.ncId}
                           </div>
-                          <div className="font-mono-num text-[11px] text-slate-400">
+                          <div className="font-mono-num text-[11px] text-slate-500">
                             {op.spId}
                           </div>
                         </td>
                         <td className="px-3 py-2.5">
-                          <div className="font-semibold text-slate-100">
+                          <div className="font-semibold text-slate-900">
                             {op.productName}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-slate-500">
                             {op.customer} · {op.matName}
                           </div>
                         </td>
@@ -1039,36 +1046,36 @@ export function MasterAndConfigTab({
                               <Badge variant="warning">★ Kiểm chặt ±0.01</Badge>
                             )}
                           </div>
-                          <div className="mt-1 font-medium text-slate-200">
+                          <div className="mt-1 font-medium text-slate-800">
                             {op.opName}
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-right font-mono-num whitespace-nowrap">
-                          <div className="font-bold text-emerald-300">
+                        <td className="font-mono-num whitespace-nowrap px-3 py-2.5 text-right">
+                          <div className="font-bold text-emerald-700">
                             {formatNumber(op.stdSeconds)}s
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-slate-500">
                             {(op.stdSeconds / 3600).toFixed(2)}h
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-2.5">
                           <Badge variant="info">{op.defaultMachine}</Badge>
                         </td>
                         <td className="px-3 py-2.5">
-                          <div className="font-mono-num font-semibold text-amber-300">
+                          <div className="font-mono-num font-semibold text-amber-800">
                             {op.toolCode}{' '}
                             {op.toolName ? (
-                              <span className="font-sans font-normal text-slate-300">
+                              <span className="font-sans font-normal text-slate-600">
                                 — {op.toolName}
                               </span>
                             ) : null}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-slate-500">
                             {op.cuttingRec || 'Vc=100m/p | f=0.15mm/v'}
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-right font-mono-num whitespace-nowrap">
-                          <div className="font-semibold text-slate-100">
+                        <td className="font-mono-num whitespace-nowrap px-3 py-2.5 text-right">
+                          <div className="font-semibold text-slate-900">
                             {formatVnd(stdUnitSum)}
                           </div>
                           <div className="text-[10px] text-slate-500">
@@ -1076,13 +1083,13 @@ export function MasterAndConfigTab({
                             {formatNumber(op.stdMachCost)}
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-center">
                           <div className="inline-flex items-center gap-1">
                             {canManageOps && (
                               <button
                                 type="button"
                                 onClick={() => openEditOpModal(op)}
-                                className="inline-flex h-7 items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/15 px-2 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/25"
+                                className="inline-flex h-7 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100"
                                 title="Sửa định mức & máy mặc định"
                               >
                                 <Edit3 className="h-3 w-3" /> Sửa
@@ -1092,7 +1099,7 @@ export function MasterAndConfigTab({
                               <button
                                 type="button"
                                 onClick={() => setDeletingOp(op)}
-                                className="inline-flex h-7 items-center gap-1 rounded-md border border-red-500/40 bg-red-500/15 px-2 text-[11px] font-semibold text-red-300 hover:bg-red-500/25"
+                                className="inline-flex h-7 items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 text-[11px] font-semibold text-rose-700 transition-colors hover:bg-rose-100"
                                 title="Xóa nguyên công"
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -1105,7 +1112,7 @@ export function MasterAndConfigTab({
                   })}
                   {pagedOperations.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
+                      <td colSpan={8} className="py-10 text-center text-sm text-slate-500">
                         Không tìm thấy nguyên công phù hợp bộ lọc.
                       </td>
                     </tr>
@@ -1130,14 +1137,16 @@ export function MasterAndConfigTab({
         <div className="space-y-5">
           {/* SECTION A: MACHINES */}
           <Card noPadding className="overflow-hidden">
-            <div className="border-b border-industrial-border p-4 space-y-3">
+            <div className="space-y-3 border-b border-slate-200 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-slate-100">
-                    Danh Mục Máy Gia Công & Đơn Giá Giờ Máy ({machines.length} Máy)
+                  <h2 className="text-base font-bold text-slate-900">
+                    Danh Mục Máy Gia Công &amp; Đơn Giá Giờ Máy ({machines.length} Máy)
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Công suất chuẩn 2 ca: <strong className="text-slate-200">16h / ngày</strong> (96h / tuần 6 ngày). Dùng để tính tải nghẽn cổ chai & khấu hao chi phí giờ máy thực tế.
+                  <p className="text-xs text-slate-500">
+                    Công suất chuẩn 2 ca: <strong className="text-slate-800">16h / ngày</strong>{' '}
+                    (96h / tuần 6 ngày). Dùng để tính tải nghẽn cổ chai &amp; khấu hao chi phí giờ
+                    máy thực tế.
                   </p>
                 </div>
                 {canDeleteOpsOrAddMachine && (
@@ -1154,7 +1163,7 @@ export function MasterAndConfigTab({
 
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-12">
                 <div className="relative sm:col-span-7">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     type="text"
                     value={machSearch}
@@ -1163,7 +1172,7 @@ export function MasterAndConfigTab({
                       setMachPage(1);
                     }}
                     placeholder="Tìm tên máy, mã máy, nhóm công nghệ, người đang chạy..."
-                    className="min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                    className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                   />
                 </div>
                 <div className="sm:col-span-5">
@@ -1173,7 +1182,7 @@ export function MasterAndConfigTab({
                       setMachStatusFilter(e.target.value as 'ALL' | MachineStatus);
                       setMachPage(1);
                     }}
-                    className="min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+                    className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
                   >
                     <option value="ALL">Tất cả Trạng thái Máy ({machines.length})</option>
                     <option value="RUNNING">🟢 ĐANG CHẠY (RUNNING)</option>
@@ -1188,8 +1197,8 @@ export function MasterAndConfigTab({
 
             <div className="max-h-[400px] overflow-auto">
               <table className="w-full border-collapse text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-300">
-                  <tr className="border-b border-industrial-border">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  <tr className="border-b border-slate-200">
                     <th className="px-3 py-2.5">Mã</th>
                     <th className="px-3 py-2.5">Tên Thiết Bị / Máy</th>
                     <th className="px-3 py-2.5">Nhóm Công Nghệ</th>
@@ -1200,38 +1209,38 @@ export function MasterAndConfigTab({
                     <th className="px-3 py-2.5 text-center">Cập nhật</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-200 bg-white">
                   {pagedMachines.map((m) => {
                     const st = (m.status || 'IDLE') as MachineStatus;
                     const meta = MACHINE_STATUS_LABELS[st] || MACHINE_STATUS_LABELS.IDLE;
                     return (
-                      <tr key={m.id} className="hover:bg-slate-800/50">
-                        <td className="px-3 py-2.5 font-mono-num font-bold text-sky-300">
+                      <tr key={m.id} className="transition-colors hover:bg-blue-50/50">
+                        <td className="font-mono-num px-3 py-2.5 font-bold text-blue-700">
                           {m.id}
                         </td>
-                        <td className="px-3 py-2.5 font-semibold text-slate-100">
+                        <td className="px-3 py-2.5 font-semibold text-slate-900">
                           {m.name}
                         </td>
-                        <td className="px-3 py-2.5 text-slate-300">{m.group}</td>
-                        <td className="px-3 py-2.5 text-right font-mono-num font-bold text-emerald-300">
+                        <td className="px-3 py-2.5 text-slate-700">{m.group}</td>
+                        <td className="font-mono-num px-3 py-2.5 text-right font-bold text-emerald-700">
                           {formatVnd(m.costPerHour)}/h
                         </td>
-                        <td className="px-3 py-2.5 text-center font-mono-num text-slate-300">
+                        <td className="font-mono-num px-3 py-2.5 text-center text-slate-600">
                           16h/ngày · 96h/tuần
                         </td>
                         <td className="px-3 py-2.5">
                           <Badge variant={meta.badge}>{meta.label}</Badge>
                         </td>
-                        <td className="px-3 py-2.5 text-slate-300">
+                        <td className="px-3 py-2.5 text-slate-700">
                           {m.currentWorkerName ? (
                             <span>
                               👷 <strong>{m.currentWorkerName}</strong>{' '}
                               {m.currentPoId ? `(${m.currentPoId})` : ''}
                             </span>
                           ) : m.stopReason ? (
-                            <span className="text-red-300">⚠️ {m.stopReason}</span>
+                            <span className="font-semibold text-rose-700">⚠️ {m.stopReason}</span>
                           ) : (
-                            <span className="text-slate-500">—</span>
+                            <span className="text-slate-400">—</span>
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-center">
@@ -1239,7 +1248,7 @@ export function MasterAndConfigTab({
                             <button
                               type="button"
                               onClick={() => openEditMachineModal(m)}
-                              className="inline-flex h-7 items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/15 px-2.5 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/25"
+                              className="inline-flex h-7 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100"
                             >
                               <Edit3 className="h-3 w-3" /> Cấu hình
                             </button>
@@ -1263,34 +1272,35 @@ export function MasterAndConfigTab({
 
           {/* SECTION B: 63+ CUTTING TOOLS & 1-FOR-1 INSERT SWAP */}
           <Card noPadding className="overflow-hidden">
-            <div className="border-b border-industrial-border p-4 space-y-3">
+            <div className="space-y-3 border-b border-slate-200 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-slate-100">
-                    Tủ Dao Cụ CNC & Sổ Cấp Đổi Mảnh Chíp 1-Đổi-1 ({tools.length} Mã Dao)
+                  <h2 className="text-base font-bold text-slate-900">
+                    Tủ Dao Cụ CNC &amp; Sổ Cấp Đổi Mảnh Chíp 1-Đổi-1 ({tools.length} Mã Dao)
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Kiểm soát chặt hao phí mảnh hợp kim: Thu hồi xác mảnh mòn/vỡ cũ trước khi xuất mảnh mới ra máy.
+                  <p className="text-xs text-slate-500">
+                    Kiểm soát chặt hao phí mảnh hợp kim: Thu hồi xác mảnh mòn/vỡ cũ trước khi xuất
+                    mảnh mới ra máy.
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-2.5 md:grid-cols-12">
                 <div className="relative md:col-span-6">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     type="text"
                     value={toolSearch}
                     onChange={(e) => setToolSearch(e.target.value)}
                     placeholder="Tìm mã dao (T01..T63), tên chíp tiện/phay/khoan, ký hiệu ISO..."
-                    className="min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                    className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                   />
                 </div>
                 <div className="md:col-span-4">
                   <select
                     value={toolGroupFilter}
                     onChange={(e) => setToolGroupFilter(e.target.value)}
-                    className="min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+                    className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
                   >
                     <option value="ALL">Tất cả Nhóm Dao Cụ ({toolGroups.length})</option>
                     {toolGroups.map((g) => (
@@ -1304,13 +1314,13 @@ export function MasterAndConfigTab({
                   <button
                     type="button"
                     onClick={() => setToolLowStockOnly((v) => !v)}
-                    className={`flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold ${
+                    className={`flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition-colors ${
                       toolLowStockOnly
-                        ? 'border-red-500 bg-red-500/20 text-red-200'
-                        : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:bg-slate-700'
+                        ? 'border-rose-500 bg-rose-50 text-rose-700'
+                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
                     Sắp hết (&le;10)
                   </button>
                 </div>
@@ -1319,8 +1329,8 @@ export function MasterAndConfigTab({
 
             <div className="max-h-[440px] overflow-auto">
               <table className="w-full border-collapse text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-300">
-                  <tr className="border-b border-industrial-border">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  <tr className="border-b border-slate-200">
                     <th className="px-3 py-2.5">Mã Dao</th>
                     <th className="px-3 py-2.5">Nhóm</th>
                     <th className="px-3 py-2.5">Tên Mảnh Hợp Kim / Dao Cụ</th>
@@ -1331,25 +1341,25 @@ export function MasterAndConfigTab({
                     <th className="px-3 py-2.5 text-center">Cấp Đổi 1-1</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-200 bg-white">
                   {pagedTools.map((t) => {
                     const stock = Number(t.stockQty ?? 0);
                     return (
-                      <tr key={t.code} className="hover:bg-slate-800/50">
-                        <td className="px-3 py-2.5 font-mono-num font-bold text-amber-300">
+                      <tr key={t.code} className="transition-colors hover:bg-blue-50/50">
+                        <td className="font-mono-num px-3 py-2.5 font-bold text-amber-800">
                           {t.code}
                         </td>
-                        <td className="px-3 py-2.5 text-slate-300">{t.group}</td>
-                        <td className="px-3 py-2.5 font-semibold text-slate-100">
+                        <td className="px-3 py-2.5 text-slate-600">{t.group}</td>
+                        <td className="px-3 py-2.5 font-semibold text-slate-900">
                           {t.name}
                         </td>
-                        <td className="px-3 py-2.5 text-right font-mono-num text-slate-200">
+                        <td className="font-mono-num px-3 py-2.5 text-right text-slate-700">
                           {formatVnd(t.buyPrice)}
                         </td>
-                        <td className="px-3 py-2.5 text-center font-mono-num text-slate-300">
+                        <td className="font-mono-num px-3 py-2.5 text-center text-slate-600">
                           {t.edges} góc
                         </td>
-                        <td className="px-3 py-2.5 text-right font-mono-num font-bold text-sky-300">
+                        <td className="font-mono-num px-3 py-2.5 text-right font-bold text-blue-700">
                           {formatVnd(t.costPerEdge)}
                         </td>
                         <td className="px-3 py-2.5 text-center">
@@ -1370,7 +1380,7 @@ export function MasterAndConfigTab({
                           <button
                             type="button"
                             onClick={() => openSwapModal(t)}
-                            className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-500/45 bg-emerald-500/15 px-2.5 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25"
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
                           >
                             <Repeat className="h-3.5 w-3.5" /> Cấp 1-Đổi-1
                           </button>
@@ -1393,12 +1403,12 @@ export function MasterAndConfigTab({
 
           {sessionSwaps.length > 0 && (
             <Card className="space-y-2.5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700">
                 Nhật Ký Vừa Xuất Đổi Mảnh Tại Tủ Dao Trong Ca ({sessionSwaps.length})
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-industrial-border text-slate-400">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
                     <tr>
                       <th className="py-1.5 pr-3">Giờ cấp</th>
                       <th className="py-1.5 pr-3">Mã Dao</th>
@@ -1409,17 +1419,17 @@ export function MasterAndConfigTab({
                       <th className="py-1.5 text-right">Tồn còn lại</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-200">
                     {sessionSwaps.map((s) => (
                       <tr key={s.id}>
-                        <td className="py-1.5 pr-3 font-mono-num text-slate-400">
+                        <td className="font-mono-num py-1.5 pr-3 text-slate-500">
                           {s.time}
                         </td>
-                        <td className="py-1.5 pr-3 font-mono-num font-bold text-amber-300">
+                        <td className="font-mono-num py-1.5 pr-3 font-bold text-amber-800">
                           {s.toolCode} — {s.toolName}
                         </td>
-                        <td className="py-1.5 pr-3 text-slate-200">{s.machineName}</td>
-                        <td className="py-1.5 pr-3 text-center font-mono-num font-bold text-emerald-300">
+                        <td className="py-1.5 pr-3 font-medium text-slate-800">{s.machineName}</td>
+                        <td className="font-mono-num py-1.5 pr-3 text-center font-bold text-emerald-700">
                           {s.qtyIssued}
                         </td>
                         <td className="py-1.5 pr-3">
@@ -1429,8 +1439,8 @@ export function MasterAndConfigTab({
                             <Badge variant="warning">Ngoại lệ Quản đốc</Badge>
                           )}
                         </td>
-                        <td className="py-1.5 pr-3 text-slate-300">{s.reason}</td>
-                        <td className="py-1.5 text-right font-mono-num font-bold text-sky-300">
+                        <td className="py-1.5 pr-3 text-slate-700">{s.reason}</td>
+                        <td className="font-mono-num py-1.5 text-right font-bold text-blue-700">
                           {s.remainingStock} mảnh
                         </td>
                       </tr>
@@ -1447,11 +1457,12 @@ export function MasterAndConfigTab({
       {subTab === 'WORKERS' && (
         <div className="space-y-4">
           {!isAdmin && (
-            <Card className="flex flex-wrap items-center justify-between gap-3 border-amber-500/40 bg-amber-950/20">
+            <Card className="flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-50/70">
               <div className="flex items-center gap-3">
-                <Lock className="h-5 w-5 text-amber-400 shrink-0" />
-                <div className="text-xs text-amber-100">
-                  <strong>Phân quyền Bảo mật Lương & PIN:</strong> Chỉ Quản đốc / Admin mới được xem đơn giá lương cơ bản 8h và cấp đổi mã PIN đăng nhập của nhân sự.
+                <Lock className="h-5 w-5 shrink-0 text-amber-600" />
+                <div className="text-xs text-amber-900">
+                  <strong>Phân quyền Bảo mật Lương &amp; PIN:</strong> Chỉ Quản đốc / Admin mới được
+                  xem đơn giá lương cơ bản 8h và cấp đổi mã PIN đăng nhập của nhân sự.
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1478,11 +1489,12 @@ export function MasterAndConfigTab({
           <Card className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-slate-100">
-                  Danh Sách Nhân Sự Xưởng & Tài Khoản PIN ({workers.length} Nhân Sự)
+                <h2 className="text-base font-bold text-slate-900">
+                  Danh Sách Nhân Sự Xưởng &amp; Tài Khoản PIN ({workers.length} Nhân Sự)
                 </h2>
-                <p className="text-xs text-slate-400">
-                  Mật khẩu PIN được băm một chiều chuẩn <code className="text-sky-300">scrypt</code> trên máy chủ, kết nối Telegram Bot báo lương cá nhân cuối ca.
+                <p className="text-xs text-slate-500">
+                  Quản lý hồ sơ nhân viên đứng máy, tổ/bộ phận, đơn giá lương P1 (ca 8h) và cấp đổi
+                  mã PIN bảo mật cá nhân.
                 </p>
               </div>
               {isAdmin && (
@@ -1494,13 +1506,13 @@ export function MasterAndConfigTab({
             </div>
 
             <div className="relative max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 value={workerSearch}
                 onChange={(e) => setWorkerSearch(e.target.value)}
                 placeholder="Tìm Mã NV, Họ tên, Chức danh, Chế độ lương..."
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                className="min-h-[40px] w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
           </Card>
@@ -1508,32 +1520,32 @@ export function MasterAndConfigTab({
           <Card noPadding className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-300">
-                  <tr className="border-b border-industrial-border">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  <tr className="border-b border-slate-200">
                     <th className="px-3 py-2.5">Mã NV</th>
-                    <th className="px-3 py-2.5">Họ & Tên</th>
-                    <th className="px-3 py-2.5">Vai Trò & Chức Danh</th>
-                    <th className="px-3 py-2.5">Chế Độ Hưởng Lương</th>
-                    <th className="px-3 py-2.5 text-right">Lương CB (Ca 8h)</th>
-                    <th className="px-3 py-2.5 text-right">Đơn Giá Giây Công</th>
-                    <th className="px-3 py-2.5 text-center">Telegram</th>
-                    <th className="px-3 py-2.5 text-center">Quản lý</th>
+                    <th className="px-3 py-2.5">Họ &amp; Tên</th>
+                    <th className="px-3 py-2.5">Tổ / Bộ Phận</th>
+                    <th className="px-3 py-2.5">Vai Trò &amp; Chế Độ Lương</th>
+                    <th className="px-3 py-2.5 text-right">Lương P1 (Ca 8h)</th>
+                    <th className="px-3 py-2.5 text-center">Trạng Thái PIN</th>
+                    <th className="px-3 py-2.5 text-center">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-200 bg-white">
                   {filteredWorkers.map((w) => (
-                    <tr key={w.id} className="hover:bg-slate-800/50">
-                      <td className="px-3 py-2.5 font-mono-num font-bold text-sky-300">
+                    <tr key={w.id} className="transition-colors hover:bg-blue-50/50">
+                      <td className="font-mono-num px-3 py-2.5 font-bold text-blue-700">
                         {w.id}
                       </td>
                       <td className="px-3 py-2.5">
-                        <div className="font-semibold text-slate-100">{w.name}</div>
+                        <div className="font-semibold text-slate-900">{w.name}</div>
                         <div className="font-mono-num text-[11px] text-slate-500">
                           @{w.username}
                         </div>
                       </td>
+                      <td className="px-3 py-2.5 font-medium text-slate-700">{w.title}</td>
                       <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <Badge
                             variant={
                               w.appRole === 'ADMIN'
@@ -1547,37 +1559,32 @@ export function MasterAndConfigTab({
                           >
                             {w.role}
                           </Badge>
-                          <span className="text-slate-200">{w.title}</span>
+                          <Badge
+                            variant={
+                              w.salaryMode?.includes('Hành chính') ? 'info' : 'success'
+                            }
+                          >
+                            {w.salaryMode}
+                          </Badge>
                         </div>
                       </td>
-                      <td className="px-3 py-2.5">
-                        <Badge
-                          variant={
-                            w.salaryMode?.includes('Hành chính') ? 'info' : 'success'
-                          }
-                        >
-                          {w.salaryMode}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono-num font-bold text-emerald-300">
-                        {w.baseSalary !== undefined ? formatVnd(w.baseSalary) : '🔒 Bảo mật'}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono-num text-slate-300">
-                        {w.costPerSec !== undefined ? `${w.costPerSec} đ/s` : '—'}
+                      <td className="font-mono-num px-3 py-2.5 text-right">
+                        <div className="font-bold text-emerald-700">
+                          {w.baseSalary !== undefined ? formatVnd(w.baseSalary) : '🔒 Bảo mật'}
+                        </div>
+                        {w.costPerSec !== undefined && (
+                          <div className="text-[11px] text-slate-500">{w.costPerSec} đ/s</div>
+                        )}
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        {w.isLinked ? (
-                          <Badge variant="success">Đã kết nối</Badge>
-                        ) : (
-                          <Badge variant="neutral">Chưa gán</Badge>
-                        )}
+                        <Badge variant="success">🔒 Đã kích hoạt PIN</Badge>
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         {isAdmin ? (
                           <button
                             type="button"
                             onClick={() => openEditWorkerModal(w)}
-                            className="inline-flex h-7 items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/15 px-2.5 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/25"
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100"
                           >
                             <Edit3 className="h-3 w-3" /> Sửa / Đổi PIN
                           </button>
@@ -1594,19 +1601,21 @@ export function MasterAndConfigTab({
         </div>
       )}
 
-      {/* ==================== SUB-TAB 4: SYSTEM CONFIG & CLOUD SYNC OUTBOX ==================== */}
+      {/* ==================== SUB-TAB 4: SYSTEM CONFIG ==================== */}
       {subTab === 'CONFIG' && (
         <div className="space-y-4">
           {!isAdmin ? (
-            <Card className="space-y-3 border-amber-500/40 bg-amber-950/20">
+            <Card className="space-y-3 border-amber-200 bg-amber-50/70">
               <div className="flex items-center gap-3">
-                <Lock className="h-6 w-6 text-amber-400" />
+                <Lock className="h-6 w-6 text-amber-600" />
                 <div>
-                  <h3 className="text-sm font-bold text-amber-200">
-                    Khu Vực Cấu Hình Hệ Thống & Bảo Mật Xưởng (Yêu cầu Quyền Quản Đốc / Admin)
+                  <h3 className="text-sm font-bold text-amber-900">
+                    Khu Vực Cấu Hình Hệ Thống &amp; Bảo Mật Xưởng (Yêu cầu Quyền Quản Đốc / Admin)
                   </h3>
-                  <p className="text-xs text-amber-100/80">
-                    Vui lòng xác thực tài khoản Quản đốc (<code className="font-mono-num">NV00053</code>) để cấu hình chế độ Strict PIN, đơn giá Ăn ca thống nhất và cổng đồng bộ Google Sheets / Telegram.
+                  <p className="text-xs text-amber-800">
+                    Vui lòng xác thực tài khoản Quản đốc (
+                    <code className="font-mono-num font-bold">NV00053</code>) để cấu hình chế độ
+                    Strict PIN và thông số định mức lương / ăn ca toàn xưởng.
                   </p>
                 </div>
               </div>
@@ -1632,29 +1641,33 @@ export function MasterAndConfigTab({
           ) : (
             <>
               {/* PROMINENT STRICT PIN MODE SWITCH CARD */}
-              <Card className="border-sky-500/40 bg-gradient-to-r from-slate-900 via-slate-900 to-sky-950/40">
+              <Card className="border-l-4 border-l-blue-600">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-1 max-w-2xl">
+                  <div className="max-w-2xl space-y-1">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-5 w-5 text-sky-400" />
-                      <h3 className="text-base font-bold text-slate-50">
+                      <ShieldCheck className="h-5 w-5 text-blue-600" />
+                      <h3 className="text-base font-bold text-slate-900">
                         Chế Độ Xác Thực Vận Hành Tại Xưởng (Authentication Mode)
                       </h3>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      • <strong>⚡ DEMO QUICK-SWITCH:</strong> Vào thẳng không cần mật khẩu, cho phép chuyển nhanh 1 chạm giữa Công nhân / QC / Trưởng ca / Quản đốc để chạy thử nghiệm.<br />
-                      • <strong>🔒 STRICT PIN MODE (Vận hành thực tế):</strong> Tắt chuyển nhanh, bắt buộc mọi cá nhân nhập đúng Mã PIN cá nhân (lưu phiên an toàn 30 ngày).
+                    <p className="text-xs leading-relaxed text-slate-600">
+                      • <strong>⚡ DEMO QUICK-SWITCH:</strong> Vào thẳng không cần mật khẩu, cho
+                      phép chuyển nhanh 1 chạm giữa Công nhân / QC / Trưởng ca / Quản đốc để chạy
+                      thử nghiệm.
+                      <br />• <strong>🔒 STRICT PIN MODE (Vận hành thực tế):</strong> Tắt chuyển
+                      nhanh, bắt buộc mọi cá nhân nhập đúng Mã PIN cá nhân (lưu phiên an toàn 30
+                      ngày).
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 rounded-xl border border-industrial-border bg-slate-950 p-1.5">
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 p-1.5">
                     <button
                       type="button"
                       onClick={() => void handleToggleAuthModeQuick('DEMO_QUICK')}
                       className={`min-h-[42px] rounded-lg px-4 text-xs font-bold transition-all ${
                         cfgMap.AUTH_MODE !== 'STRICT_PIN'
-                          ? 'bg-sky-500 text-slate-950 shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:bg-white hover:text-slate-900'
                       }`}
                     >
                       ⚡ Demo Quick-Switch
@@ -1664,8 +1677,8 @@ export function MasterAndConfigTab({
                       onClick={() => void handleToggleAuthModeQuick('STRICT_PIN')}
                       className={`min-h-[42px] rounded-lg px-4 text-xs font-bold transition-all ${
                         cfgMap.AUTH_MODE === 'STRICT_PIN'
-                          ? 'bg-amber-500 text-slate-950 shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-amber-500 text-slate-950 shadow-sm'
+                          : 'text-slate-600 hover:bg-white hover:text-slate-900'
                       }`}
                     >
                       🔒 Bật Strict PIN Mode
@@ -1674,20 +1687,26 @@ export function MasterAndConfigTab({
                 </div>
               </Card>
 
-              {/* UNIFIED PAYROLL / MEAL / CLOUD WEBHOOK FORM */}
-              <form noValidate onSubmit={handleSaveSystemConfig} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <Card className="space-y-3.5">
-                  <div className="flex items-center justify-between border-b border-industrial-border pb-2.5">
-                    <h3 className="text-sm font-bold text-slate-100">
-                      1. Định Mức Lương Khoán & Phụ Cấp Ăn Ca Thống Nhất Toàn Xưởng
-                    </h3>
-                    <Badge variant="success">Đồng bộ cả Nhật ký & Bảng công</Badge>
+              {/* UNIFIED PAYROLL / MEAL FORM + COLLAPSED OPTIONAL INTEGRATIONS */}
+              <form noValidate onSubmit={handleSaveSystemConfig} className="space-y-4">
+                <Card className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        1. Định Mức Lương Khoán, Giờ Chuẩn Ca &amp; Phụ Cấp Ăn Ca Toàn Xưởng
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Áp dụng thống nhất tức thì cho cả Báo cáo Sản lượng, Bảng chấm công 31 ngày
+                        và Bảng lương KPI 3P.
+                      </p>
+                    </div>
+                    <Badge variant="success">Đồng bộ cả Nhật ký &amp; Bảng công</Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
-                        Ăn ca Đêm / Chiều (Ca 2 & Ca 3) (VNĐ)
+                      <label className="mb-1 block text-xs font-semibold text-slate-700">
+                        Ăn ca Đêm / Chiều (Ca 2 &amp; Ca 3) (VNĐ)
                       </label>
                       <input
                         type="number"
@@ -1696,12 +1715,12 @@ export function MasterAndConfigTab({
                         onChange={(e) =>
                           setCfgMap((p) => ({ ...p, MEAL_SHIFT_2_3: e.target.value }))
                         }
-                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-emerald-300 focus:border-sky-400 focus:outline-none"
+                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
+                      <label className="mb-1 block text-xs font-semibold text-slate-700">
                         Ăn tăng ca ngày thường (&ge; 2 giờ OT) (VNĐ)
                       </label>
                       <input
@@ -1711,12 +1730,12 @@ export function MasterAndConfigTab({
                         onChange={(e) =>
                           setCfgMap((p) => ({ ...p, MEAL_OT_2H: e.target.value }))
                         }
-                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-emerald-300 focus:border-sky-400 focus:outline-none"
+                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
+                      <label className="mb-1 block text-xs font-semibold text-slate-700">
                         Phụ cấp Ăn ca Chủ Nhật (&ge; 4 giờ) (VNĐ)
                       </label>
                       <input
@@ -1726,12 +1745,12 @@ export function MasterAndConfigTab({
                         onChange={(e) =>
                           setCfgMap((p) => ({ ...p, MEAL_SUNDAY: e.target.value }))
                         }
-                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-emerald-300 focus:border-sky-400 focus:outline-none"
+                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
+                      <label className="mb-1 block text-xs font-semibold text-slate-700">
                         Hệ số Đứng Máy Thứ 2 (Khoán 1 + X máy)
                       </label>
                       <input
@@ -1741,12 +1760,12 @@ export function MasterAndConfigTab({
                         onChange={(e) =>
                           setCfgMap((p) => ({ ...p, SECOND_MACHINE_RATE: e.target.value }))
                         }
-                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-sky-300 focus:border-sky-400 focus:outline-none"
+                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-blue-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
+                      <label className="mb-1 block text-xs font-semibold text-slate-700">
                         Số giây chuẩn / Ca 8h (Mặc định 28800s)
                       </label>
                       <input
@@ -1756,12 +1775,12 @@ export function MasterAndConfigTab({
                         onChange={(e) =>
                           setCfgMap((p) => ({ ...p, SECONDS_PER_SHIFT: e.target.value }))
                         }
-                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
+                      <label className="mb-1 block text-xs font-semibold text-slate-700">
                         Ngưỡng cảnh báo chưa đạt ĐM (Hệ số, VD: 0.85 = 85%)
                       </label>
                       <input
@@ -1773,232 +1792,252 @@ export function MasterAndConfigTab({
                         onChange={(e) =>
                           setCfgMap((p) => ({ ...p, KPI_WARNING_THRESHOLD: e.target.value }))
                         }
-                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-amber-300 focus:border-sky-400 focus:outline-none"
+                        className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-amber-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                       />
                     </div>
                   </div>
-                </Card>
 
-                <Card className="space-y-3.5">
-                  <div className="flex items-center justify-between border-b border-industrial-border pb-2.5">
-                    <h3 className="text-sm font-bold text-slate-100">
-                      2. Kết Nối Google Apps Script Webhook & Telegram Bot (Server-Side)
-                    </h3>
-                    <Badge variant="info">Không lộ Token ra trình duyệt CN</Badge>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between rounded-lg border border-industrial-border bg-industrial-elevated px-3 py-2">
-                      <div>
-                        <div className="text-xs font-bold text-slate-100">
-                          Đồng bộ tự động lên Google Sheets (Apps Script /exec)
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          Ghi SQLite tức thì (&lt;50ms), sau đó đẩy nền qua hàng đợi Sync Outbox
-                        </div>
-                      </div>
-                      <select
-                        value={cfgMap.GAS_SYNC_ENABLED || '0'}
-                        onChange={(e) =>
-                          setCfgMap((p) => ({ ...p, GAS_SYNC_ENABLED: e.target.value }))
-                        }
-                        className="rounded-lg border border-industrial-border bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-sky-300"
-                      >
-                        <option value="0">Tắt (Chỉ lưu SQLite nội bộ)</option>
-                        <option value="1">Bật Đồng Bộ Cloud</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
-                        Google Apps Script Web App URL (/exec)
-                      </label>
-                      <input
-                        type="url"
-                        value={cfgMap.WEB_APP_URL || ''}
-                        onChange={(e) =>
-                          setCfgMap((p) => ({ ...p, WEB_APP_URL: e.target.value }))
-                        }
-                        placeholder="https://script.google.com/macros/s/.../exec"
-                        className="font-mono-num min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-300">
-                        Telegram Bot Token (Chỉ lưu tại SQLite Server)
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showBotToken ? 'text' : 'password'}
-                          value={cfgMap.TELEGRAM_BOT_TOKEN || ''}
-                          onChange={(e) =>
-                            setCfgMap((p) => ({ ...p, TELEGRAM_BOT_TOKEN: e.target.value }))
-                          }
-                          placeholder="123456789:AAH..."
-                          className="font-mono-num min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-3 pr-10 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowBotToken((v) => !v)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                          aria-label="Ẩn/Hiện Bot Token"
-                        >
-                          {showBotToken ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-slate-300">
-                          Username Bot (@...)
-                        </label>
-                        <input
-                          type="text"
-                          value={cfgMap.TELEGRAM_BOT_USERNAME || ''}
-                          onChange={(e) =>
-                            setCfgMap((p) => ({
-                              ...p,
-                              TELEGRAM_BOT_USERNAME: e.target.value,
-                            }))
-                          }
-                          placeholder="ThangLoiMesBot"
-                          className="font-mono-num min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-slate-300">
-                          Chat ID Nhóm Quản Đốc / QC
-                        </label>
-                        <input
-                          type="text"
-                          value={cfgMap.MANAGER_CHAT_ID || ''}
-                          onChange={(e) =>
-                            setCfgMap((p) => ({ ...p, MANAGER_CHAT_ID: e.target.value }))
-                          }
-                          placeholder="-100192837465"
-                          className="font-mono-num min-h-[38px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs text-slate-100 focus:border-sky-400 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex justify-end">
+                  <div className="flex items-center justify-end border-t border-slate-100 pt-3">
                     <Button type="submit" variant="primary" disabled={savingCfg || cfgLoading}>
                       <Save className="h-4 w-4" />
-                      {savingCfg ? 'Đang lưu cấu hình...' : 'Lưu Toàn Bộ Cấu Hình Hệ Thống'}
+                      {savingCfg ? 'Đang lưu cấu hình...' : '💾 Lưu Cấu Hình Hệ Thống'}
                     </Button>
                   </div>
                 </Card>
+
+                {/* COLLAPSED OPTIONAL INTEGRATIONS ACCORDION (DEFAULT-CLOSED) */}
+                <details className="rounded-2xl border border-slate-200 bg-white shadow-card">
+                  <summary className="cursor-pointer select-none px-5 py-4 text-sm font-bold text-slate-700 transition-colors hover:text-slate-900">
+                    🔌 Kết nối mở rộng: Telegram Bot, Google Sheets Webhook &amp; Đồng bộ Đám mây
+                    (Tùy chọn — Cài đặt sau)
+                  </summary>
+
+                  <div className="space-y-5 border-t border-slate-200 p-5">
+                    <div className="space-y-3.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="text-sm font-bold text-slate-900">
+                          A. Kết Nối Google Apps Script Webhook &amp; Telegram Bot (Phía Máy Chủ)
+                        </h4>
+                        <Badge variant="info">Bảo mật khóa kết nối tại máy chủ</Badge>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5">
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">
+                            Đồng bộ tự động lên Google Sheets (Apps Script /exec)
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Lưu cơ sở dữ liệu nội bộ tức thì, sau đó đẩy nền bất đồng bộ lên đám mây
+                          </div>
+                        </div>
+                        <select
+                          value={cfgMap.GAS_SYNC_ENABLED || '0'}
+                          onChange={(e) =>
+                            setCfgMap((p) => ({ ...p, GAS_SYNC_ENABLED: e.target.value }))
+                          }
+                          className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 focus:border-blue-600 focus:outline-none"
+                        >
+                          <option value="0">Tắt (Chỉ lưu nội bộ tại xưởng)</option>
+                          <option value="1">Bật Đồng Bộ Đám Mây</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-700">
+                            Google Apps Script Web App URL (/exec)
+                          </label>
+                          <input
+                            type="url"
+                            value={cfgMap.WEB_APP_URL || ''}
+                            onChange={(e) =>
+                              setCfgMap((p) => ({ ...p, WEB_APP_URL: e.target.value }))
+                            }
+                            placeholder="https://script.google.com/macros/s/.../exec"
+                            className="font-mono-num min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-700">
+                            Telegram Bot Token
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showBotToken ? 'text' : 'password'}
+                              value={cfgMap.TELEGRAM_BOT_TOKEN || ''}
+                              onChange={(e) =>
+                                setCfgMap((p) => ({ ...p, TELEGRAM_BOT_TOKEN: e.target.value }))
+                              }
+                              placeholder="123456789:AAH..."
+                              className="font-mono-num min-h-[38px] w-full rounded-lg border border-slate-300 bg-white pl-3 pr-10 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowBotToken((v) => !v)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
+                              aria-label="Ẩn/Hiện Bot Token"
+                            >
+                              {showBotToken ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-700">
+                            Username Bot (@...)
+                          </label>
+                          <input
+                            type="text"
+                            value={cfgMap.TELEGRAM_BOT_USERNAME || ''}
+                            onChange={(e) =>
+                              setCfgMap((p) => ({
+                                ...p,
+                                TELEGRAM_BOT_USERNAME: e.target.value,
+                              }))
+                            }
+                            placeholder="ThangLoiMesBot"
+                            className="font-mono-num min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-700">
+                            Chat ID Nhóm Quản Đốc / QC
+                          </label>
+                          <input
+                            type="text"
+                            value={cfgMap.MANAGER_CHAT_ID || ''}
+                            onChange={(e) =>
+                              setCfgMap((p) => ({ ...p, MANAGER_CHAT_ID: e.target.value }))
+                            }
+                            placeholder="-100192837465"
+                            className="font-mono-num min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          type="submit"
+                          variant="secondary"
+                          size="sm"
+                          disabled={savingCfg || cfgLoading}
+                        >
+                          <Save className="h-4 w-4" />
+                          Lưu Cấu Hình Kết Nối Mở Rộng
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* CLOUD SYNC QUEUE VIEWER */}
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                            B. Hàng Đợi Đồng Bộ Đám Mây ({outboxItems.length} bản ghi gần nhất)
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Đảm bảo công nhân bấm Gửi Báo Cáo không bao giờ bị treo chờ mạng ngoài.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={cfgLoading}
+                            onClick={() => void loadAdminConfigAndOutbox()}
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" /> Làm mới
+                          </Button>
+                          <Button
+                            variant="success"
+                            size="sm"
+                            disabled={flushingOutbox}
+                            onClick={() => void handleFlushOutbox()}
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                            {flushingOutbox ? 'Đang đẩy...' : '🚀 Đẩy Đồng Bộ Ngay'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-[280px] overflow-auto bg-white">
+                        <table className="w-full border-collapse text-left text-xs">
+                          <thead className="sticky top-0 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                            <tr className="border-b border-slate-200">
+                              <th className="px-3 py-2">ID</th>
+                              <th className="px-3 py-2">Kênh Đích</th>
+                              <th className="px-3 py-2">Sự Kiện</th>
+                              <th className="px-3 py-2 text-center">Trạng Thái</th>
+                              <th className="px-3 py-2 text-center">Lần Thử</th>
+                              <th className="px-3 py-2">Thời Gian Tạo / Gửi</th>
+                              <th className="px-3 py-2">Chi Tiết / Phản Hồi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {outboxItems.map((item) => (
+                              <tr key={item.id} className="hover:bg-slate-50">
+                                <td className="font-mono-num px-3 py-2 text-slate-500">
+                                  #{item.id}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <Badge
+                                    variant={
+                                      item.channel === 'GAS_WEBHOOK' ? 'info' : 'purple'
+                                    }
+                                  >
+                                    {item.channel}
+                                  </Badge>
+                                </td>
+                                <td className="font-mono-num px-3 py-2 font-semibold text-slate-800">
+                                  {item.eventType}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <Badge
+                                    variant={
+                                      item.status === 'SENT'
+                                        ? 'success'
+                                        : item.status === 'PENDING'
+                                          ? 'warning'
+                                          : item.status === 'FAILED'
+                                            ? 'danger'
+                                            : 'neutral'
+                                    }
+                                  >
+                                    {item.status}
+                                  </Badge>
+                                </td>
+                                <td className="font-mono-num px-3 py-2 text-center text-slate-700">
+                                  {item.attempts}
+                                </td>
+                                <td className="font-mono-num px-3 py-2 text-[11px] text-slate-500">
+                                  <div>Tạo: {item.createdAt}</div>
+                                  {item.sentAt && <div>Gửi: {item.sentAt}</div>}
+                                </td>
+                                <td className="max-w-xs truncate px-3 py-2 text-[11px] text-slate-700">
+                                  {item.lastError || 'OK'}
+                                </td>
+                              </tr>
+                            ))}
+                            {outboxItems.length === 0 && (
+                              <tr>
+                                <td colSpan={7} className="py-8 text-center text-slate-500">
+                                  Hàng đợi đồng bộ đám mây hiện đang trống.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </details>
               </form>
-
-              {/* CLOUD SYNC OUTBOX MONITOR */}
-              <Card noPadding className="overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-industrial-border p-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-100">
-                      Hàng Đợi Đồng Bộ Đám Mây Bất Đồng Bộ (Cloud Sync Outbox — {outboxItems.length} bản ghi gần nhất)
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Đảm bảo công nhân bấm Gửi Báo Cáo không bao giờ bị treo chờ mạng Google Sheets hay Telegram.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={cfgLoading}
-                      onClick={() => void loadAdminConfigAndOutbox()}
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" /> Làm mới
-                    </Button>
-                    <Button
-                      variant="success"
-                      size="sm"
-                      disabled={flushingOutbox}
-                      onClick={() => void handleFlushOutbox()}
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      {flushingOutbox ? 'Đang đẩy...' : '🚀 Đẩy Đồng Bộ Ngay'}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="max-h-[320px] overflow-auto">
-                  <table className="w-full border-collapse text-left text-xs">
-                    <thead className="sticky top-0 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-300">
-                      <tr className="border-b border-industrial-border">
-                        <th className="px-3 py-2">ID</th>
-                        <th className="px-3 py-2">Kênh Đích</th>
-                        <th className="px-3 py-2">Sự Kiện</th>
-                        <th className="px-3 py-2 text-center">Trạng Thái</th>
-                        <th className="px-3 py-2 text-center">Lần Thử</th>
-                        <th className="px-3 py-2">Thời Gian Tạo / Gửi</th>
-                        <th className="px-3 py-2">Chi Tiết / Phản Hồi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/80">
-                      {outboxItems.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-800/40">
-                          <td className="px-3 py-2 font-mono-num text-slate-400">
-                            #{item.id}
-                          </td>
-                          <td className="px-3 py-2">
-                            <Badge
-                              variant={
-                                item.channel === 'GAS_WEBHOOK' ? 'info' : 'purple'
-                              }
-                            >
-                              {item.channel}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-2 font-mono-num font-semibold text-slate-200">
-                            {item.eventType}
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <Badge
-                              variant={
-                                item.status === 'SENT'
-                                  ? 'success'
-                                  : item.status === 'PENDING'
-                                    ? 'warning'
-                                    : item.status === 'FAILED'
-                                      ? 'danger'
-                                      : 'neutral'
-                              }
-                            >
-                              {item.status}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-2 text-center font-mono-num text-slate-300">
-                            {item.attempts}
-                          </td>
-                          <td className="px-3 py-2 font-mono-num text-[11px] text-slate-400">
-                            <div>Tạo: {item.createdAt}</div>
-                            {item.sentAt && <div>Gửi: {item.sentAt}</div>}
-                          </td>
-                          <td className="px-3 py-2 text-[11px] text-slate-300 max-w-xs truncate">
-                            {item.lastError || 'OK'}
-                          </td>
-                        </tr>
-                      ))}
-                      {outboxItems.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-500">
-                            Hàng đợi Outbox hiện đang trống.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
             </>
           )}
         </div>
@@ -2015,7 +2054,7 @@ export function MasterAndConfigTab({
         <form noValidate onSubmit={handleCreateMultiOps} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Khách hàng
               </label>
               <input
@@ -2023,7 +2062,7 @@ export function MasterAndConfigTab({
                 value={newOpCustomer}
                 onChange={(e) => setNewOpCustomer(e.target.value)}
                 list="gcck-customer-list"
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                className={fieldInputCls}
               />
               <datalist id="gcck-customer-list">
                 {uniqueCustomers.map((c) => (
@@ -2033,7 +2072,7 @@ export function MasterAndConfigTab({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Tên Sản Phẩm / Bản Vẽ Chi Tiết *
               </label>
               <input
@@ -2042,18 +2081,18 @@ export function MasterAndConfigTab({
                 value={newOpProductName}
                 onChange={(e) => setNewOpProductName(e.target.value)}
                 placeholder="VD: Trục vít tải L=450 Ø45 SCM440"
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+                className={`${fieldInputCls} font-semibold`}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Máy gia công mặc định
               </label>
               <select
                 value={newOpMachine}
                 onChange={(e) => setNewOpMachine(e.target.value)}
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                className={fieldInputCls}
               >
                 {machines.map((m) => (
                   <option key={m.id} value={m.name}>
@@ -2064,13 +2103,13 @@ export function MasterAndConfigTab({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Mã Dao Cụ Chủ Đạo
               </label>
               <select
                 value={newOpToolCode}
                 onChange={(e) => setNewOpToolCode(e.target.value)}
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                className={fieldInputCls}
               >
                 {tools.map((t) => (
                   <option key={t.code} value={t.code}>
@@ -2081,38 +2120,38 @@ export function MasterAndConfigTab({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Mác Vật Liệu Phôi
               </label>
               <input
                 type="text"
                 value={newOpMatName}
                 onChange={(e) => setNewOpMatName(e.target.value)}
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                className={fieldInputCls}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Chế Độ Cắt Khuyến Nghị (Vc / f / ap)
               </label>
               <input
                 type="text"
                 value={newOpCuttingRec}
                 onChange={(e) => setNewOpCuttingRec(e.target.value)}
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                className={fieldInputCls}
               />
             </div>
           </div>
 
           {/* Setup + Cycle Calculator Box */}
-          <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 space-y-2.5">
+          <div className="space-y-2.5 rounded-xl border border-blue-200 bg-blue-50/70 p-3">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-sky-300">
-                <Calculator className="h-4 w-4" />
+              <span className="flex items-center gap-1.5 text-xs font-bold text-blue-800">
+                <Calculator className="h-4 w-4 text-blue-600" />
                 Bộ Tính Nhanh Định Mức Giây Chuẩn = (Setup ÷ Cỡ Lô) + Cycle Time
               </span>
-              <span className="font-mono-num text-xs font-bold text-emerald-300">
+              <span className="font-mono-num text-xs font-bold text-emerald-700">
                 Kết quả: {computedSetupPlusCycle}s / pcs
               </span>
             </div>
@@ -2122,7 +2161,7 @@ export function MasterAndConfigTab({
                 value={calcOpTitle}
                 onChange={(e) => setCalcOpTitle(e.target.value)}
                 placeholder="Tên bước NC..."
-                className="sm:col-span-4 rounded-lg border border-industrial-border bg-slate-950 px-2.5 py-1.5 text-xs text-slate-100"
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 sm:col-span-4"
               />
               <input
                 type="number"
@@ -2130,7 +2169,7 @@ export function MasterAndConfigTab({
                 onChange={(e) => setCalcSetupSec(Number(e.target.value))}
                 placeholder="Setup (s)"
                 title="Thời gian gá đặt Setup (giây)"
-                className="font-mono-num sm:col-span-2 rounded-lg border border-industrial-border bg-slate-950 px-2.5 py-1.5 text-xs text-slate-100"
+                className="font-mono-num rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 sm:col-span-2"
               />
               <input
                 type="number"
@@ -2138,7 +2177,7 @@ export function MasterAndConfigTab({
                 onChange={(e) => setCalcBatchQty(Number(e.target.value))}
                 placeholder="Cỡ lô"
                 title="Số lượng chi tiết trong lô"
-                className="font-mono-num sm:col-span-2 rounded-lg border border-industrial-border bg-slate-950 px-2.5 py-1.5 text-xs text-slate-100"
+                className="font-mono-num rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 sm:col-span-2"
               />
               <input
                 type="number"
@@ -2146,7 +2185,7 @@ export function MasterAndConfigTab({
                 onChange={(e) => setCalcCycleSec(Number(e.target.value))}
                 placeholder="Cycle (s)"
                 title="Chu kỳ chạy máy 1 chi tiết (giây)"
-                className="font-mono-num sm:col-span-2 rounded-lg border border-industrial-border bg-slate-950 px-2.5 py-1.5 text-xs text-slate-100"
+                className="font-mono-num rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 sm:col-span-2"
               />
               <Button
                 variant="secondary"
@@ -2162,14 +2201,14 @@ export function MasterAndConfigTab({
           {/* 8 Quick Chips & 4/10 Presets */}
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-slate-300">
-                8 Thẻ Gợi Ý Nhanh & Mẫu Quy Trình Chuẩn:
+              <span className="text-xs font-semibold text-slate-700">
+                8 Thẻ Gợi Ý Nhanh &amp; Mẫu Quy Trình Chuẩn:
               </span>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setNewOpRawLines(SAMPLE_4_NC)}
-                  className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25"
+                  className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
                 >
                   <Sparkles className="mr-1 inline h-3 w-3" />
                   Mẫu 4 NC Tiêu Chuẩn
@@ -2177,7 +2216,7 @@ export function MasterAndConfigTab({
                 <button
                   type="button"
                   onClick={() => setNewOpRawLines(SAMPLE_10_NC)}
-                  className="rounded-md border border-purple-500/40 bg-purple-500/15 px-2.5 py-1 text-[11px] font-bold text-purple-300 hover:bg-purple-500/25"
+                  className="rounded-md border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-bold text-violet-700 transition-colors hover:bg-violet-100"
                 >
                   🚀 Mẫu 10 NC Phức Hợp
                 </button>
@@ -2194,7 +2233,7 @@ export function MasterAndConfigTab({
                       prev.trim() ? `${prev.trim()}\n${chip.line}` : chip.line
                     )
                   }
-                  className="rounded-md border border-industrial-border bg-industrial-elevated px-2 py-1 text-[11px] font-medium text-slate-200 hover:border-sky-400 hover:text-sky-300"
+                  className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
                 >
                   + {chip.label}
                 </button>
@@ -2203,14 +2242,15 @@ export function MasterAndConfigTab({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
-              Danh sách Nguyên công (Mỗi dòng theo cú pháp: <code className="text-sky-300">Tên Nguyên Công | Định mức giây</code>)
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Danh sách Nguyên công (Mỗi dòng theo cú pháp:{' '}
+              <code className="font-bold text-blue-700">Tên Nguyên Công | Định mức giây</code>)
             </label>
             <textarea
               rows={6}
               value={newOpRawLines}
               onChange={(e) => setNewOpRawLines(e.target.value)}
-              className="font-mono-num w-full rounded-xl border border-industrial-border bg-slate-950 p-3 text-xs leading-relaxed text-emerald-200 focus:border-sky-400 focus:outline-none"
+              className="font-mono-num w-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-xs leading-relaxed text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             />
           </div>
 
@@ -2236,7 +2276,7 @@ export function MasterAndConfigTab({
       >
         <form noValidate onSubmit={handleSaveEditOp} className="space-y-3.5">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Tên Nguyên Công
             </label>
             <input
@@ -2244,13 +2284,13 @@ export function MasterAndConfigTab({
               required
               value={editOpName}
               onChange={(e) => setEditOpName(e.target.value)}
-              className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100 focus:border-sky-400 focus:outline-none"
+              className={`${fieldInputCls} font-semibold`}
             />
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Định mức thời gian chuẩn (Giây/SP)
               </label>
               <input
@@ -2259,21 +2299,21 @@ export function MasterAndConfigTab({
                 required
                 value={editStdSeconds}
                 onChange={(e) => setEditStdSeconds(Number(e.target.value))}
-                className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-emerald-300 focus:border-sky-400 focus:outline-none"
+                className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
-              <div className="mt-1 text-[11px] text-slate-400">
+              <div className="mt-1 text-[11px] text-slate-500">
                 Quy đổi: {formatDurationSec(editStdSeconds)}
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Máy mặc định phân tải
               </label>
               <select
                 value={editDefaultMachine}
                 onChange={(e) => setEditDefaultMachine(e.target.value)}
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+                className={fieldInputCls}
               >
                 {machines.map((m) => (
                   <option key={m.id} value={m.name}>
@@ -2285,8 +2325,8 @@ export function MasterAndConfigTab({
           </div>
 
           {/* Inline Setup + Cycle helper */}
-          <div className="rounded-lg border border-industrial-border bg-slate-950/80 p-2.5 space-y-2">
-            <div className="text-[11px] font-semibold text-slate-400">
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+            <div className="text-[11px] font-semibold text-slate-600">
               Tính nhanh ĐM Giây từ Setup (s) ÷ Lô + Cycle (s):
             </div>
             <div className="grid grid-cols-4 gap-2">
@@ -2294,21 +2334,21 @@ export function MasterAndConfigTab({
                 type="number"
                 value={editSetupSec}
                 onChange={(e) => setEditSetupSec(Number(e.target.value))}
-                className="font-mono-num rounded border border-industrial-border bg-industrial-elevated px-2 py-1 text-xs text-slate-100"
+                className="font-mono-num rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
                 title="Setup giây"
               />
               <input
                 type="number"
                 value={editBatchQty}
                 onChange={(e) => setEditBatchQty(Number(e.target.value))}
-                className="font-mono-num rounded border border-industrial-border bg-industrial-elevated px-2 py-1 text-xs text-slate-100"
+                className="font-mono-num rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
                 title="Số lượng lô"
               />
               <input
                 type="number"
                 value={editCycleSec}
                 onChange={(e) => setEditCycleSec(Number(e.target.value))}
-                className="font-mono-num rounded border border-industrial-border bg-industrial-elevated px-2 py-1 text-xs text-slate-100"
+                className="font-mono-num rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
                 title="Cycle giây"
               />
               <button
@@ -2319,7 +2359,7 @@ export function MasterAndConfigTab({
                     Math.max(10, Math.round(editCycleSec));
                   setEditStdSeconds(next);
                 }}
-                className="rounded bg-sky-500/20 px-2 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/30"
+                className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100"
               >
                 Áp dụng
               </button>
@@ -2327,26 +2367,27 @@ export function MasterAndConfigTab({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
-              Chế độ cắt & Hướng dẫn gá đặt
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Chế độ cắt &amp; Hướng dẫn gá đặt
             </label>
             <input
               type="text"
               value={editCuttingRec}
               onChange={(e) => setEditCuttingRec(e.target.value)}
-              className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100 focus:border-sky-400 focus:outline-none"
+              className={fieldInputCls}
             />
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3">
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
             <input
               type="checkbox"
               checked={editIsCritical}
               onChange={(e) => setEditIsCritical(e.target.checked)}
-              className="h-4 w-4 rounded accent-amber-400"
+              className="h-4 w-4 rounded accent-amber-600"
             />
-            <span className="text-xs font-semibold text-amber-200">
-              ★ Đánh dấu Điểm Đo Quan Trọng (Bắt buộc Công nhân tích Tự Kiểm dung sai trước khi Gửi Báo Cáo)
+            <span className="text-xs font-semibold text-amber-900">
+              ★ Đánh dấu Điểm Đo Quan Trọng (Bắt buộc Công nhân tích Tự Kiểm dung sai trước khi Gửi
+              Báo Cáo)
             </span>
           </label>
 
@@ -2370,9 +2411,9 @@ export function MasterAndConfigTab({
         maxWidthClass="max-w-md"
       >
         <div className="space-y-4">
-          <div className="rounded-xl border border-red-500/40 bg-red-950/30 p-3.5 text-xs text-red-100 leading-relaxed">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs leading-relaxed text-rose-900">
             Bạn có chắc chắn muốn xóa nguyên công{' '}
-            <strong className="font-mono-num text-white">{deletingOp?.ncId}</strong> —{' '}
+            <strong className="font-mono-num text-rose-700">{deletingOp?.ncId}</strong> —{' '}
             <strong>{deletingOp?.opName}</strong> của sản phẩm{' '}
             <strong>{deletingOp?.productName}</strong>?<br />
             Hệ thống sẽ tự động đánh lại thứ tự các bước còn lại và gán lại cờ Chốt Thành Phẩm.
@@ -2402,10 +2443,10 @@ export function MasterAndConfigTab({
         maxWidthClass="max-w-4xl"
       >
         <div className="space-y-4">
-          <div className="max-h-[420px] overflow-auto rounded-xl border border-industrial-border">
+          <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
             <table className="w-full border-collapse text-left text-xs">
-              <thead className="sticky top-0 bg-slate-900 text-[11px] uppercase text-slate-300">
-                <tr className="border-b border-industrial-border">
+              <thead className="sticky top-0 bg-slate-50 text-[11px] font-bold uppercase text-slate-600">
+                <tr className="border-b border-slate-200">
                   <th className="px-2.5 py-2">#</th>
                   <th className="px-2.5 py-2">Khách Hàng</th>
                   <th className="px-2.5 py-2">Tên Sản Phẩm</th>
@@ -2415,22 +2456,22 @@ export function MasterAndConfigTab({
                   <th className="px-2.5 py-2">Mã Dao</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-slate-200 bg-white">
                 {importRows.map((r, idx) => (
                   <tr key={idx}>
-                    <td className="px-2.5 py-1.5 font-mono-num text-slate-400">
+                    <td className="font-mono-num px-2.5 py-1.5 text-slate-500">
                       {idx + 1}
                     </td>
-                    <td className="px-2.5 py-1.5 text-slate-200">{r.customer}</td>
-                    <td className="px-2.5 py-1.5 font-semibold text-slate-100">
+                    <td className="px-2.5 py-1.5 text-slate-700">{r.customer}</td>
+                    <td className="px-2.5 py-1.5 font-semibold text-slate-900">
                       {r.productName}
                     </td>
-                    <td className="px-2.5 py-1.5 text-sky-300">{r.opName}</td>
-                    <td className="px-2.5 py-1.5 text-right font-mono-num font-bold text-emerald-300">
+                    <td className="px-2.5 py-1.5 font-medium text-blue-700">{r.opName}</td>
+                    <td className="font-mono-num px-2.5 py-1.5 text-right font-bold text-emerald-700">
                       {formatNumber(r.stdSeconds)}s
                     </td>
-                    <td className="px-2.5 py-1.5 text-slate-300">{r.defaultMachine}</td>
-                    <td className="px-2.5 py-1.5 font-mono-num text-amber-300">
+                    <td className="px-2.5 py-1.5 text-slate-700">{r.defaultMachine}</td>
+                    <td className="font-mono-num px-2.5 py-1.5 font-semibold text-amber-800">
                       {r.toolCode}
                     </td>
                   </tr>
@@ -2440,9 +2481,9 @@ export function MasterAndConfigTab({
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-slate-400">
-              <FileSpreadsheet className="mr-1 inline h-4 w-4 text-emerald-400" />
-              Đã kiểm tra an toàn qua bộ giải mã <code className="text-sky-300">exceljs</code>.
+            <span className="text-xs text-slate-600">
+              <FileSpreadsheet className="mr-1 inline h-4 w-4 text-emerald-600" />
+              Đã kiểm tra tính hợp lệ cấu trúc biểu mẫu 7 cột chuẩn.
             </span>
             <div className="flex gap-2">
               <Button variant="ghost" onClick={() => setImportPreviewOpen(false)}>
@@ -2472,7 +2513,7 @@ export function MasterAndConfigTab({
       >
         <form noValidate onSubmit={handleAddMachine} className="space-y-3.5">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Mã Máy (Tùy chọn — Để trống sẽ tự sinh M24, M25...)
             </label>
             <input
@@ -2480,11 +2521,11 @@ export function MasterAndConfigTab({
               value={newMachId}
               onChange={(e) => setNewMachId(e.target.value)}
               placeholder="VD: M24"
-              className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100"
+              className={`font-mono-num ${fieldInputCls}`}
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Tên Máy Gia Công *
             </label>
             <input
@@ -2493,23 +2534,23 @@ export function MasterAndConfigTab({
               value={newMachName}
               onChange={(e) => setNewMachName(e.target.value)}
               placeholder="VD: Máy Phay CNC 5 Trục Mazak"
-              className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100"
+              className={`${fieldInputCls} font-semibold`}
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Nhóm Công Nghệ
             </label>
             <input
               type="text"
               value={newMachGroup}
               onChange={(e) => setNewMachGroup(e.target.value)}
-              className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100"
+              className={fieldInputCls}
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
-              Đơn Giá Giờ Máy Khấu Hao & Điện Năng (VNĐ/giờ)
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
+              Đơn Giá Giờ Máy Khấu Hao &amp; Điện Năng (VNĐ/giờ)
             </label>
             <input
               type="number"
@@ -2517,7 +2558,7 @@ export function MasterAndConfigTab({
               min={50000}
               value={newMachCostHour}
               onChange={(e) => setNewMachCostHour(Number(e.target.value))}
-              className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-emerald-300"
+              className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 focus:border-blue-600 focus:outline-none"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -2540,13 +2581,13 @@ export function MasterAndConfigTab({
       >
         <form noValidate onSubmit={handleSaveEditMachine} className="space-y-3.5">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Trạng Thái Vận Hành Hiện Tại (Hiển thị tức thì lên Andon TV)
             </label>
             <select
               value={editMachStatus}
               onChange={(e) => setEditMachStatus(e.target.value as MachineStatus)}
-              className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100"
+              className={`${fieldInputCls} font-semibold`}
             >
               <option value="RUNNING">🟢 RUNNING — Đang chạy cắt gọt</option>
               <option value="SETUP">🟡 SETUP — Đang gá đặt phôi / rà dao</option>
@@ -2557,7 +2598,7 @@ export function MasterAndConfigTab({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Đơn Giá Giờ Máy (VNĐ/giờ)
             </label>
             <input
@@ -2566,13 +2607,13 @@ export function MasterAndConfigTab({
               min={50000}
               value={editMachCostHour}
               onChange={(e) => setEditMachCostHour(Number(e.target.value))}
-              className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-emerald-300"
+              className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 focus:border-blue-600 focus:outline-none"
             />
           </div>
 
           {(editMachStatus === 'STOPPED' || editMachStatus === 'MAINTENANCE') && (
             <div>
-              <label className="mb-1 block text-xs font-semibold text-amber-300">
+              <label className="mb-1 block text-xs font-semibold text-amber-800">
                 Nguyên nhân dừng máy / Nội dung bảo trì
               </label>
               <input
@@ -2580,7 +2621,7 @@ export function MasterAndConfigTab({
                 value={editMachStopReason}
                 onChange={(e) => setEditMachStopReason(e.target.value)}
                 placeholder="VD: Quá nhiệt trục chính / Thay dầu thủy lực..."
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100"
+                className={fieldInputCls}
               />
             </div>
           )}
@@ -2610,13 +2651,13 @@ export function MasterAndConfigTab({
       >
         <form noValidate onSubmit={handleSubmitToolSwap} className="space-y-3.5">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Cấp cho Máy Gia Công
             </label>
             <select
               value={swapMachineName}
               onChange={(e) => setSwapMachineName(e.target.value)}
-              className="min-h-[42px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100"
+              className="min-h-[42px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
             >
               {machines.map((m) => (
                 <option key={m.id} value={m.name}>
@@ -2627,7 +2668,7 @@ export function MasterAndConfigTab({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Số lượng mảnh mới xuất kho
             </label>
             <input
@@ -2636,18 +2677,18 @@ export function MasterAndConfigTab({
               max={20}
               value={swapQty}
               onChange={(e) => setSwapQty(Number(e.target.value))}
-              className="font-mono-num min-h-[42px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-base font-bold text-emerald-300"
+              className="font-mono-num min-h-[42px] w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-bold text-emerald-700 focus:border-blue-600 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="mb-1 block text-xs font-semibold text-slate-700">
               Lý do cấp đổi mảnh
             </label>
             <select
               value={swapReason}
               onChange={(e) => setSwapReason(e.target.value)}
-              className="min-h-[42px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-xs font-semibold text-slate-100"
+              className="min-h-[42px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-blue-600 focus:outline-none"
             >
               {TOOL_SWAP_REASONS.map((r) => (
                 <option key={r} value={r}>
@@ -2657,15 +2698,16 @@ export function MasterAndConfigTab({
             </select>
           </div>
 
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/25 p-3">
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
             <input
               type="checkbox"
               checked={swapOldReturned}
               onChange={(e) => setSwapOldReturned(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded accent-emerald-400"
+              className="mt-0.5 h-4 w-4 rounded accent-emerald-600"
             />
-            <span className="text-xs font-semibold text-emerald-200 leading-snug">
-              Đã kiểm đếm & thu hồi đủ xác mảnh hợp kim mòn/vỡ cũ theo quy tắc 1-đổi-1 tại tủ dao
+            <span className="text-xs font-semibold leading-snug text-emerald-900">
+              Đã kiểm đếm &amp; thu hồi đủ xác mảnh hợp kim mòn/vỡ cũ theo quy tắc 1-đổi-1 tại tủ
+              dao
             </span>
           </label>
 
@@ -2695,7 +2737,7 @@ export function MasterAndConfigTab({
         <form noValidate onSubmit={handleSaveWorker} className="space-y-3.5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Mã Nhân Viên *
               </label>
               <input
@@ -2704,13 +2746,13 @@ export function MasterAndConfigTab({
                 disabled={editingWorkerMode}
                 value={wId}
                 onChange={(e) => setWId(e.target.value)}
-                className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-sky-300 disabled:opacity-60"
+                className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-blue-700 disabled:bg-slate-100 disabled:opacity-70"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
-                Họ & Tên *
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                Họ &amp; Tên *
               </label>
               <input
                 type="text"
@@ -2718,12 +2760,12 @@ export function MasterAndConfigTab({
                 value={wName}
                 onChange={(e) => setWName(e.target.value)}
                 placeholder="Nguyễn Văn A"
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-semibold text-slate-100"
+                className={`${fieldInputCls} font-semibold`}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Vai Trò Phân Quyền (RBAC)
               </label>
               <select
@@ -2736,7 +2778,7 @@ export function MasterAndConfigTab({
                   else if (next === 'KT') setWTitle('Kỹ thuật / QC');
                   else setWTitle('Công nhân đứng máy CNC');
                 }}
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100"
+                className={fieldInputCls}
               >
                 <option value="CN">CN — Công nhân đứng máy</option>
                 <option value="TC">TC — Trưởng ca sản xuất</option>
@@ -2746,19 +2788,19 @@ export function MasterAndConfigTab({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
-                Chức Danh Hiển Thị
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                Tổ / Bộ Phận &amp; Chức Danh
               </label>
               <input
                 type="text"
                 value={wTitle}
                 onChange={(e) => setWTitle(e.target.value)}
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100"
+                className={fieldInputCls}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Chế Độ Tính Lương 3P
               </label>
               <select
@@ -2768,7 +2810,7 @@ export function MasterAndConfigTab({
                     e.target.value as 'Khoán 1 + 0.33 máy' | 'Hành chính (Tháng)'
                   )
                 }
-                className="min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100"
+                className={fieldInputCls}
               >
                 <option value="Khoán 1 + 0.33 máy">Khoán 1 + 0.33 máy</option>
                 <option value="Hành chính (Tháng)">Hành chính (Tháng)</option>
@@ -2776,7 +2818,7 @@ export function MasterAndConfigTab({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Lương Cơ Bản Ca 8h (VNĐ)
               </label>
               <input
@@ -2785,15 +2827,15 @@ export function MasterAndConfigTab({
                 min={100000}
                 value={wBaseSalary}
                 onChange={(e) => setWBaseSalary(Number(e.target.value))}
-                className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm font-bold text-emerald-300"
+                className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-emerald-700 focus:border-blue-600 focus:outline-none"
               />
-              <div className="mt-0.5 font-mono-num text-[10px] text-slate-400">
+              <div className="font-mono-num mt-0.5 text-[10px] text-slate-500">
                 Đơn giá giây: {(wBaseSalary / 28800).toFixed(2)} đ/s
               </div>
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Mã PIN Đăng Nhập{' '}
                 {editingWorkerMode ? '(Để trống nếu giữ nguyên)' : '*'}
               </label>
@@ -2802,12 +2844,17 @@ export function MasterAndConfigTab({
                 value={wPin}
                 onChange={(e) => setWPin(e.target.value)}
                 placeholder={editingWorkerMode ? 'Giữ nguyên PIN cũ...' : 'VD: 1234'}
-                className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-slate-950 px-3 text-sm font-bold tracking-widest text-amber-300"
+                className="font-mono-num min-h-[40px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold tracking-widest text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+          <details className="rounded-xl border border-slate-200 bg-slate-50">
+            <summary className="cursor-pointer select-none px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:text-slate-900">
+              Tùy chọn nâng cao: Liên kết Telegram cá nhân (Cài đặt sau)
+            </summary>
+            <div className="border-t border-slate-200 p-3.5">
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
                 Telegram Chat ID Cá Nhân
               </label>
               <input
@@ -2815,10 +2862,10 @@ export function MasterAndConfigTab({
                 value={wChatId}
                 onChange={(e) => setWChatId(e.target.value)}
                 placeholder="VD: 582910384"
-                className="font-mono-num min-h-[40px] w-full rounded-lg border border-industrial-border bg-industrial-elevated px-3 text-sm text-slate-100"
+                className={`font-mono-num ${fieldInputCls}`}
               />
             </div>
-          </div>
+          </details>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => setWorkerModalOpen(false)}>

@@ -121,11 +121,19 @@ export function Card({
   noPadding = false,
   ...rest
 }: CardProps) {
+  const hasCustomBg = /\bbg-/.test(className);
+  const hasCustomBorderColor =
+    /\bborder-(?!l-|r-|t-|b-|x-|y-|0\b|2\b|4\b|8\b|none\b|solid\b|dashed\b|dotted\b|collapse\b|separate\b)/.test(
+      className
+    );
+  const defaultBgClass = hasCustomBg ? '' : elevated ? 'bg-industrial-elevated' : 'bg-white';
+  const defaultBorderColorClass = hasCustomBorderColor ? '' : 'border-slate-200';
+
   return (
     <div
-      className={`rounded-2xl border border-slate-200 ${
-        elevated ? 'bg-industrial-elevated' : 'bg-white'
-      } ${noPadding ? '' : 'p-4'} shadow-card ${className}`}
+      className={`rounded-2xl border ${defaultBorderColorClass} ${defaultBgClass} ${
+        noPadding ? '' : 'p-4'
+      } shadow-card ${className}`}
       {...rest}
     >
       {children}

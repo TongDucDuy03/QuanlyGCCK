@@ -10,6 +10,19 @@ function parseVndAmount(raw: string): number {
   return Number(digits || '0');
 }
 
+async function assertBrightBodyLuminance(page: Page) {
+  const rgb = await page.evaluate(() => {
+    const bg = window.getComputedStyle(document.body).backgroundColor;
+    const match = bg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (!match) return null;
+    return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]), raw: bg };
+  });
+  expect(rgb, 'Expected parsable rgb() backgroundColor on document.body').not.toBeNull();
+  expect(rgb!.r).toBeGreaterThan(225);
+  expect(rgb!.g).toBeGreaterThan(230);
+  expect(rgb!.b).toBeGreaterThan(235);
+}
+
 function attachCleanRuntimeMonitor(page: Page) {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
@@ -47,6 +60,7 @@ test.describe('GCCK Thắng Lợi MES — End-to-End Verification Suite', () => 
 
     const qrHeroBtn = page.getByRole('button', { name: /QUÉT MÃ QR PHIẾU CÔNG NGHỆ/i });
     await expect(qrHeroBtn).toBeVisible();
+    await assertBrightBodyLuminance(page);
 
     // Wait for initial Demo Quick-Switch auth session (NV00214) & bootstrap data
     await expect(page.getByTestId('live-turn-income')).toBeVisible();
@@ -181,6 +195,7 @@ test.describe('GCCK Thắng Lợi MES — End-to-End Verification Suite', () => 
       await adminRoleBtn.click();
     }
     await expect(page.getByText(/6 Phân Hệ Điều Hành/i)).toBeVisible();
+    await assertBrightBodyLuminance(page);
 
     // 1. Module 1: Điều Độ & Tải (cockpit)
     await expect(page.getByText(/Cân Bằng Tải/i).first()).toBeVisible();
@@ -269,7 +284,7 @@ test.describe('GCCK Thắng Lợi MES — End-to-End Verification Suite', () => 
     await page.getByRole('button', { name: /3\. Nhân Sự & Tài Khoản PIN/i }).click();
     await expect(page.getByText(/16 Nhân Sự/i).first()).toBeVisible();
 
-    await page.getByRole('button', { name: /4\. Cấu Hình Hệ Thống & Cloud Sync/i }).click();
+    await page.getByRole('button', { name: /4\. Cấu Hình Hệ Thống/i }).click();
     await expect(page.getByRole('button', { name: /Bật Strict PIN Mode/i })).toBeVisible();
 
     // Verify zero HTML5 stepMismatch when typing non-round VND value (e.g. 21543)
@@ -306,6 +321,7 @@ test.describe('GCCK Thắng Lợi MES — End-to-End Verification Suite', () => 
     await page.goto('/andon');
 
     await expect(page.getByText(/GCCK THẮNG LỢI — LIVE SHOPFLOOR ANDON/i)).toBeVisible();
+    await assertBrightBodyLuminance(page);
 
     // Verify 23+ machine live cards
     const machineCards = page.locator('[data-testid^="andon-machine-"]');

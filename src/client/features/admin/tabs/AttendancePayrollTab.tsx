@@ -14,8 +14,6 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
-  Sparkles,
-  SunMedium,
   Umbrella,
   Zap,
 } from 'lucide-react';
@@ -73,7 +71,7 @@ interface PayrollApiResponse {
   totalNetPay: number;
 }
 
-// ==================== MEMOIZED 60FPS ATTENDANCE DAY CELL ====================
+// ==================== MEMOIZED ATTENDANCE DAY CELL ====================
 interface DayCellProps {
   empId: string;
   dayIndex: number;
@@ -86,47 +84,55 @@ interface DayCellProps {
 
 function computeCellClass(val: string, isSunday: boolean, radarFilter: RadarFilter): string {
   const s = val.trim().toUpperCase();
+  const isOt = s.includes('+') || /\d+\s*G\b/.test(s);
+  const isLateOrEarly = s.includes('-') || s === 'M' || s === 'S' || /\b[MS]\d/.test(s);
+  const isNightS3 = s.includes('C3') || s.includes('ĐÊM') || s.includes('DEM');
+  const isLeave =
+    s === 'P' ||
+    s === 'P/2' ||
+    s === 'L' ||
+    s === 'PO' ||
+    s === 'O' ||
+    s === '0' ||
+    s === 'O/2';
 
-  let glow = '';
+  let highlight = '';
   if (radarFilter === 'HAS_KP' && s.includes('KP')) {
-    glow = 'ring-2 ring-red-400 shadow-[0_0_12px_rgba(239,68,68,0.85)] scale-105 z-10';
-  } else if (radarFilter === 'HAS_LATE' && s.includes('-')) {
-    glow = 'ring-2 ring-pink-400 shadow-[0_0_12px_rgba(236,72,153,0.8)] scale-105 z-10';
-  } else if (radarFilter === 'TOP_OT' && (s.includes('+') || (isSunday && s !== ''))) {
-    glow = 'ring-2 ring-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.75)] z-10';
-  } else if (radarFilter === 'TOP_S3' && s.includes('C3')) {
-    glow = 'ring-2 ring-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.75)] z-10';
+    highlight = 'ring-2 ring-rose-500 scale-105 z-10';
+  } else if (radarFilter === 'HAS_LATE' && isLateOrEarly) {
+    highlight = 'ring-2 ring-orange-500 scale-105 z-10';
+  } else if (radarFilter === 'TOP_OT' && (isOt || (isSunday && s !== ''))) {
+    highlight = 'ring-2 ring-blue-500 z-10';
+  } else if (radarFilter === 'TOP_S3' && isNightS3) {
+    highlight = 'ring-2 ring-indigo-500 z-10';
   }
 
   if (!s) {
     return `${
       isSunday
-        ? 'border-slate-700 bg-slate-800/70 text-slate-400'
-        : 'border-slate-800 bg-slate-950 text-slate-200'
-    } ${glow}`;
+        ? 'border-rose-200 bg-rose-50/40 text-slate-600'
+        : 'border-slate-200 bg-white text-slate-800'
+    } ${highlight}`;
   }
   if (s.includes('KP')) {
-    return `border-red-400 bg-red-900/90 font-extrabold text-white ${glow}`;
+    return `border-rose-700 bg-rose-600 font-black text-white shadow-sm ${highlight}`;
   }
-  if (s.includes('-')) {
-    return `border-rose-500/80 bg-rose-950/75 font-bold text-rose-200 ${glow}`;
+  if (isLateOrEarly) {
+    return `border-orange-200 bg-orange-50 font-semibold text-orange-800 ${highlight}`;
   }
-  if (s === 'P' || s === 'P/2' || s === 'O' || s === '0' || s === 'O/2') {
-    return `border-purple-500/70 bg-purple-950/60 font-bold text-purple-200 ${glow}`;
+  if (isLeave) {
+    return `border-amber-200 bg-amber-50 font-semibold text-amber-800 ${highlight}`;
   }
-  if (s.includes('+')) {
-    if (s.startsWith('C2') || s.startsWith('C3')) {
-      return `border-emerald-500/70 bg-emerald-950/65 font-bold text-emerald-200 ${glow}`;
-    }
-    return `border-sky-500/70 bg-sky-950/65 font-bold text-sky-200 ${glow}`;
+  if (isOt) {
+    return `border-blue-200 bg-blue-50 font-bold text-blue-800 ${highlight}`;
   }
-  if (s.includes('C3')) {
-    return `border-cyan-500/70 bg-cyan-950/60 font-bold text-cyan-200 ${glow}`;
+  if (isNightS3) {
+    return `border-indigo-200 bg-indigo-50 font-bold text-indigo-800 ${highlight}`;
   }
   if (isSunday) {
-    return `border-emerald-500/70 bg-emerald-950/70 font-bold text-emerald-200 ${glow}`;
+    return `border-blue-200 bg-blue-50 font-bold text-blue-800 ${highlight}`;
   }
-  return `border-industrial-border bg-industrial-elevated font-semibold text-slate-100 ${glow}`;
+  return `border-slate-200 bg-white font-semibold text-slate-800 ${highlight}`;
 }
 
 const AttendanceDayCell = memo(function AttendanceDayCell({
@@ -140,7 +146,7 @@ const AttendanceDayCell = memo(function AttendanceDayCell({
 }: DayCellProps) {
   if (disabled) {
     return (
-      <td className="border-r border-slate-800/60 bg-slate-950/80 px-1 py-1 text-center text-[11px] text-slate-700">
+      <td className="border-b border-r border-slate-200 bg-slate-100 px-1 py-1 text-center text-[11px] text-slate-500">
         —
       </td>
     );
@@ -148,8 +154,8 @@ const AttendanceDayCell = memo(function AttendanceDayCell({
 
   return (
     <td
-      className={`border-r border-slate-800/50 p-1 text-center ${
-        isSunday ? 'bg-slate-800/35' : ''
+      className={`border-b border-r border-slate-200 p-1 text-center ${
+        isSunday ? 'bg-rose-50/30' : ''
       }`}
     >
       <input
@@ -157,7 +163,7 @@ const AttendanceDayCell = memo(function AttendanceDayCell({
         value={value}
         onChange={(e) => onCellChange(empId, dayIndex, e.target.value)}
         aria-label={`Chấm công ${empId} ngày ${dayIndex + 1}`}
-        className={`font-mono-num relative h-7 w-[50px] rounded border px-1 text-center text-[11px] transition-shadow focus:border-sky-400 focus:outline-none ${computeCellClass(
+        className={`font-mono-num relative h-7 w-[50px] rounded border px-1 text-center text-[11px] transition-shadow focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 ${computeCellClass(
           value,
           isSunday,
           radarFilter
@@ -513,12 +519,12 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
 
   if (!canAccessAttendance) {
     return (
-      <Card className="border-amber-500/40 bg-slate-900/90 p-6 text-center">
-        <Lock className="mx-auto h-10 w-10 text-amber-400" />
-        <h3 className="mt-3 text-base font-extrabold text-slate-100">
+      <Card className="border-amber-200 bg-amber-50/60 p-6 text-center">
+        <Lock className="mx-auto h-10 w-10 text-amber-600" />
+        <h3 className="mt-3 text-base font-extrabold text-slate-900">
           Phân Hệ Chấm Công &amp; Lương 3P Yêu Cầu Quyền Trưởng Ca Hoặc Quản Đốc
         </h3>
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1 text-xs text-slate-600">
           Vai trò hiện tại ({user?.title || 'Chưa xác thực'}) không được phép chỉnh sửa bảng công
           nhân sự.
         </p>
@@ -575,16 +581,16 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-sky-400" />
-              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-50">
+            <div className="flex flex-wrap items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">
                 Bảng Chấm Công Thông Minh 31 Ngày, Radar 1-Click &amp; Chốt Lương KPI 3P
               </h2>
               <Badge variant="info">
                 Tháng {String(month).padStart(2, '0')}/{year}: {daysInMonth} ngày
               </Badge>
             </div>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500">
               Tự động nhận công &amp; giờ tăng ca từ phiếu công nhân. Đầy đủ 6 bảng nghiệp vụ &amp;
               Xuất Excel 4 Sheet chuẩn kế toán nhà máy.
             </p>
@@ -594,7 +600,7 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="font-mono-num h-9 rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 text-xs font-bold text-amber-300"
+              className="font-mono-num h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-800 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             >
               <option value={2025}>Năm 2025</option>
               <option value={2026}>Năm 2026</option>
@@ -604,7 +610,7 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
             <select
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
-              className="font-mono-num h-9 rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 text-xs font-bold text-sky-300"
+              className="font-mono-num h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-blue-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             >
               {Array.from({ length: 12 }, (_, idx) => idx + 1).map((m) => (
                 <option key={m} value={m}>
@@ -638,7 +644,7 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
           </div>
         </div>
 
-        {/* ==================== 6 GLOWING RADAR CARDS ==================== */}
+        {/* ==================== 6 RADAR CARDS ==================== */}
         <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
           {(
             [
@@ -651,10 +657,10 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     .slice(0, 2)
                     .map((e) => e.name)
                     .join(', ') || 'Chưa phát sinh',
-                border: 'border-emerald-500/50',
-                activeGlow: 'ring-2 ring-emerald-400 bg-emerald-950/35',
+                border: 'border-slate-200 border-l-4 border-l-emerald-500',
+                activeStyle: 'ring-2 ring-emerald-500 bg-emerald-50/70',
                 icon: Award,
-                color: 'text-emerald-300',
+                color: 'text-emerald-700',
               },
               {
                 key: 'TOP_OT' as RadarFilter,
@@ -665,10 +671,10 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     .slice(0, 2)
                     .map((e) => `${e.name} (${e.totalOt}h)`)
                     .join(', ') || '0h OT',
-                border: 'border-amber-500/50',
-                activeGlow: 'ring-2 ring-amber-400 bg-amber-950/35',
+                border: 'border-slate-200 border-l-4 border-l-blue-600',
+                activeStyle: 'ring-2 ring-blue-500 bg-blue-50/70',
                 icon: Flame,
-                color: 'text-amber-300',
+                color: 'text-blue-700',
               },
               {
                 key: 'HAS_KP' as RadarFilter,
@@ -681,10 +687,10 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                   radarStats.kpList
                     .map((e) => `${e.name} (Ng.${e.kpDayList.join(',')})`)
                     .join('; ') || '100% đúng nội quy',
-                border: 'border-red-500/55',
-                activeGlow: 'ring-2 ring-red-400 bg-red-950/40',
+                border: 'border-slate-200 border-l-4 border-l-rose-500',
+                activeStyle: 'ring-2 ring-rose-500 bg-rose-50/70',
                 icon: ShieldAlert,
-                color: 'text-red-400',
+                color: 'text-rose-700',
               },
               {
                 key: 'HAS_LATE' as RadarFilter,
@@ -695,10 +701,10 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     .slice(0, 2)
                     .map((e) => `${e.name} (-${e.lateHours}h)`)
                     .join(', ') || 'Không ai đi muộn',
-                border: 'border-pink-500/50',
-                activeGlow: 'ring-2 ring-pink-400 bg-pink-950/35',
+                border: 'border-slate-200 border-l-4 border-l-amber-500',
+                activeStyle: 'ring-2 ring-amber-500 bg-amber-50/70',
                 icon: Clock,
-                color: 'text-pink-300',
+                color: 'text-amber-700',
               },
               {
                 key: 'TOP_OFF' as RadarFilter,
@@ -709,20 +715,20 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     .slice(0, 2)
                     .map((e) => e.name)
                     .join(', ') || 'Trong ngưỡng chuẩn',
-                border: 'border-purple-500/50',
-                activeGlow: 'ring-2 ring-purple-400 bg-purple-950/35',
+                border: 'border-slate-200 border-l-4 border-l-slate-500',
+                activeStyle: 'ring-2 ring-slate-500 bg-slate-100',
                 icon: Umbrella,
-                color: 'text-purple-300',
+                color: 'text-slate-700',
               },
               {
                 key: 'TOP_S3' as RadarFilter,
                 title: '🌙 Chuyên Ca 3 Đêm',
                 val: `${radarStats.maxS3.toFixed(1)} ca đêm`,
                 sub: `${radarStats.topS3List.length} NV có chạy Ca 3`,
-                border: 'border-sky-500/50',
-                activeGlow: 'ring-2 ring-sky-400 bg-sky-950/35',
+                border: 'border-slate-200 border-l-4 border-l-indigo-500',
+                activeStyle: 'ring-2 ring-indigo-500 bg-indigo-50/70',
                 icon: Moon,
-                color: 'text-sky-300',
+                color: 'text-indigo-700',
               },
             ] as const
           ).map((card) => {
@@ -733,18 +739,20 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                 key={card.key}
                 type="button"
                 onClick={() => setRadarFilter((prev) => (prev === card.key ? 'ALL' : card.key))}
-                className={`flex flex-col justify-between rounded-xl border p-2.5 text-left transition-all hover:-translate-y-0.5 ${
+                className={`flex flex-col justify-between rounded-xl border p-2.5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-card ${
                   card.border
-                } ${active ? card.activeGlow : 'bg-slate-950/75'}`}
+                } ${active ? card.activeStyle : 'bg-white hover:bg-slate-50/60'}`}
               >
                 <div className="flex w-full items-center justify-between gap-1">
                   <span className={`text-[11px] font-extrabold ${card.color}`}>{card.title}</span>
                   <Icon className={`h-3.5 w-3.5 shrink-0 ${card.color}`} />
                 </div>
-                <div className="font-mono-num mt-1.5 text-sm font-extrabold text-slate-100">
+                <div className={`font-mono-num mt-1.5 text-sm font-bold ${card.color}`}>
                   {card.val}
                 </div>
-                <div className="mt-0.5 truncate text-[10px] text-slate-400">{card.sub}</div>
+                <div className="mt-0.5 truncate text-[11px] font-medium text-slate-800">
+                  {card.sub}
+                </div>
               </button>
             );
           })}
@@ -753,13 +761,13 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
         {/* Search & Clear Radar Filter */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <div className="relative min-w-[260px] flex-1 sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm nhanh Họ tên, Mã NV (NV00214), Ca mặc định..."
-              className="h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated pl-9 pr-3 text-xs text-slate-100"
+              className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
             />
           </div>
 
@@ -773,7 +781,7 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
       </Card>
 
       {/* ==================== 6 DEEP SUB-TABS NAVIGATION ==================== */}
-      <div className="flex flex-wrap gap-1.5 rounded-xl border border-industrial-border bg-industrial-surface p-2">
+      <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-white p-2 shadow-card">
         {(
           [
             [1, `🗓️ 1. Bảng Nhập ${daysInMonth} Ngày`],
@@ -791,9 +799,9 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
             className={`rounded-lg border px-3 py-2 text-xs font-extrabold transition-all ${
               activeSubTab === num
                 ? num === 6
-                  ? 'border-amber-400 bg-amber-500/20 text-amber-200 shadow'
-                  : 'border-sky-400 bg-sky-500/20 text-sky-200 shadow'
-                : 'border-industrial-border bg-industrial-elevated text-slate-300 hover:text-white'
+                  ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                  : 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             {label}
@@ -804,36 +812,42 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
       {/* ==================== SUB-TAB 1: 31-DAY MEMOIZED MATRIX ==================== */}
       {activeSubTab === 1 && (
         <Card noPadding>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-industrial-border bg-slate-950/50 px-4 py-2.5 text-xs">
-            <span className="text-slate-300">
-              💡 Gõ trực tiếp mã công (<code>X</code>, <code>C1+2</code>, <code>C2/2-0.75</code>,{' '}
-              <code>C3+2D</code>, <code>P</code>, <code>KP</code>) — tự động tính tức thì ở 60fps
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 text-xs">
+            <span className="text-slate-600">
+              💡 Gõ trực tiếp mã công (<code className="font-bold text-slate-800">X</code>,{' '}
+              <code className="font-bold text-blue-700">C1+2</code>,{' '}
+              <code className="font-bold text-orange-700">C2/2-0.75</code>,{' '}
+              <code className="font-bold text-indigo-700">C3</code>,{' '}
+              <code className="font-bold text-amber-700">P</code>,{' '}
+              <code className="font-bold text-rose-700">KP</code>) — tự động tính công tức thì
               &amp; lưu nền sau 0.4s.
             </span>
             <div className="flex flex-wrap gap-1.5">
-              <Badge variant="danger">Đỏ đậm: Nghỉ KP</Badge>
-              <Badge variant="success">Xanh: Tăng ca / CN</Badge>
-              <Badge variant="warning">Hồng: Đi muộn (-giờ)</Badge>
-              <Badge variant="purple">Tím: Nghỉ P / O</Badge>
+              <span className="inline-flex items-center rounded-md border border-rose-700 bg-rose-600 px-2 py-0.5 text-[11px] font-black text-white">
+                KP: Nghỉ không phép
+              </span>
+              <Badge variant="info">Xanh: Tăng ca (+giờ)</Badge>
+              <Badge variant="purple">Tím: Ca 3 Đêm</Badge>
+              <Badge variant="warning">Cam/Vàng: Muộn / Phép P</Badge>
             </div>
           </div>
 
           <div className="max-h-[560px] overflow-auto">
             {loadingAtt ? (
-              <div className="p-8 text-center text-sm text-slate-400">
+              <div className="p-8 text-center text-sm text-slate-500">
                 Đang nạp ma trận chấm công {yearMonth}...
               </div>
             ) : (
               <table className="w-full min-w-[1880px] border-separate border-spacing-0 text-left text-xs">
-                <thead className="sticky top-0 z-20 bg-slate-950 text-[11px] font-bold text-slate-300">
+                <thead className="sticky top-0 z-20 bg-slate-50 text-[11px] font-bold text-slate-600">
                   <tr>
-                    <th className="sticky left-0 z-30 min-w-[215px] border-b border-r border-industrial-border bg-slate-950 px-3 py-2">
+                    <th className="sticky left-0 z-30 min-w-[215px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)]">
                       Nhân Sự &amp; Huy Hiệu Radar
                     </th>
-                    <th className="min-w-[96px] border-b border-r border-industrial-border bg-slate-950 px-2 py-2 text-center">
+                    <th className="min-w-[96px] border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center">
                       Ca Mặc Định
                     </th>
-                    <th className="min-w-[68px] border-b border-r border-industrial-border bg-slate-950 px-2 py-2 text-center text-emerald-300">
+                    <th className="min-w-[68px] border-b border-r border-slate-200 bg-slate-50 px-2 py-2 text-center text-emerald-700">
                       Công
                     </th>
                     {Array.from({ length: 31 }, (_, i) => {
@@ -844,28 +858,28 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                       return (
                         <th
                           key={dayNum}
-                          className={`min-w-[54px] border-b border-r border-slate-800 px-1 py-1.5 text-center ${
+                          className={`min-w-[54px] border-b border-r border-slate-200 px-1 py-1.5 text-center ${
                             outOfMonth
-                              ? 'bg-slate-950/90 text-slate-700'
+                              ? 'bg-slate-100 text-slate-500'
                               : isSun
-                                ? 'bg-slate-700/80 text-amber-200'
-                                : 'bg-slate-950 text-slate-300'
+                                ? 'bg-rose-50 text-rose-700'
+                                : 'bg-slate-50 text-slate-600'
                           }`}
                         >
                           <div className="font-mono-num">{String(dayNum).padStart(2, '0')}</div>
-                          <div className="text-[10px] opacity-80">{dow}</div>
+                          <div className="text-[10px]">{dow}</div>
                         </th>
                       );
                     })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-industrial-border/50">
+                <tbody className="bg-white">
                   {filteredEmployees.map((emp) => (
-                    <tr key={emp.empId} className="hover:bg-slate-800/30">
-                      <td className="sticky left-0 z-10 border-b border-r border-industrial-border bg-industrial-surface px-3 py-2">
-                        <div className="font-bold text-slate-100">
+                    <tr key={emp.empId} className="group transition-colors hover:bg-blue-50">
+                      <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-3 py-2 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)] group-hover:bg-blue-50">
+                        <div className="font-bold text-slate-900">
                           {emp.name}{' '}
-                          <span className="font-mono-num text-[11px] text-sky-400">
+                          <span className="font-mono-num text-[11px] font-semibold text-blue-700">
                             ({emp.empId})
                           </span>
                         </div>
@@ -890,11 +904,11 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                         )}
                       </td>
 
-                      <td className="border-b border-r border-industrial-border px-1.5 py-1.5 text-center">
+                      <td className="border-b border-r border-slate-200 px-1.5 py-1.5 text-center">
                         <select
                           value={emp.defaultShift}
                           onChange={(e) => void handleDefaultShiftChange(emp, e.target.value)}
-                          className="h-7 w-full rounded border border-industrial-border bg-industrial-elevated px-1 text-[11px] font-semibold text-slate-200"
+                          className="h-7 w-full rounded border border-slate-300 bg-white px-1 text-[11px] font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
                         >
                           <option value="Hành chính">Hành chính</option>
                           <option value="Ca 1">Ca 1</option>
@@ -903,7 +917,7 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                         </select>
                       </td>
 
-                      <td className="font-mono-num border-b border-r border-industrial-border px-2 py-1.5 text-center font-extrabold text-emerald-400">
+                      <td className="font-mono-num border-b border-r border-slate-200 px-2 py-1.5 text-center font-extrabold text-emerald-700">
                         {emp.regDays.toFixed(1)}
                       </td>
 
@@ -932,43 +946,79 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
       {activeSubTab === 2 && (
         <Card noPadding>
           <div className="max-h-[560px] overflow-auto">
-            <table className="w-full min-w-[1280px] border-collapse text-left text-xs">
-              <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase text-slate-400 shadow">
-                <tr className="border-b border-industrial-border">
-                  <th className="px-2.5 py-2.5 text-center">STT</th>
-                  <th className="px-2.5 py-2.5">Mã NV</th>
-                  <th className="px-3 py-2.5">Tên Nhân Viên</th>
-                  <th className="px-3 py-2.5">Nhận Diện Thông Minh &amp; Cảnh Báo</th>
-                  <th className="px-2.5 py-2.5 text-right">Giờ 100% Lương</th>
-                  <th className="px-2.5 py-2.5 text-right">Công Tính AB</th>
-                  <th className="px-2.5 py-2.5 text-center">Xếp Loại</th>
-                  <th className="px-2.5 py-2.5 text-right">Công Thường</th>
-                  <th className="px-2.5 py-2.5 text-right">Công Ca 3</th>
-                  <th className="px-2.5 py-2.5 text-right text-sky-300">TC x1.5</th>
-                  <th className="px-2.5 py-2.5 text-right text-amber-300">TC x2</th>
-                  <th className="px-2.5 py-2.5 text-right text-rose-300">TC x3</th>
-                  <th className="px-2.5 py-2.5 text-right text-emerald-300">Phụ Cấp Ăn Ca</th>
-                  <th className="px-2.5 py-2.5 text-right">Tổng Nghỉ</th>
-                  <th className="px-2.5 py-2.5 text-right text-red-300">Muộn/Sớm</th>
-                  <th className="px-2.5 py-2.5 text-center">Ô Lỗi</th>
+            <table className="w-full min-w-[1280px] border-separate border-spacing-0 text-left text-xs">
+              <thead className="sticky top-0 z-20 bg-slate-50 text-[11px] font-bold uppercase text-slate-600">
+                <tr>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-center">
+                    STT
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5">Mã NV</th>
+                  <th className="sticky left-0 z-30 border-b border-r border-slate-200 bg-slate-50 px-3 py-2.5 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)]">
+                    Tên Nhân Viên
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2.5">
+                    Nhận Diện Thông Minh &amp; Cảnh Báo
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right">
+                    Giờ 100% Lương
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right">
+                    Công Tính AB
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-center">
+                    Xếp Loại
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right">
+                    Công Thường
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right">
+                    Công Ca 3
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-blue-700">
+                    TC x1.5
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-amber-700">
+                    TC x2
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-indigo-700">
+                    TC x3
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-emerald-700">
+                    Phụ Cấp Ăn Ca
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right">
+                    Tổng Nghỉ
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-rose-700">
+                    Muộn/Sớm
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-center">
+                    Ô Lỗi
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-industrial-border/60">
+              <tbody className="bg-white">
                 {filteredEmployees.map((e, idx) => (
-                  <tr key={e.empId} className="hover:bg-slate-800/40">
-                    <td className="font-mono-num px-2.5 py-2 text-center text-slate-400">
+                  <tr key={e.empId} className="group transition-colors hover:bg-blue-50">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-center text-slate-500">
                       {idx + 1}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 font-bold text-sky-400">{e.empId}</td>
-                    <td className="px-3 py-2 font-bold text-slate-100">{e.name}</td>
-                    <td className="px-3 py-2 text-[11px] text-slate-300">{e.badgeText}</td>
-                    <td className="font-mono-num px-2.5 py-2 text-right font-bold">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 font-bold text-blue-700">
+                      {e.empId}
+                    </td>
+                    <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-3 py-2 font-bold text-slate-900 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)] group-hover:bg-blue-50">
+                      {e.name}
+                    </td>
+                    <td className="border-b border-slate-200 px-3 py-2 text-[11px] text-slate-700">
+                      {e.badgeText}
+                    </td>
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-bold text-slate-900">
                       {e.hours100.toFixed(2)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 text-right font-bold text-sky-300">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-bold text-blue-700">
                       {e.abDays.toFixed(2)}
                     </td>
-                    <td className="px-2.5 py-2 text-center">
+                    <td className="border-b border-slate-200 px-2.5 py-2 text-center">
                       <Badge
                         variant={
                           e.grade === 'A'
@@ -981,33 +1031,37 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                         {e.grade}
                       </Badge>
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 text-right font-bold">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-bold text-slate-900">
                       {e.regDays.toFixed(2)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 text-right">{e.s3Days.toFixed(1)}</td>
-                    <td className="font-mono-num px-2.5 py-2 text-right font-semibold text-sky-300">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right text-indigo-700">
+                      {e.s3Days.toFixed(1)}
+                    </td>
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-semibold text-blue-700">
                       {e.ot15.toFixed(1)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 text-right font-semibold text-amber-300">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-semibold text-amber-700">
                       {e.ot20.toFixed(1)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 text-right font-semibold text-rose-300">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-semibold text-indigo-700">
                       {e.ot30.toFixed(1)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 text-right font-bold text-emerald-400">
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-bold text-emerald-700">
                       {formatNumber(e.mealTotal)}
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 text-right">{e.offDays.toFixed(1)}</td>
+                    <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right text-slate-700">
+                      {e.offDays.toFixed(1)}
+                    </td>
                     <td
-                      className={`font-mono-num px-2.5 py-2 text-right ${
-                        e.lateHours > 0 ? 'font-bold text-red-400' : 'text-slate-500'
+                      className={`font-mono-num border-b border-slate-200 px-2.5 py-2 text-right ${
+                        e.lateHours > 0 ? 'font-bold text-rose-700' : 'text-slate-500'
                       }`}
                     >
                       {e.lateHours.toFixed(2)}
                     </td>
                     <td
-                      className={`font-mono-num px-2.5 py-2 text-center ${
-                        e.errCount > 0 ? 'font-bold text-red-400' : 'text-slate-500'
+                      className={`font-mono-num border-b border-slate-200 px-2.5 py-2 text-center ${
+                        e.errCount > 0 ? 'font-bold text-rose-700' : 'text-slate-500'
                       }`}
                     >
                       {e.errCount}
@@ -1015,38 +1069,38 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-slate-950 font-mono-num text-xs font-extrabold text-amber-300">
-                <tr className="border-t-2 border-sky-500/60">
-                  <td colSpan={4} className="px-3 py-2.5 text-right uppercase">
+              <tfoot className="bg-slate-100 font-mono-num text-xs font-extrabold text-slate-900">
+                <tr className="border-t-2 border-slate-300">
+                  <td colSpan={4} className="px-3 py-2.5 text-right uppercase text-slate-700">
                     Tổng cộng ({filteredEmployees.length} nhân sự):
                   </td>
                   <td className="px-2.5 py-2.5 text-right">{tab2Totals.hours100.toFixed(1)}</td>
-                  <td className="px-2.5 py-2.5 text-right text-sky-300">
+                  <td className="px-2.5 py-2.5 text-right text-blue-700">
                     {tab2Totals.abDays.toFixed(1)}
                   </td>
                   <td />
-                  <td className="px-2.5 py-2.5 text-right text-slate-100">
+                  <td className="px-2.5 py-2.5 text-right text-slate-900">
                     {tab2Totals.regDays.toFixed(1)}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-slate-100">
+                  <td className="px-2.5 py-2.5 text-right text-indigo-700">
                     {tab2Totals.s3Days.toFixed(1)}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-sky-300">
+                  <td className="px-2.5 py-2.5 text-right text-blue-700">
                     {tab2Totals.ot15.toFixed(1)}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-amber-300">
+                  <td className="px-2.5 py-2.5 text-right text-amber-700">
                     {tab2Totals.ot20.toFixed(1)}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-rose-300">
+                  <td className="px-2.5 py-2.5 text-right text-indigo-700">
                     {tab2Totals.ot30.toFixed(1)}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-emerald-400">
+                  <td className="px-2.5 py-2.5 text-right text-emerald-700">
                     {formatVnd(tab2Totals.mealTotal)}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-slate-200">
+                  <td className="px-2.5 py-2.5 text-right text-slate-700">
                     {tab2Totals.offDays.toFixed(1)}
                   </td>
-                  <td className="px-2.5 py-2.5 text-right text-red-400">
+                  <td className="px-2.5 py-2.5 text-right text-rose-700">
                     {tab2Totals.lateHours.toFixed(2)}
                   </td>
                   <td className="px-2.5 py-2.5 text-center">{tab2Totals.errCount}</td>
@@ -1060,8 +1114,8 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
       {/* ==================== SUB-TAB 3: UNIFIED 31-DAY MEAL ALLOWANCE ==================== */}
       {activeSubTab === 3 && (
         <Card noPadding>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-industrial-border bg-slate-950/60 px-4 py-2.5 text-xs">
-            <span className="text-slate-300">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 text-xs">
+            <span className="font-medium text-slate-600">
               🍱 Định mức Phụ cấp Ăn ca thống nhất từ Cấu hình Hệ thống:
             </span>
             <div className="flex flex-wrap gap-2">
@@ -1072,56 +1126,62 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
           </div>
 
           <div className="max-h-[540px] overflow-auto">
-            <table className="w-full min-w-[1750px] border-collapse text-left text-xs">
-              <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold text-slate-400">
-                <tr className="border-b border-industrial-border">
-                  <th className="px-2.5 py-2 text-center">STT</th>
-                  <th className="px-2.5 py-2">Mã NV</th>
-                  <th className="min-w-[165px] px-3 py-2">Tên Nhân Viên</th>
-                  {Array.from({ length: 31 }, (_, i) => (
-                    <th
-                      key={i}
-                      className={`min-w-[52px] px-1 py-2 text-center ${
-                        dows[i] === 'CN' ? 'bg-slate-800 text-amber-300' : ''
-                      }`}
-                    >
-                      <div>{String(i + 1).padStart(2, '0')}</div>
-                      <div className="text-[10px]">{dows[i]}</div>
-                    </th>
-                  ))}
-                  <th className="min-w-[110px] px-3 py-2 text-right text-emerald-300">
+            <table className="w-full min-w-[1750px] border-separate border-spacing-0 text-left text-xs">
+              <thead className="sticky top-0 z-20 bg-slate-50 text-[11px] font-bold text-slate-600">
+                <tr>
+                  <th className="sticky left-0 z-30 min-w-[220px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)]">
+                    STT • Nhân Sự &amp; Mã NV
+                  </th>
+                  {Array.from({ length: 31 }, (_, i) => {
+                    const isSun = dows[i] === 'CN';
+                    return (
+                      <th
+                        key={i}
+                        className={`min-w-[52px] border-b border-r border-slate-200 px-1 py-2 text-center ${
+                          isSun ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        <div className="font-mono-num">{String(i + 1).padStart(2, '0')}</div>
+                        <div className="text-[10px]">{dows[i]}</div>
+                      </th>
+                    );
+                  })}
+                  <th className="min-w-[115px] border-b border-slate-200 bg-emerald-50/60 px-3 py-2 text-right text-emerald-700">
                     Tổng Ăn Ca
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-industrial-border/50">
+              <tbody className="bg-white">
                 {filteredEmployees.map((emp, idx) => (
-                  <tr key={emp.empId} className="hover:bg-slate-800/35">
-                    <td className="font-mono-num px-2.5 py-2 text-center text-slate-400">
-                      {idx + 1}
+                  <tr key={emp.empId} className="group transition-colors hover:bg-blue-50">
+                    <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-3 py-2 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)] group-hover:bg-blue-50">
+                      <span className="font-mono-num mr-2 text-slate-500">{idx + 1}.</span>
+                      <span className="font-semibold text-slate-900">{emp.name}</span>{' '}
+                      <span className="font-mono-num text-[11px] font-bold text-blue-700">
+                        ({emp.empId})
+                      </span>
                     </td>
-                    <td className="font-mono-num px-2.5 py-2 font-bold text-sky-400">
-                      {emp.empId}
-                    </td>
-                    <td className="px-3 py-2 font-semibold text-slate-100">{emp.name}</td>
                     {Array.from({ length: 31 }, (_, dIdx) => {
                       const mv = emp.dailyMeals[dIdx] || 0;
+                      const isSun = dows[dIdx] === 'CN';
                       return (
                         <td
                           key={dIdx}
-                          className={`font-mono-num px-1 py-2 text-right text-[11px] ${
+                          className={`font-mono-num border-b border-r border-slate-200 px-1 py-2 text-right text-[11px] ${
+                            isSun ? 'bg-rose-50/30 ' : ''
+                          }${
                             mv >= 30000
-                              ? 'font-bold text-amber-300'
+                              ? 'font-bold text-blue-700'
                               : mv > 0
-                                ? 'font-semibold text-emerald-400'
-                                : 'text-slate-600'
+                                ? 'font-semibold text-emerald-700'
+                                : 'text-slate-400'
                           }`}
                         >
                           {mv > 0 ? `${Math.round(mv / 1000)}k` : '0'}
                         </td>
                       );
                     })}
-                    <td className="font-mono-num px-3 py-2 text-right font-extrabold text-emerald-400">
+                    <td className="font-mono-num border-b border-slate-200 bg-emerald-50/40 px-3 py-2 text-right font-extrabold text-emerald-700">
                       {formatVnd(emp.mealTotal)}
                     </td>
                   </tr>
@@ -1137,14 +1197,14 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Batch Form */}
           <Card className="lg:col-span-5">
-            <div className="flex items-center gap-2 text-sm font-extrabold uppercase text-sky-300">
+            <div className="flex items-center gap-2 text-sm font-extrabold uppercase text-blue-700">
               <Zap className="h-4 w-4" />
               Chấm Công Hàng Loạt 4 Chế Độ Theo Khoảng Ngày
             </div>
 
             <form onSubmit={handleApplyBatch} className="mt-3 space-y-3 text-xs">
               <div>
-                <label className="mb-1 block font-bold uppercase text-slate-400">
+                <label className="mb-1 block font-bold uppercase text-slate-600">
                   1. Chế độ áp dụng hàng loạt (*)
                 </label>
                 <select
@@ -1157,7 +1217,7 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     else if (m === 'LONG_LEAVE') setBatchValue('P');
                     else setBatchValue('');
                   }}
-                  className="h-10 w-full rounded-xl border border-industrial-border bg-industrial-elevated px-3 font-semibold text-slate-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                 >
                   <option value="OT_FIXED">
                     1. OT_FIXED — Gắn tăng ca cố định (giữ nguyên ca &amp; muộn/sớm)
@@ -1176,18 +1236,18 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
 
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
-                  <label className="mb-1 block font-bold uppercase text-slate-400">Từ ngày</label>
+                  <label className="mb-1 block font-bold uppercase text-slate-600">Từ ngày</label>
                   <input
                     type="number"
                     min={1}
                     max={daysInMonth}
                     value={batchFromDay}
                     onChange={(e) => setBatchFromDay(Math.max(1, Number(e.target.value) || 1))}
-                    className="font-mono-num h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 font-bold text-slate-100"
+                    className="font-mono-num h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block font-bold uppercase text-slate-400">Đến ngày</label>
+                  <label className="mb-1 block font-bold uppercase text-slate-600">Đến ngày</label>
                   <input
                     type="number"
                     min={1}
@@ -1196,11 +1256,11 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     onChange={(e) =>
                       setBatchToDay(Math.min(daysInMonth, Math.max(1, Number(e.target.value) || 1)))
                     }
-                    className="font-mono-num h-9 w-full rounded-lg border border-industrial-border bg-industrial-elevated px-2.5 font-bold text-slate-100"
+                    className="font-mono-num h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block font-bold uppercase text-slate-400">
+                  <label className="mb-1 block font-bold uppercase text-slate-600">
                     Mã / Giờ (+)
                   </label>
                   <input
@@ -1209,13 +1269,13 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     value={batchValue}
                     onChange={(e) => setBatchValue(e.target.value)}
                     placeholder="+2 hoặc P"
-                    className="font-mono-num h-9 w-full rounded-lg border border-industrial-border bg-slate-950 px-2.5 font-bold text-amber-300 disabled:opacity-50"
+                    className="font-mono-num h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 font-bold text-blue-700 focus:border-blue-600 focus:outline-none disabled:bg-slate-100 disabled:opacity-60"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block font-bold uppercase text-slate-400">
+                <label className="mb-1.5 block font-bold uppercase text-slate-600">
                   2. Thứ trong tuần áp dụng
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1224,10 +1284,10 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                     return (
                       <label
                         key={dow}
-                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 font-bold ${
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 font-bold transition-colors ${
                           checked
-                            ? 'border-sky-400 bg-sky-500/20 text-sky-200'
-                            : 'border-industrial-border bg-slate-900 text-slate-400'
+                            ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                         }`}
                       >
                         <input
@@ -1247,22 +1307,22 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                 </div>
               </div>
 
-              <div className="space-y-1.5 rounded-lg border border-industrial-border bg-slate-950 p-2.5">
-                <label className="flex cursor-pointer items-center gap-2 text-slate-200">
+              <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <label className="flex cursor-pointer items-center gap-2 text-slate-800">
                   <input
                     type="checkbox"
                     checked={batchFillEmpty}
                     onChange={(e) => setBatchFillEmpty(e.target.checked)}
-                    className="h-4 w-4 rounded border-industrial-border bg-slate-900"
+                    className="h-4 w-4 rounded border-slate-300 accent-blue-600"
                   />
                   Tự điền mã ca mặc định vào ô đang trống trước phần tăng ca
                 </label>
-                <label className="flex cursor-pointer items-center gap-2 text-slate-200">
+                <label className="flex cursor-pointer items-center gap-2 text-slate-800">
                   <input
                     type="checkbox"
                     checked={batchOverwrite}
                     onChange={(e) => setBatchOverwrite(e.target.checked)}
-                    className="h-4 w-4 rounded border-industrial-border bg-slate-900"
+                    className="h-4 w-4 rounded border-slate-300 accent-blue-600"
                   />
                   Cho phép ghi đè lên các ô đã có mã công trước đó
                 </label>
@@ -1270,7 +1330,7 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="font-bold uppercase text-slate-400">
+                  <span className="font-bold uppercase text-slate-600">
                     3. Nhân sự áp dụng ({selectedEmpIds.length}/{employees.length})
                   </span>
                   <button
@@ -1280,19 +1340,19 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                         prev.length === employees.length ? [] : employees.map((e) => e.empId)
                       )
                     }
-                    className="font-bold text-sky-400 hover:underline"
+                    className="font-bold text-blue-700 hover:underline"
                   >
                     ☑️ Chọn / Bỏ chọn tất cả
                   </button>
                 </div>
 
-                <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-industrial-border bg-slate-950 p-2">
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
                   {employees.map((emp) => {
                     const checked = selectedEmpIds.includes(emp.empId);
                     return (
                       <label
                         key={emp.empId}
-                        className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 hover:bg-slate-800/50"
+                        className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 hover:bg-blue-50"
                       >
                         <input
                           type="checkbox"
@@ -1304,10 +1364,10 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                                 : [...prev, emp.empId]
                             )
                           }
-                          className="h-3.5 w-3.5 rounded"
+                          className="h-3.5 w-3.5 rounded accent-blue-600"
                         />
-                        <span className="font-semibold text-slate-100">{emp.name}</span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="font-semibold text-slate-900">{emp.name}</span>
+                        <span className="text-[11px] text-slate-500">
                           ({emp.empId} • {emp.defaultShift})
                         </span>
                       </label>
@@ -1316,8 +1376,8 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-2">
-                <span className="font-bold text-sky-200">Dự kiến số ô công tác động:</span>
+              <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
+                <span className="font-bold text-blue-900">Dự kiến số ô công tác động:</span>
                 <Badge variant="info" className="font-mono-num text-sm">
                   {batchPreviewCount} ô
                 </Badge>
@@ -1337,71 +1397,74 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
 
           {/* Attendance Code Handbook */}
           <Card className="lg:col-span-7">
-            <div className="flex items-center gap-2 text-sm font-extrabold uppercase text-amber-300">
-              <BookOpen className="h-4 w-4" />
+            <div className="flex items-center gap-2 text-sm font-extrabold uppercase text-slate-800">
+              <BookOpen className="h-4 w-4 text-blue-600" />
               Cẩm Nang Mã Chấm Công &amp; Quy Tắc Giải Mã Tự Động GCCK Thắng Lợi
             </div>
 
-            <div className="mt-3 space-y-3 text-xs leading-relaxed text-slate-300">
-              <div className="rounded-xl border border-industrial-border bg-slate-950 p-3">
-                <div className="font-bold text-sky-300">1. Mã Công Chính &amp; Nghỉ Chế Độ</div>
+            <div className="mt-3 space-y-3 text-xs leading-relaxed text-slate-700">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="font-bold text-blue-700">1. Mã Công Chính &amp; Nghỉ Chế Độ</div>
                 <ul className="mt-1.5 list-disc space-y-1 pl-4">
                   <li>
-                    <code className="text-emerald-300">X</code>,{' '}
-                    <code className="text-emerald-300">C1</code>,{' '}
-                    <code className="text-emerald-300">C2</code>,{' '}
-                    <code className="text-emerald-300">C3</code>,{' '}
-                    <code className="text-emerald-300">K</code>,{' '}
-                    <code className="text-emerald-300">VS</code>: Đủ 1.0 công (8 giờ). Riêng{' '}
-                    <code>C3</code> cộng thêm 1.0 vào cột <strong>Công Ca 3 (130%)</strong>.
+                    <code className="font-bold text-emerald-700">X</code>,{' '}
+                    <code className="font-bold text-emerald-700">C1</code>,{' '}
+                    <code className="font-bold text-emerald-700">C2</code>,{' '}
+                    <code className="font-bold text-indigo-700">C3</code>,{' '}
+                    <code className="font-bold text-emerald-700">K</code>,{' '}
+                    <code className="font-bold text-emerald-700">VS</code>: Đủ 1.0 công (8 giờ).
+                    Riêng <code className="font-bold text-indigo-700">C3</code> cộng thêm 1.0 vào
+                    cột <strong>Công Ca 3 (130%)</strong>.
                   </li>
                   <li>
-                    <code className="text-sky-300">X/2</code>,{' '}
-                    <code className="text-sky-300">C2/2</code>,{' '}
-                    <code className="text-sky-300">4</code>,{' '}
-                    <code className="text-sky-300">6.25</code>: Nửa ca hoặc nhập trực tiếp số giờ
-                    thực làm (tự chia cho 8h).
+                    <code className="font-bold text-blue-700">X/2</code>,{' '}
+                    <code className="font-bold text-blue-700">C2/2</code>,{' '}
+                    <code className="font-bold text-blue-700">4</code>,{' '}
+                    <code className="font-bold text-blue-700">6.25</code>: Nửa ca hoặc nhập trực
+                    tiếp số giờ thực làm (tự chia cho 8h).
                   </li>
                   <li>
-                    <code className="text-purple-300">P</code> /{' '}
-                    <code className="text-purple-300">P/2</code>: Nghỉ phép năm có hưởng lương (trừ
-                    vào quỹ 12 ngày phép/năm).
+                    <code className="font-bold text-amber-700">P</code> /{' '}
+                    <code className="font-bold text-amber-700">P/2</code>: Nghỉ phép năm có hưởng
+                    lương (trừ vào quỹ 12 ngày phép/năm).
                   </li>
                   <li>
-                    <code className="text-purple-300">O</code> hoặc{' '}
-                    <code className="text-purple-300">0</code>: Nghỉ việc riêng có xin phép / điều
-                    động — không hưởng lương ngày nhưng <strong>vẫn bảo lưu điểm chuyên cần A/B</strong>{' '}
-                    (VD: <code>X/2+O/2</code> tính 0.5 ngày nghỉ, không bị tính trùng thành 1.0!).
+                    <code className="font-bold text-amber-700">O</code> hoặc{' '}
+                    <code className="font-bold text-amber-700">0</code>: Nghỉ việc riêng có xin
+                    phép / điều động — không hưởng lương ngày nhưng{' '}
+                    <strong>vẫn bảo lưu điểm chuyên cần A/B</strong> (VD: <code>X/2+O/2</code> tính
+                    0.5 ngày nghỉ, không bị tính trùng thành 1.0!).
                   </li>
                   <li>
-                    <code className="text-red-400">KP</code>: Nghỉ Không Phép — cảnh báo đỏ trên
-                    Radar, hạ xếp loại xuống <strong>Loại C (KP)</strong>.
+                    <code className="rounded bg-rose-600 px-1 py-0.5 font-black text-white">KP</code>
+                    : Nghỉ Không Phép — cảnh báo đỏ nổi bật trên bảng &amp; Radar, hạ xếp loại xuống{' '}
+                    <strong className="text-rose-700">Loại C (KP)</strong>.
                   </li>
                 </ul>
               </div>
 
-              <div className="rounded-xl border border-industrial-border bg-slate-950 p-3">
-                <div className="font-bold text-amber-300">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="font-bold text-amber-700">
                   2. Ghép Giờ Tăng Ca (+) &amp; Trừ Đi Muộn / Về Sớm (-)
                 </div>
                 <ul className="mt-1.5 list-disc space-y-1 pl-4">
                   <li>
-                    <code className="text-amber-300">C1+2</code>,{' '}
-                    <code className="text-amber-300">K+2TK</code>,{' '}
-                    <code className="text-amber-300">X+3</code>: Tăng ca ngày thường tự cộng vào{' '}
-                    <strong>TC x1.5</strong>; nếu rơi vào Chủ nhật tự động vào{' '}
+                    <code className="font-bold text-blue-700">C1+2</code>,{' '}
+                    <code className="font-bold text-blue-700">1 2g</code>,{' '}
+                    <code className="font-bold text-blue-700">X+3</code>: Tăng ca ngày thường tự
+                    cộng vào <strong>TC x1.5</strong>; nếu rơi vào Chủ nhật tự động vào{' '}
                     <strong>TC x2.0</strong>.
                   </li>
                   <li>
-                    <code className="text-rose-300">C3+2D</code>,{' '}
-                    <code className="text-rose-300">+2DEM</code>,{' '}
-                    <code className="text-rose-300">+2TKD</code>: Tăng ca đêm tự cộng vào{' '}
-                    <strong>TC x3.0</strong>.
+                    <code className="font-bold text-indigo-700">C3+2D</code>,{' '}
+                    <code className="font-bold text-indigo-700">+2DEM</code>,{' '}
+                    <code className="font-bold text-indigo-700">+2TKD</code>: Tăng ca đêm tự cộng
+                    vào <strong>TC x3.0</strong>.
                   </li>
                   <li>
-                    <code className="text-pink-300">C2/2-0.75</code>,{' '}
-                    <code className="text-pink-300">X-1.5</code>: Khấu trừ trực tiếp số giờ đi
-                    muộn/về sớm khỏi tổng giờ hưởng 100% lương.
+                    <code className="font-bold text-orange-700">C2/2-0.75</code>,{' '}
+                    <code className="font-bold text-orange-700">X-1.5</code>: Khấu trừ trực tiếp số
+                    giờ đi muộn/về sớm khỏi tổng giờ hưởng 100% lương.
                   </li>
                 </ul>
               </div>
@@ -1413,21 +1476,22 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
       {/* ==================== SUB-TAB 5: 12-MONTH CUMULATIVE (T1 -> T12) ==================== */}
       {activeSubTab === 5 && (
         <Card noPadding>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-industrial-border bg-slate-950/60 px-4 py-2.5 text-xs">
-            <span className="text-slate-300">
-              📆 Theo dõi lũy kế 12 tháng, kiểm soát trần tăng ca <strong>300 giờ/năm</strong> &amp;
-              quỹ phép <strong>12 ngày/năm</strong>.
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 text-xs">
+            <span className="text-slate-600">
+              📆 Theo dõi lũy kế 12 tháng, kiểm soát trần tăng ca{' '}
+              <strong className="text-slate-900">300 giờ/năm</strong> &amp; quỹ phép{' '}
+              <strong className="text-slate-900">12 ngày/năm</strong>.
             </span>
             <Badge variant="info">💡 Bấm vào tiêu đề cột T1..T12 để mở bảng tháng tương ứng</Badge>
           </div>
 
           <div className="max-h-[560px] overflow-auto">
-            <table className="w-full min-w-[1480px] border-collapse text-left text-xs">
-              <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase text-slate-400">
-                <tr className="border-b border-industrial-border">
-                  <th className="px-2.5 py-2.5 text-center">STT</th>
-                  <th className="px-2.5 py-2.5">Mã NV</th>
-                  <th className="min-w-[170px] px-3 py-2.5">Tên Nhân Viên</th>
+            <table className="w-full min-w-[1480px] border-separate border-spacing-0 text-left text-xs">
+              <thead className="sticky top-0 z-20 bg-slate-50 text-[11px] font-bold uppercase text-slate-600">
+                <tr>
+                  <th className="sticky left-0 z-30 min-w-[220px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2.5 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)]">
+                    STT • Nhân Sự &amp; Mã NV
+                  </th>
                   {Array.from({ length: 12 }, (_, mIdx) => {
                     const mNum = mIdx + 1;
                     const isCur = mNum === month;
@@ -1438,8 +1502,8 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                           setMonth(mNum);
                           setActiveSubTab(1);
                         }}
-                        className={`cursor-pointer px-2 py-2.5 text-center hover:text-sky-300 ${
-                          isCur ? 'bg-amber-500/20 text-amber-300' : ''
+                        className={`cursor-pointer border-b border-slate-200 px-2 py-2.5 text-center transition-colors hover:bg-blue-50 hover:text-blue-700 ${
+                          isCur ? 'bg-amber-50 text-amber-800' : 'bg-slate-50 text-slate-600'
                         }`}
                         title={`Mở bảng nhập Tháng ${mNum}`}
                       >
@@ -1448,69 +1512,77 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                       </th>
                     );
                   })}
-                  <th className="px-2.5 py-2.5 text-right text-emerald-300">Tổng Công Năm</th>
-                  <th className="w-[150px] px-2.5 py-2.5 text-right text-amber-300">
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-emerald-700">
+                    Tổng Công Năm
+                  </th>
+                  <th className="w-[150px] border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-amber-700">
                     Trần OT (/300h)
                   </th>
-                  <th className="px-2.5 py-2.5 text-center text-sky-300">Phép Năm (12)</th>
-                  <th className="px-2.5 py-2.5 text-center text-red-300">KP</th>
-                  <th className="px-3 py-2.5">Danh Hiệu Cuối Năm</th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-center text-blue-700">
+                    Phép Năm (12)
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-center text-rose-700">
+                    KP
+                  </th>
+                  <th className="border-b border-slate-200 bg-slate-50 px-3 py-2.5">
+                    Danh Hiệu Cuối Năm
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-industrial-border/60">
+              <tbody className="bg-white">
                 {filteredEmployees.map((emp, idx) => {
                   const yr = emp.yearly;
                   return (
-                    <tr key={emp.empId} className="hover:bg-slate-800/40">
-                      <td className="font-mono-num px-2.5 py-2 text-center text-slate-400">
-                        {idx + 1}
+                    <tr key={emp.empId} className="group transition-colors hover:bg-blue-50">
+                      <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-3 py-2 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)] group-hover:bg-blue-50">
+                        <span className="font-mono-num mr-2 text-slate-500">{idx + 1}.</span>
+                        <span className="font-bold text-slate-900">{emp.name}</span>{' '}
+                        <span className="font-mono-num text-[11px] font-bold text-blue-700">
+                          ({emp.empId})
+                        </span>
                       </td>
-                      <td className="font-mono-num px-2.5 py-2 font-bold text-sky-400">
-                        {emp.empId}
-                      </td>
-                      <td className="px-3 py-2 font-bold text-slate-100">{emp.name}</td>
                       {yr.months.map((val, mIdx) => (
                         <td
                           key={mIdx}
-                          className={`font-mono-num px-2 py-2 text-center ${
+                          className={`font-mono-num border-b border-slate-200 px-2 py-2 text-center ${
                             mIdx + 1 === month
-                              ? 'bg-amber-500/10 font-extrabold text-amber-300'
-                              : 'text-slate-300'
+                              ? 'bg-amber-50/60 font-extrabold text-amber-800'
+                              : 'text-slate-700'
                           }`}
                         >
                           {val.toFixed(1)}
                         </td>
                       ))}
-                      <td className="font-mono-num px-2.5 py-2 text-right font-extrabold text-emerald-400">
+                      <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-right font-extrabold text-emerald-700">
                         {yr.totalYearDays.toFixed(1)}
                       </td>
-                      <td className="px-2.5 py-2 text-right">
-                        <div className="font-mono-num font-bold text-amber-300">
+                      <td className="border-b border-slate-200 px-2.5 py-2 text-right">
+                        <div className="font-mono-num font-bold text-slate-800">
                           {yr.totalYearOt.toFixed(1)} / {yr.otCapHours}h
                         </div>
-                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                           <div
                             className={`h-full ${
-                              yr.otCapPct > 85 ? 'bg-red-500' : 'bg-sky-400'
+                              yr.otCapPct > 85 ? 'bg-rose-500' : 'bg-blue-600'
                             }`}
                             style={{ width: `${yr.otCapPct}%` }}
                           />
                         </div>
                       </td>
-                      <td className="font-mono-num px-2.5 py-2 text-center">
-                        <span className="text-amber-300">{yr.usedLeaveDays}</span> /{' '}
-                        <span className="font-bold text-emerald-400">
+                      <td className="font-mono-num border-b border-slate-200 px-2.5 py-2 text-center">
+                        <span className="font-semibold text-amber-700">{yr.usedLeaveDays}</span> /{' '}
+                        <span className="font-bold text-emerald-700">
                           Còn {yr.remainingLeaveDays}
                         </span>
                       </td>
                       <td
-                        className={`font-mono-num px-2.5 py-2 text-center ${
-                          emp.kpDays > 0 ? 'font-extrabold text-red-400' : 'text-slate-500'
+                        className={`font-mono-num border-b border-slate-200 px-2.5 py-2 text-center ${
+                          emp.kpDays > 0 ? 'font-extrabold text-rose-700' : 'text-slate-500'
                         }`}
                       >
                         {emp.kpDays}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="border-b border-slate-200 px-3 py-2">
                         <Badge
                           variant={
                             yr.yearRank.includes('C')
@@ -1536,12 +1608,12 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
       {activeSubTab === 6 && (
         <div className="space-y-4">
           {!canAccessPayroll3P ? (
-            <Card className="border-amber-500/45 bg-slate-900/90 p-6 text-center">
-              <Lock className="mx-auto h-9 w-9 text-amber-400" />
-              <h3 className="mt-2 text-base font-extrabold text-slate-100">
+            <Card className="border-amber-200 bg-amber-50/60 p-6 text-center">
+              <Lock className="mx-auto h-9 w-9 text-amber-600" />
+              <h3 className="mt-2 text-base font-extrabold text-slate-900">
                 Bảng Chốt Lương Tháng KPI 3P Thuộc Quyền Bảo Mật Quản Đốc / Giám Đốc
               </h3>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-600">
                 Trưởng ca có thể chấm công (Tab 1–5), nhưng chi tiết thu nhập thực lĩnh toàn xưởng
                 chỉ mở cho Quản đốc.
               </p>
@@ -1562,52 +1634,52 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
           ) : (
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <Card className="border-emerald-500/40">
-                  <div className="text-xs font-bold uppercase text-slate-400">
+                <Card className="border-l-4 border-l-emerald-500">
+                  <div className="text-xs font-bold uppercase text-slate-500">
                     Tổng Thực Lĩnh Cuối Tháng ({payrollRows.length} NV)
                   </div>
-                  <div className="font-mono-num mt-1 text-2xl font-extrabold text-emerald-400">
+                  <div className="font-mono-num mt-1 text-2xl font-black text-emerald-700">
                     {formatVnd(totalNetPay)}
                   </div>
                 </Card>
 
-                <Card className="border-sky-500/35">
-                  <div className="text-xs font-bold uppercase text-slate-400">
+                <Card className="border-l-4 border-l-slate-500">
+                  <div className="text-xs font-bold uppercase text-slate-500">
                     Tổng P1 (Lương Vị Trí HC &amp; Phép)
                   </div>
-                  <div className="font-mono-num mt-1 text-xl font-extrabold text-sky-300">
+                  <div className="font-mono-num mt-1 text-xl font-black text-slate-800">
                     {formatVnd(payrollRows.reduce((s, r) => s + r.p1PositionPay, 0))}
                   </div>
                 </Card>
 
-                <Card className="border-purple-500/35">
-                  <div className="text-xs font-bold uppercase text-slate-400">
+                <Card className="border-l-4 border-l-blue-600">
+                  <div className="text-xs font-bold uppercase text-slate-500">
                     Tổng P2 (Thưởng Chuyên Cần A/B)
                   </div>
-                  <div className="font-mono-num mt-1 text-xl font-extrabold text-purple-300">
+                  <div className="font-mono-num mt-1 text-xl font-black text-blue-700">
                     {formatVnd(payrollRows.reduce((s, r) => s + r.p2PersonBonus, 0))}
                   </div>
                 </Card>
 
-                <Card className="border-amber-500/35">
-                  <div className="text-xs font-bold uppercase text-slate-400">
+                <Card className="border-l-4 border-l-indigo-500">
+                  <div className="text-xs font-bold uppercase text-slate-500">
                     Tổng P3 (Lương Khoán SP &amp; Vượt ĐM)
                   </div>
-                  <div className="font-mono-num mt-1 text-xl font-extrabold text-amber-300">
+                  <div className="font-mono-num mt-1 text-xl font-black text-indigo-700">
                     {formatVnd(payrollRows.reduce((s, r) => s + r.p3PerformancePay, 0))}
                   </div>
                 </Card>
               </div>
 
               <Card noPadding>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-industrial-border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-4">
                   <div className="flex items-center gap-2">
-                    <Gem className="h-5 w-5 text-amber-400" />
+                    <Gem className="h-5 w-5 text-emerald-600" />
                     <div>
-                      <h3 className="text-sm font-extrabold uppercase text-slate-100">
+                      <h3 className="text-sm font-extrabold uppercase text-slate-900">
                         Bảng Tổng Hợp Chốt Lương KPI 3P Tháng {yearMonth}
                       </h3>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         Hợp nhất Bảng Chấm Công + Phiếu Khoán Sản Lượng CNC + Thưởng Hạng A/B + Ăn
                         Ca (chống tính trùng) − Khấu trừ NG
                       </p>
@@ -1629,43 +1701,59 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
 
                 <div className="max-h-[540px] overflow-auto">
                   {loadingPayroll ? (
-                    <div className="p-8 text-center text-sm text-slate-400">
+                    <div className="p-8 text-center text-sm text-slate-500">
                       Đang tổng hợp lương KPI 3P toàn nhà máy...
                     </div>
                   ) : (
-                    <table className="w-full min-w-[1260px] border-collapse text-left text-xs">
-                      <thead className="sticky top-0 z-10 bg-slate-950 text-[11px] font-bold uppercase text-slate-400">
-                        <tr className="border-b border-industrial-border">
-                          <th className="px-3 py-2.5">Nhân Sự &amp; Chế Độ</th>
-                          <th className="px-2.5 py-2.5 text-right">Lương CB 8h</th>
-                          <th className="px-2.5 py-2.5 text-center">Công / OT</th>
-                          <th className="px-2.5 py-2.5 text-center">Giờ ĐM SP</th>
-                          <th className="px-2.5 py-2.5 text-right text-sky-300">P1: Vị Trí/Phép</th>
-                          <th className="px-2.5 py-2.5 text-right text-purple-300">
+                    <table className="w-full min-w-[1260px] border-separate border-spacing-0 text-left text-xs">
+                      <thead className="sticky top-0 z-20 bg-slate-50 text-[11px] font-bold uppercase text-slate-600">
+                        <tr>
+                          <th className="sticky left-0 z-30 min-w-[230px] border-b border-r border-slate-200 bg-slate-50 px-3 py-2.5 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)]">
+                            Nhân Sự &amp; Chế Độ
+                          </th>
+                          <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right">
+                            Lương CB 8h
+                          </th>
+                          <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-center">
+                            Công / OT
+                          </th>
+                          <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-center">
+                            Giờ ĐM SP
+                          </th>
+                          <th className="border-b border-slate-200 bg-slate-100/80 px-2.5 py-2.5 text-right text-slate-800">
+                            P1: Vị Trí/Phép
+                          </th>
+                          <th className="border-b border-slate-200 bg-blue-50/70 px-2.5 py-2.5 text-right text-blue-700">
                             P2: Thưởng {`A/B`}
                           </th>
-                          <th className="px-2.5 py-2.5 text-right text-amber-300">
+                          <th className="border-b border-slate-200 bg-blue-50/70 px-2.5 py-2.5 text-right text-indigo-700">
                             P3: Khoán/Vượt ĐM
                           </th>
-                          <th className="px-2.5 py-2.5 text-right text-emerald-300">Ăn Ca</th>
-                          <th className="px-2.5 py-2.5 text-right text-red-300">Trừ NG</th>
-                          <th className="px-3 py-2.5 text-right text-emerald-400">
+                          <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-emerald-700">
+                            Ăn Ca
+                          </th>
+                          <th className="border-b border-slate-200 bg-slate-50 px-2.5 py-2.5 text-right text-rose-700">
+                            Trừ NG
+                          </th>
+                          <th className="border-b border-slate-200 bg-emerald-50/80 px-3 py-2.5 text-right text-emerald-800">
                             Thực Lĩnh Cuối Tháng
                           </th>
-                          <th className="px-3 py-2.5">Diễn Giải</th>
+                          <th className="border-b border-slate-200 bg-slate-50 px-3 py-2.5">
+                            Diễn Giải
+                          </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-industrial-border/60">
+                      <tbody className="bg-white">
                         {payrollRows.map((r) => (
-                          <tr key={r.workerId} className="hover:bg-slate-800/40">
-                            <td className="px-3 py-2.5">
-                              <div className="font-bold text-slate-100">
+                          <tr key={r.workerId} className="group transition-colors hover:bg-blue-50">
+                            <td className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-3 py-2.5 shadow-[2px_0_5px_-2px_rgba(15,23,42,0.08)] group-hover:bg-blue-50">
+                              <div className="font-bold text-slate-900">
                                 {r.name}{' '}
-                                <span className="font-mono-num text-[11px] text-sky-400">
+                                <span className="font-mono-num text-[11px] font-semibold text-blue-700">
                                   ({r.workerId})
                                 </span>
                               </div>
-                              <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                              <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
                                 <Badge
                                   variant={
                                     r.salaryMode.includes('Hành chính') ? 'info' : 'neutral'
@@ -1687,41 +1775,45 @@ export function AttendancePayrollTab({ deepLink }: AdminTabCommonProps) {
                               </div>
                             </td>
 
-                            <td className="font-mono-num px-2.5 py-2.5 text-right text-slate-200">
+                            <td className="font-mono-num border-b border-slate-200 px-2.5 py-2.5 text-right text-slate-700">
                               {formatVnd(r.baseSalary)}
                             </td>
 
-                            <td className="font-mono-num px-2.5 py-2.5 text-center">
-                              <div className="font-bold text-slate-100">{r.regDays} công</div>
-                              <div className="text-[11px] text-amber-300">+{r.totalOt}h OT</div>
+                            <td className="font-mono-num border-b border-slate-200 px-2.5 py-2.5 text-center">
+                              <div className="font-bold text-slate-900">{r.regDays} công</div>
+                              <div className="text-[11px] font-semibold text-blue-700">
+                                +{r.totalOt}h OT
+                              </div>
                             </td>
 
-                            <td className="font-mono-num px-2.5 py-2.5 text-center">
-                              <div className="font-bold text-sky-300">{r.earnedStdHours}h</div>
-                              <div className="text-[11px] text-slate-400">
+                            <td className="font-mono-num border-b border-slate-200 px-2.5 py-2.5 text-center">
+                              <div className="font-bold text-indigo-700">{r.earnedStdHours}h</div>
+                              <div className="text-[11px] text-slate-500">
                                 {r.pieceworkLogCount} phiếu
                               </div>
                             </td>
 
-                            <td className="font-mono-num px-2.5 py-2.5 text-right font-semibold text-sky-300">
+                            <td className="font-mono-num border-b border-slate-200 bg-slate-50/70 px-2.5 py-2.5 text-right font-semibold text-slate-800 group-hover:bg-blue-50">
                               {formatVnd(r.p1PositionPay)}
                             </td>
-                            <td className="font-mono-num px-2.5 py-2.5 text-right font-semibold text-purple-300">
+                            <td className="font-mono-num border-b border-slate-200 bg-blue-50/60 px-2.5 py-2.5 text-right font-semibold text-blue-700 group-hover:bg-blue-50">
                               {formatVnd(r.p2PersonBonus)}
                             </td>
-                            <td className="font-mono-num px-2.5 py-2.5 text-right font-bold text-amber-300">
+                            <td className="font-mono-num border-b border-slate-200 bg-blue-50/60 px-2.5 py-2.5 text-right font-bold text-indigo-700 group-hover:bg-blue-50">
                               {formatVnd(r.p3PerformancePay)}
                             </td>
-                            <td className="font-mono-num px-2.5 py-2.5 text-right text-emerald-300">
+                            <td className="font-mono-num border-b border-slate-200 px-2.5 py-2.5 text-right font-semibold text-emerald-700">
                               {formatVnd(r.mealAllowance)}
                             </td>
-                            <td className="font-mono-num px-2.5 py-2.5 text-right text-red-400">
+                            <td className="font-mono-num border-b border-slate-200 px-2.5 py-2.5 text-right font-semibold text-rose-700">
                               {r.scrapPenalty > 0 ? `-${formatVnd(r.scrapPenalty)}` : '0 đ'}
                             </td>
-                            <td className="font-mono-num px-3 py-2.5 text-right text-sm font-extrabold text-emerald-400">
+                            <td className="font-mono-num border-b border-slate-200 bg-emerald-50/60 px-3 py-2.5 text-right text-sm font-black text-emerald-700 group-hover:bg-blue-50">
                               {formatVnd(r.netPay)}
                             </td>
-                            <td className="px-3 py-2.5 text-[11px] text-slate-300">{r.note}</td>
+                            <td className="border-b border-slate-200 px-3 py-2.5 text-[11px] text-slate-600">
+                              {r.note}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
