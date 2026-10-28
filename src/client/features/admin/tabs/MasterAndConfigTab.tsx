@@ -394,7 +394,7 @@ export function MasterAndConfigTab({
     }
   };
 
-  // ==================== SUB-TAB 2: MACHINES (23+) & TOOLS SWAP (63+) ====================
+  // ==================== SUB-TAB 2: MACHINES (23+) & TOOLS SWAP (118+) ====================
   const [machSearch, setMachSearch] = useState('');
   const [machStatusFilter, setMachStatusFilter] = useState<'ALL' | MachineStatus>('ALL');
   const [machPage, setMachPage] = useState(1);
@@ -1270,7 +1270,7 @@ export function MasterAndConfigTab({
             />
           </Card>
 
-          {/* SECTION B: 63+ CUTTING TOOLS & 1-FOR-1 INSERT SWAP */}
+          {/* SECTION B: 118+ CUTTING TOOLS & 1-FOR-1 INSERT SWAP */}
           <Card noPadding className="overflow-hidden">
             <div className="space-y-3 border-b border-slate-200 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1292,7 +1292,7 @@ export function MasterAndConfigTab({
                     type="text"
                     value={toolSearch}
                     onChange={(e) => setToolSearch(e.target.value)}
-                    placeholder="Tìm mã dao (T01..T63), tên chíp tiện/phay/khoan, ký hiệu ISO..."
+                    placeholder="Tìm mã dao (T01..T63, TP, DR), tên chíp tiện/phay/khoan, ký hiệu ISO..."
                     className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                   />
                 </div>

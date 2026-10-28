@@ -87,7 +87,7 @@ export async function flushPendingOutbox(
         }
       } else if (channel === 'GAS_WEBHOOK') {
         const webAppUrl = (cfg.WEB_APP_URL || '').trim();
-        const syncEnabled = cfg.GAS_SYNC_ENABLED === '1';
+        const syncEnabled = cfg.GAS_SYNC_ENABLED !== '0';
         if (!webAppUrl || !syncEnabled) {
           db.prepare(
             `UPDATE sync_outbox SET status = 'SKIPPED', attempts = ?, last_error = 'Đồng bộ GAS đang tắt hoặc chưa cấu hình URL' WHERE id = ?`

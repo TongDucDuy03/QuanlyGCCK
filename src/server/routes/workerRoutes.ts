@@ -38,7 +38,7 @@ import {
 import { computeMachineLoads } from '../../shared/loadBalancing';
 import { getDefShiftCode } from '../../shared/attendanceParser';
 import { normalizeVn, removeVietnameseTones } from '../../shared/vnSearch';
-import { enqueueOutboxEvent } from '../adapters/syncAdapters';
+import { enqueueOutboxEvent, flushPendingOutbox } from '../adapters/syncAdapters';
 
 export function createWorkerRoutes(db: DatabaseSync, uploadsDir: string): Router {
   const router = Router();
@@ -748,14 +748,28 @@ export function createWorkerRoutes(db: DatabaseSync, uploadsDir: string): Router
           }
         }
 
-        // 9. Enqueue async Outbox events (Telegram & optional GAS Webhook)
+        // 9. Enqueue async Outbox events (Telegram & Google Apps Script Webhook)
         enqueueOutboxEvent(db, 'GAS_WEBHOOK', 'REPORT_SUBMITTED', {
+          record_id: recordUid,
           recordUid,
-          workerId: targetWorkerId,
-          poId,
-          ncId,
-          okQty,
-          scrapQty,
+          date: workDate,
+          worker: String(wRow.name),
+          worker_id: targetWorkerId,
+          shift: shiftType,
+          machine: String(machRow.name),
+          customer: String(opRow?.customer || 'Nội bộ'),
+          product: String(opRow?.product_name || ''),
+          po: poId,
+          op: String(opRow?.op_name || ncId),
+          qty_dat: okQty,
+          qty_xuly: reworkQty,
+          qty_huy: scrapQty,
+          responsibility: scrapQty > 0 ? (body.defectType || 'Không rõ') : 'Không có lỗi',
+          material: toolCode || '',
+          qty_material: payroll.edgesConsumed || 0,
+          downtime_min: stopMinutes || 0,
+          downtime_note: body.stopReason || '',
+          photos: body.photoBase64 ? [body.photoBase64] : [],
           income: payroll.turnTotalIncome,
         });
 
@@ -797,6 +811,9 @@ export function createWorkerRoutes(db: DatabaseSync, uploadsDir: string): Router
         payroll: txResult.payroll,
         todayTotalIncome: txResult.todayTotalIncome,
       });
+
+      // Tự động kích hoạt đồng bộ tức thì lên Google Sheet & Telegram
+      void flushPendingOutbox(db, 10).catch(() => {});
     } catch (err: any) {
       res.status(400).json({ error: String(err?.message || err) });
     }

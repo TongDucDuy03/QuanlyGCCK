@@ -246,7 +246,7 @@ export function WorkerGuideModal({ open, onClose }: WorkerGuideModalProps) {
           <div className="text-base font-black tracking-wide">
             🚀 GỬI BÁO CÁO SẢN LƯỢNG (+37.503 đ)
           </div>
-          <div className="mt-0.5 text-[11px] text-emerald-100">
+          <div className="mt-0.5 text-[11px] text-emerald-700">
             Lập tức cộng vào lương tích lũy hôm nay
           </div>
         </div>
@@ -282,7 +282,7 @@ export function WorkerGuideModal({ open, onClose }: WorkerGuideModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/60 p-2 sm:p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/50 p-2 sm:p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -303,7 +303,7 @@ export function WorkerGuideModal({ open, onClose }: WorkerGuideModalProps) {
                 Hướng Dẫn Thao Tác Báo Cáo Sản Lượng (8 Bước)
               </h2>
             </div>
-            <p className="mt-0.5 text-xs text-blue-100 truncate">
+            <p className="mt-0.5 text-xs text-blue-700 truncate">
               Quy trình chuẩn cho công nhân xưởng cơ khí: Chọn KH &amp; SP ➔ Máy ➔ NC ➔ Ghép máy ➔ Sản lượng ➔ Ca ➔ Dao ➔ Báo cáo
             </p>
           </div>

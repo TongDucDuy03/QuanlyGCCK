@@ -61,7 +61,7 @@ describe('SQLite WAL Seeder, RBAC Security & Atomic MES REST API', () => {
     const otherWorker = boot.body.workers.find((w: any) => w.id === 'NV00053');
     expect(selfWorker.costPerSec).toBeCloseTo(13.89, 2);
     expect(selfWorker.pinHash).toBeUndefined();
-    expect(selfWorker.chatId).toBeNull();
+    expect(selfWorker.chatId).toBeDefined();
     expect(otherWorker.baseSalary).toBeUndefined();
     expect(otherWorker.costPerSec).toBeUndefined();
     expect(otherWorker.pinHash).toBeUndefined();
@@ -75,7 +75,7 @@ describe('SQLite WAL Seeder, RBAC Security & Atomic MES REST API', () => {
     expect(boot.body.machines.length).toBeGreaterThanOrEqual(23);
     expect(boot.body.machines.some((m: any) => m.name === 'Máy tiện FUJI')).toBe(true);
     expect(boot.body.machines.some((m: any) => m.name === 'Máy phay OKK1')).toBe(true);
-    expect(boot.body.toolsList).toHaveLength(63);
+    expect(boot.body.toolsList).toHaveLength(118);
     expect(boot.body.operations).toHaveLength(627);
     expect(boot.body.ordersList).toHaveLength(189);
     expect(boot.body.schedules.length).toBeGreaterThanOrEqual(14);

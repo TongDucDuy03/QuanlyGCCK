@@ -8,8 +8,8 @@
       "salaryMode": "Hành chính (Tháng)",
       "baseSalary": 540000,
       "costPerSec": 18.75,
-      "chatId": "CHAT_ID_NV00053",
-      "isLinked": false,
+      "chatId": "5422717407",
+      "isLinked": true,
       "username": "ngocha",
       "pin": "admin123"
     },
@@ -21,8 +21,8 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 410000,
       "costPerSec": 14.24,
-      "chatId": "CHAT_ID_NV00266",
-      "isLinked": false,
+      "chatId": "8405571371",
+      "isLinked": true,
       "username": "vandung",
       "pin": "1234"
     },
@@ -34,8 +34,8 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 400000,
       "costPerSec": 13.89,
-      "chatId": "CHAT_ID_NV00214",
-      "isLinked": false,
+      "chatId": "7090612444",
+      "isLinked": true,
       "username": "vanquynh",
       "pin": "1234"
     },
@@ -60,8 +60,8 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 385000,
       "costPerSec": 13.37,
-      "chatId": "CHAT_ID_NV00219",
-      "isLinked": false,
+      "chatId": "8906721112",
+      "isLinked": true,
       "username": "congthang",
       "pin": "1234"
     },
@@ -73,8 +73,8 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 385000,
       "costPerSec": 13.37,
-      "chatId": "CHAT_ID_NV00265",
-      "isLinked": false,
+      "chatId": "8836472092",
+      "isLinked": true,
       "username": "vansam",
       "pin": "1234"
     },
@@ -99,8 +99,8 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 380000,
       "costPerSec": 13.19,
-      "chatId": "CHAT_ID_NV00267",
-      "isLinked": false,
+      "chatId": "8852796611",
+      "isLinked": true,
       "username": "giaphuc",
       "pin": "1234"
     },
@@ -125,8 +125,8 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 370000,
       "costPerSec": 12.85,
-      "chatId": "CHAT_ID_NV00218",
-      "isLinked": false,
+      "chatId": "7154329103",
+      "isLinked": true,
       "username": "trungdong",
       "pin": "1234"
     },
@@ -138,8 +138,8 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 370000,
       "costPerSec": 12.85,
-      "chatId": "CHAT_ID_NV00279",
-      "isLinked": false,
+      "chatId": "8799424202",
+      "isLinked": true,
       "username": "vannhan",
       "pin": "1234"
     },
@@ -164,13 +164,13 @@
       "salaryMode": "Khoán 1 + 0.33 máy",
       "baseSalary": 360000,
       "costPerSec": 12.5,
-      "chatId": "CHAT_ID_NV00261",
-      "isLinked": false,
+      "chatId": "8883746026",
+      "isLinked": true,
       "username": "ngoclong",
       "pin": "1234"
     },
     {
-      "id": "NV_KT01",
+      "id": "NV00101",
       "name": "Đinh Văn Thiên",
       "role": "KT",
       "title": "Kỹ thuật / Điều độ",
@@ -183,7 +183,7 @@
       "pin": "1234"
     },
     {
-      "id": "NV_KT02",
+      "id": "NV00102",
       "name": "Nguyễn Văn Duy",
       "role": "KT",
       "title": "Kỹ thuật / QC",
@@ -196,7 +196,7 @@
       "pin": "1234"
     },
     {
-      "id": "NV_KT03",
+      "id": "NV00103",
       "name": "Lê Trung Hải",
       "role": "KT",
       "title": "Quản lý / Kỹ sư trưởng",
@@ -23044,7 +23044,7 @@
       ]
     },
     {
-      "empId": "NV_KT01",
+      "empId": "NV00101",
       "name": "Đinh Văn Thiên",
       "workType": "Công",
       "defaultShift": "Ca 1",
@@ -23094,7 +23094,7 @@
       ]
     },
     {
-      "empId": "NV_KT02",
+      "empId": "NV00102",
       "name": "Nguyễn Văn Duy",
       "workType": "Công",
       "defaultShift": "Ca 1",
@@ -23144,7 +23144,7 @@
       ]
     },
     {
-      "empId": "NV_KT03",
+      "empId": "NV00103",
       "name": "Lê Trung Hải",
       "workType": "Công",
       "defaultShift": "Ca 1",
@@ -23252,15 +23252,16 @@
     }
   ],
   "config": {
-    "TELEGRAM_BOT_TOKEN": "DIEN_TELEGRAM_BOT_TOKEN_CUA_BAN_VAO_DAY",
-    "TELEGRAM_BOT_USERNAME": "DIEN_USERNAME_BOT_VAO_DAY",
-    "MANAGER_CHAT_ID": "DIEN_CHAT_ID_NHOM_QUAN_DOC_VAO_DAY",
+    "TELEGRAM_BOT_TOKEN": "8871498341:AAFTzNNaCNXZlaTJlh8znudxrYFs69bu74s",
+    "TELEGRAM_BOT_USERNAME": "gcck_sanluong_2026_bot",
+    "MANAGER_CHAT_ID": "5422717407",
     "WEB_APP_URL": "https://script.google.com/macros/s/AKfycbx3YEacwHuxAdYb2yN1qckG4tmydnmmK4f8C_KVtQmUWmpBvJYUh_Jc1DrFZpTeM-bruQ/exec",
     "ADMIN_PIN": "1234",
     "DRIVE_FOLDER_NAME": "VICO_GCCK_ANH_SAN_PHAM_2027",
     "SECONDS_PER_SHIFT": 28800,
     "SECOND_MACHINE_RATE": 0.33,
     "MEAL_ALLOWANCE_SHIFT_2_3": 20000,
-    "KPI_WARNING_THRESHOLD": 0.85
+    "KPI_WARNING_THRESHOLD": 0.85,
+    "GAS_SYNC_ENABLED": "1"
   }
 }
