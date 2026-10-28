@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  CalendarClock,
   ChevronUp,
   CloudOff,
   Factory,
@@ -150,6 +151,15 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
           >
             <MonitorPlay className="h-3.5 w-3.5 text-violet-600" />
             <span>TV Andon 55&quot;</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleRoleNav('/admin', 'NV_KT02', '📅 Kế Hoạch & Báo Cáo')}
+            className={pillCls(currentPath.includes('daily_schedule') || currentPath.startsWith('/print/daily-schedule'))}
+          >
+            <CalendarClock className="h-3.5 w-3.5 text-blue-600" />
+            <span>Kế Hoạch &amp; Tuần</span>
           </button>
 
           <button

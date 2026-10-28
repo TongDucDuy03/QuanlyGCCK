@@ -134,6 +134,40 @@ CREATE TABLE IF NOT EXISTS machine_schedules (
 
 CREATE INDEX IF NOT EXISTS idx_schedules_machine_date ON machine_schedules(machine_id, work_date);
 
+CREATE TABLE IF NOT EXISTS daily_schedule_rows (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  work_date TEXT NOT NULL,
+  shift_type TEXT NOT NULL DEFAULT 'Ca 2',
+  stt INTEGER NOT NULL DEFAULT 1,
+  worker_name TEXT NOT NULL,
+  customer TEXT NOT NULL DEFAULT '',
+  sp_id TEXT DEFAULT '',
+  product_name TEXT NOT NULL DEFAULT '',
+  nc_id TEXT DEFAULT '',
+  op_name TEXT NOT NULL DEFAULT '',
+  planned_qty REAL NOT NULL DEFAULT 0,
+  machine_name TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  actual_qty REAL NOT NULL DEFAULT 0,
+  drawing_url TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'PLANNED',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_sched_date_shift ON daily_schedule_rows(work_date, shift_type);
+
+CREATE TABLE IF NOT EXISTS weekly_downtime_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  week_start TEXT NOT NULL,
+  machine_name TEXT NOT NULL DEFAULT '',
+  stop_minutes REAL NOT NULL DEFAULT 0,
+  reason TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_downtime_week ON weekly_downtime_notes(week_start);
+
 CREATE TABLE IF NOT EXISTS production_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   record_uid TEXT NOT NULL UNIQUE,

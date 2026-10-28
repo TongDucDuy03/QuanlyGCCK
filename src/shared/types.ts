@@ -407,6 +407,101 @@ export interface ScheduleBlock {
   note?: string;
 }
 
+export interface DailyPlanRow {
+  id?: number;
+  workDate: string;
+  shiftType: string;
+  stt: number;
+  workerName: string;
+  customer: string;
+  spId?: string;
+  productName: string;
+  ncId?: string;
+  opName: string;
+  plannedQty: number;
+  machineName: string;
+  note?: string;
+  actualQty?: number;
+  drawingUrl?: string;
+  status?: string;
+}
+
+export interface WeeklyReportData {
+  weekStart: string;
+  weekEnd: string;
+  weekLabel: string;
+  summary: {
+    totalPlannedQty: number;
+    totalActualQty: number;
+    completionPct: number;
+    totalPoActive: number;
+    completedPoCount: number;
+    delayedPoCount: number;
+  };
+  customerStats: Array<{
+    customer: string;
+    productCount: number;
+    plannedQty: number;
+    actualQty: number;
+    completionPct: number;
+    poCount: number;
+  }>;
+  poStatuses: Array<{
+    poId: string;
+    customer: string;
+    productName: string;
+    qtyPo: number;
+    finishedQty: number;
+    wipQty: number;
+    dueDate: string;
+    status: string;
+    isDelayed: boolean;
+  }>;
+  workerLaborStats: Array<{
+    workerId: string;
+    workerName: string;
+    standardShifts: number;
+    otHours: number;
+    sundayHours: number;
+    totalConvertedShifts: number;
+    actualCompletedPieces: number;
+  }>;
+  downtimeIncidents: Array<{
+    id: string;
+    machineName: string;
+    stopMinutes: number;
+    reason: string;
+    date: string;
+    workerName?: string;
+  }>;
+  customIncidentNotes: string[];
+  nextWeekForecast: {
+    duePos: Array<{
+      poId: string;
+      customer: string;
+      productName: string;
+      remainQty: number;
+      dueDate: string;
+      requiredHours: number;
+      defaultMachine: string;
+    }>;
+    carryoverBacklogQty: number;
+    carryoverHours: number;
+    totalRequiredHours: number;
+    machineCapacityHours: number;
+    overloadCapacityHours: number;
+    isOverloaded: boolean;
+    outsourceRecommendations: Array<{
+      poId: string;
+      customer: string;
+      productName: string;
+      suggestedOutsourceQty: number;
+      reason: string;
+      estimatedOutsourceCost: number;
+    }>;
+  };
+}
+
 export interface LoadCalcOptions {
   capacityHours?: number;
 }

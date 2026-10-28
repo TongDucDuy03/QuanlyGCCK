@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarCheck2,
+  CalendarClock,
   ClipboardList,
   Coins,
   Command,
@@ -38,6 +39,7 @@ import { useAuth } from '@client/context/AuthContext';
 import type { AdminDeepLinkContext, AdminTabKey } from './types';
 import { CockpitAndLoadTab } from './tabs/CockpitAndLoadTab';
 import { OrdersAndTravelerTab } from './tabs/OrdersAndTravelerTab';
+import { DailyWeeklyScheduleTab } from './tabs/DailyWeeklyScheduleTab';
 import { LogsQcTraceTab } from './tabs/LogsQcTraceTab';
 import { CostingPnlTab } from './tabs/CostingPnlTab';
 import { AttendancePayrollTab } from './tabs/AttendancePayrollTab';
@@ -202,9 +204,18 @@ export function AdminPortal() {
         badgeVariant: kpi && kpi.overdueOrders > 0 ? 'warning' : 'neutral',
       },
       {
+        key: 'daily_schedule',
+        shortLabel: 'Kế Hoạch & Tuần',
+        label: '3. Kế Hoạch Ngày QR & Báo Cáo Tuần',
+        subtitle: 'Form VICO QT.01.BM01 & Chu kỳ T5-T4',
+        icon: CalendarClock,
+        badgeText: 'VICO Form',
+        badgeVariant: 'info',
+      },
+      {
         key: 'logs_qc',
         shortLabel: 'Nhật Ký & QC',
-        label: '3. Nhật Ký Ca, QA/QC 3 Tầng & Truy Xuất',
+        label: '4. Nhật Ký Ca, QA/QC 3 Tầng & Truy Xuất',
         subtitle: 'Sản lượng thực tế, QC & truy vết',
         icon: ShieldCheck,
         badgeText:
@@ -216,7 +227,7 @@ export function AdminPortal() {
       {
         key: 'costing',
         shortLabel: 'Báo Giá P&L',
-        label: '4. Báo Giá & Đối Soát Lãi/Lỗ (P&L)',
+        label: '5. Báo Giá & Đối Soát Lãi/Lỗ (P&L)',
         subtitle: 'Chi phí sản xuất & biên lợi nhuận',
         icon: Coins,
         financialOnly: true,
@@ -226,7 +237,7 @@ export function AdminPortal() {
       {
         key: 'attendance',
         shortLabel: 'Chấm Công & 3P',
-        label: '5. Chấm Công Ma Trận & Lương 3P',
+        label: '6. Chấm Công Ma Trận & Lương 3P',
         subtitle: 'Bảng công tháng & lương 3P',
         icon: CalendarCheck2,
         badgeText: `${bootstrap?.workers.length ?? 16} NV`,
@@ -235,7 +246,7 @@ export function AdminPortal() {
       {
         key: 'master',
         shortLabel: 'Master & Hệ Thống',
-        label: '6. Danh Mục Master & Cấu Hình',
+        label: '7. Danh Mục Master & Cấu Hình',
         subtitle: 'Định mức, máy móc & nhân sự',
         icon: Settings,
         badgeText: `${bootstrap?.operations.length ?? 0} NC`,
@@ -764,6 +775,15 @@ export function AdminPortal() {
 
             {activeTab === 'orders' && (
               <OrdersAndTravelerTab
+                bootstrap={bootstrap}
+                onRefreshBootstrap={() => fetchBootstrap(true)}
+                onNavigateTab={handleNavigateTab}
+                deepLink={deepLink}
+              />
+            )}
+
+            {activeTab === 'daily_schedule' && (
+              <DailyWeeklyScheduleTab
                 bootstrap={bootstrap}
                 onRefreshBootstrap={() => fetchBootstrap(true)}
                 onNavigateTab={handleNavigateTab}

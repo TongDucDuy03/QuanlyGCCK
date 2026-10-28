@@ -1667,5 +1667,294 @@ export function createAdminRoutes(db: DatabaseSync): Router {
     res.json({ success: true, ...result, items: listOutboxItems(db, 60) });
   });
 
+  // ==================== DAILY DISPATCH SCHEDULE (FORM VICO GCCK.QT.01.BM01) ====================
+  router.get('/schedules/daily', (req, res) => {
+    const workDate = String(req.query.date || '2026-10-21');
+    const shiftType = req.query.shift ? String(req.query.shift) : undefined;
+
+    let querySql = `
+      SELECT id, work_date, shift_type, stt, worker_name, customer, sp_id, product_name, nc_id, op_name,
+             planned_qty, machine_name, note, actual_qty, drawing_url, status
+      FROM daily_schedule_rows
+      WHERE work_date = ?
+    `;
+    const params: any[] = [workDate];
+
+    if (shiftType) {
+      querySql += ` AND shift_type = ?`;
+      params.push(shiftType);
+    }
+    querySql += ` ORDER BY shift_type ASC, stt ASC, id ASC`;
+
+    const rows = db.prepare(querySql).all(...params) as Array<Record<string, any>>;
+
+    res.json({
+      success: true,
+      workDate,
+      rows: rows.map((r) => ({
+        id: Number(r.id),
+        workDate: String(r.work_date),
+        shiftType: String(r.shift_type),
+        stt: Number(r.stt),
+        workerName: String(r.worker_name),
+        customer: String(r.customer || ''),
+        spId: String(r.sp_id || ''),
+        productName: String(r.product_name || ''),
+        ncId: String(r.nc_id || ''),
+        opName: String(r.op_name || ''),
+        plannedQty: Number(r.planned_qty || 0),
+        machineName: String(r.machine_name || ''),
+        note: String(r.note || ''),
+        actualQty: Number(r.actual_qty || 0),
+        drawingUrl: String(r.drawing_url || ''),
+        status: String(r.status || 'PLANNED'),
+      })),
+    });
+  });
+
+  router.post('/schedules/daily', requireRoles('DIRECTOR', 'ADMIN', 'SHIFT_LEADER'), (req, res) => {
+    const workDate = String(req.body.workDate || req.body.date || '2026-10-21');
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+
+    withTransaction(db, () => {
+      db.prepare('DELETE FROM daily_schedule_rows WHERE work_date = ?').run(workDate);
+
+      const ins = db.prepare(`
+        INSERT INTO daily_schedule_rows (
+          work_date, shift_type, stt, worker_name, customer, sp_id, product_name, nc_id, op_name,
+          planned_qty, machine_name, note, actual_qty, drawing_url, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (let idx = 0; idx < rows.length; idx++) {
+        const r = rows[idx];
+        ins.run(
+          workDate,
+          String(r.shiftType || 'Ca 2'),
+          Number(r.stt || idx + 1),
+          String(r.workerName || '').trim(),
+          String(r.customer || '').trim(),
+          String(r.spId || '').trim(),
+          String(r.productName || '').trim(),
+          String(r.ncId || '').trim(),
+          String(r.opName || '').trim(),
+          Number(r.plannedQty || 0),
+          String(r.machineName || '').trim(),
+          String(r.note || '').trim(),
+          Number(r.actualQty || 0),
+          String(r.drawingUrl || '').trim(),
+          String(r.status || 'PLANNED')
+        );
+      }
+    });
+
+    res.json({ success: true, count: rows.length, workDate });
+  });
+
+  // ==================== WEEKLY PRODUCTION REPORT & CAPACITY FORECAST (THU -> WED) ====================
+  router.get('/reports/weekly', (req, res) => {
+    const weekStart = String(req.query.weekStart || '2026-10-15');
+    const startDt = new Date(weekStart);
+    const endDt = new Date(startDt.getTime() + 6 * 24 * 3600 * 1000);
+    const weekEnd = endDt.toISOString().slice(0, 10);
+
+    const weekLabel = `Tuần làm việc (${weekStart.slice(8, 10)}/${weekStart.slice(5, 7)} - ${weekEnd.slice(8, 10)}/${weekEnd.slice(5, 7)}/${weekEnd.slice(0, 4)})`;
+
+    const logRows = db.prepare(`
+      SELECT l.*, o.customer, o.product_name, o.std_seconds, o.default_machine
+      FROM production_logs l
+      LEFT JOIN operations o ON o.nc_id = l.nc_id
+      WHERE l.work_date >= ? AND l.work_date <= ? AND l.is_voided = 0
+    `).all(weekStart, weekEnd) as Array<Record<string, any>>;
+
+    const schedRows = db.prepare(`
+      SELECT * FROM daily_schedule_rows
+      WHERE work_date >= ? AND work_date <= ?
+    `).all(weekStart, weekEnd) as Array<Record<string, any>>;
+
+    const totalPlannedQty = schedRows.reduce((sum, r) => sum + Number(r.planned_qty || 0), 0);
+    const totalActualQty = logRows.reduce((sum, r) => sum + Number(r.ok_qty || 0), 0);
+    const completionPct = totalPlannedQty > 0 ? Math.round((totalActualQty / totalPlannedQty) * 100) : 100;
+
+    const custMap = new Map<string, { productCount: number; plannedQty: number; actualQty: number; poCount: number; products: Set<string> }>();
+    for (const s of schedRows) {
+      const c = String(s.customer || 'Khác');
+      const item = custMap.get(c) || { productCount: 0, plannedQty: 0, actualQty: 0, poCount: 0, products: new Set() };
+      item.plannedQty += Number(s.planned_qty || 0);
+      if (s.product_name) item.products.add(String(s.product_name));
+      custMap.set(c, item);
+    }
+    for (const l of logRows) {
+      const c = String(l.customer || 'Khác');
+      const item = custMap.get(c) || { productCount: 0, plannedQty: 0, actualQty: 0, poCount: 0, products: new Set() };
+      item.actualQty += Number(l.ok_qty || 0);
+      if (l.product_name) item.products.add(String(l.product_name));
+      custMap.set(c, item);
+    }
+    const customerStats = Array.from(custMap.entries()).map(([customer, data]) => ({
+      customer,
+      productCount: data.products.size || 1,
+      plannedQty: data.plannedQty,
+      actualQty: data.actualQty,
+      completionPct: data.plannedQty > 0 ? Math.round((data.actualQty / data.plannedQty) * 100) : 100,
+      poCount: data.poCount,
+    }));
+
+    const allPos = queryPurchaseOrders(db);
+    const activePos = allPos.filter((p) => p.status !== '✅ Đã hoàn thành' && p.status !== 'COMPLETED');
+    const delayedPos = allPos.filter((p) => p.dueDate && p.dueDate <= weekEnd && p.remainQty > 0);
+    const completedPos = allPos.filter((p) => p.finishedQty >= p.qtyPo);
+
+    const poStatuses = allPos.slice(0, 15).map((p) => ({
+      poId: p.poId,
+      customer: p.customer,
+      productName: p.productName,
+      qtyPo: p.qtyPo,
+      finishedQty: p.finishedQty,
+      wipQty: p.wipQty,
+      dueDate: p.dueDate,
+      status: p.status,
+      isDelayed: Boolean(p.dueDate && p.dueDate <= weekEnd && p.remainQty > 0),
+    }));
+
+    const workers = queryWorkersForViewer(db, 'ADMIN', null);
+    const logsByWorker = new Map<string, Array<Record<string, any>>>();
+    for (const l of logRows) {
+      const name = String(l.worker_name);
+      const list = logsByWorker.get(name) || [];
+      list.push(l);
+      logsByWorker.set(name, list);
+    }
+
+    const workerLaborStats = workers.map((w) => {
+      const wLogs = logsByWorker.get(w.name) || [];
+      const distinctDays = new Set(wLogs.map((l) => String(l.work_date))).size;
+      const standardShifts = distinctDays || (wLogs.length > 0 ? Math.ceil(wLogs.length / 2) : 6);
+      const otHours = Math.round(wLogs.reduce((sum, l) => sum + Number(l.ot_minutes || 0) / 60, 0) * 10) / 10;
+      const sundayHours = wLogs.filter((l) => isVietnamSunday(String(l.work_date))).reduce((sum, l) => sum + 8 + Number(l.ot_minutes || 0) / 60, 0);
+      const totalConvertedShifts = Math.round((standardShifts + (otHours / 8) * 1.5 + (sundayHours / 8) * 2.0) * 10) / 10;
+      const actualCompletedPieces = wLogs.reduce((sum, l) => sum + Number(l.ok_qty || 0), 0);
+
+      return {
+        workerId: w.id,
+        workerName: w.name,
+        standardShifts,
+        otHours,
+        sundayHours,
+        totalConvertedShifts,
+        actualCompletedPieces,
+      };
+    });
+
+    const stoppageLogs = logRows.filter((l) => Number(l.stop_minutes || 0) > 0);
+    const downtimeIncidents = stoppageLogs.map((l) => ({
+      id: String(l.id),
+      machineName: String(l.machine_name),
+      stopMinutes: Number(l.stop_minutes),
+      reason: String(l.stop_reason || 'Dừng kỹ thuật / Chờ phôi'),
+      date: String(l.work_date),
+      workerName: String(l.worker_name || ''),
+    }));
+
+    const customNotesRows = db.prepare(`SELECT * FROM weekly_downtime_notes WHERE week_start = ?`).all(weekStart) as Array<Record<string, any>>;
+    const customIncidentNotes = customNotesRows.map((r) => `${r.machine_name ? `[${r.machine_name}] ` : ''}${r.reason || ''} ${r.note || ''}`.trim());
+
+    const nextStart = new Date(endDt.getTime() + 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const nextEnd = new Date(endDt.getTime() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+    const dueNextWeekPos = allPos.filter((p) => p.remainQty > 0 && p.dueDate >= nextStart && p.dueDate <= nextEnd);
+    const carryoverBacklog = allPos.filter((p) => p.remainQty > 0 && (!p.dueDate || p.dueDate < nextStart));
+
+    const carryoverBacklogQty = carryoverBacklog.reduce((sum, p) => sum + p.remainQty, 0);
+    const carryoverHours = Math.round(carryoverBacklogQty * 0.75 * 10) / 10;
+
+    let totalRequiredHours = carryoverHours;
+    const duePosFormatted = dueNextWeekPos.map((p) => {
+      const estHours = Math.round(p.remainQty * 0.8 * 10) / 10;
+      totalRequiredHours += estHours;
+      return {
+        poId: p.poId,
+        customer: p.customer,
+        productName: p.productName,
+        remainQty: p.remainQty,
+        dueDate: p.dueDate,
+        requiredHours: estHours,
+        defaultMachine: p.productName.toLowerCase().includes('tiện') ? 'Máy tiện T630' : 'Máy phay CNC',
+      };
+    });
+
+    const machines = queryMachines(db);
+    const machineCapacityHours = machines.length * 48;
+    const overloadCapacityHours = Math.max(0, totalRequiredHours - machineCapacityHours);
+    const isOverloaded = totalRequiredHours > machineCapacityHours || carryoverBacklogQty > 80;
+
+    const outsourceRecommendations: Array<{
+      poId: string;
+      customer: string;
+      productName: string;
+      suggestedOutsourceQty: number;
+      reason: string;
+      estimatedOutsourceCost: number;
+    }> = [];
+
+    if (isOverloaded || carryoverBacklog.length > 0) {
+      for (const b of carryoverBacklog.slice(0, 4)) {
+        const outsourceQty = Math.ceil(b.remainQty * 0.5);
+        outsourceRecommendations.push({
+          poId: b.poId,
+          customer: b.customer,
+          productName: b.productName,
+          suggestedOutsourceQty: outsourceQty,
+          reason: `Vượt khung tải máy xưởng: Bù số thiếu đọng tuần trước (${b.remainQty} SP), đề xuất chuyển gia công phay/nhiệt luyện ngoài`,
+          estimatedOutsourceCost: outsourceQty * 120000,
+        });
+      }
+    }
+
+    res.json({
+      weekStart,
+      weekEnd,
+      weekLabel,
+      summary: {
+        totalPlannedQty,
+        totalActualQty,
+        completionPct,
+        totalPoActive: activePos.length,
+        completedPoCount: completedPos.length,
+        delayedPoCount: delayedPos.length,
+      },
+      customerStats,
+      poStatuses,
+      workerLaborStats,
+      downtimeIncidents,
+      customIncidentNotes,
+      nextWeekForecast: {
+        duePos: duePosFormatted,
+        carryoverBacklogQty,
+        carryoverHours,
+        totalRequiredHours: Math.round(totalRequiredHours * 10) / 10,
+        machineCapacityHours,
+        overloadCapacityHours: Math.round(overloadCapacityHours * 10) / 10,
+        isOverloaded,
+        outsourceRecommendations,
+      },
+    });
+  });
+
+  router.post('/reports/weekly/incidents', requireRoles('DIRECTOR', 'ADMIN', 'SHIFT_LEADER'), (req, res) => {
+    const weekStart = String(req.body.weekStart || '2026-10-15');
+    const machineName = String(req.body.machineName || '').trim();
+    const stopMinutes = Number(req.body.stopMinutes || 0);
+    const reason = String(req.body.reason || '').trim();
+    const note = String(req.body.note || '').trim();
+
+    db.prepare(`
+      INSERT INTO weekly_downtime_notes (week_start, machine_name, stop_minutes, reason, note)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(weekStart, machineName, stopMinutes, reason, note);
+
+    res.json({ success: true });
+  });
+
   return router;
 }

@@ -3,6 +3,7 @@ import type { BootstrapPayload } from '@shared/types';
 export type AdminTabKey =
   | 'cockpit'
   | 'orders'
+  | 'daily_schedule'
   | 'logs_qc'
   | 'costing'
   | 'attendance'
