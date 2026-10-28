@@ -784,10 +784,18 @@ export function createAdminRoutes(db: DatabaseSync): Router {
       req.body?.outsourceCost !== undefined
         ? Math.max(0, Number(req.body.outsourceCost) || 0)
         : Number(prod.outsource_cost);
+    const drawingUrl =
+      req.body?.drawingUrl !== undefined
+        ? String(req.body.drawingUrl || '').trim()
+        : String(prod.drawing_url || '');
+    const techDocUrl =
+      req.body?.techDocUrl !== undefined
+        ? String(req.body.techDocUrl || '').trim()
+        : String(prod.tech_doc_url || '');
 
     db.prepare(
-      `UPDATE products SET quoted_price = ?, raw_material_cost = ?, outsource_cost = ? WHERE sp_id = ?`
-    ).run(quotedPrice, rawMaterialCost, outsourceCost, spId);
+      `UPDATE products SET quoted_price = ?, raw_material_cost = ?, outsource_cost = ?, drawing_url = ?, tech_doc_url = ? WHERE sp_id = ?`
+    ).run(quotedPrice, rawMaterialCost, outsourceCost, drawingUrl, techDocUrl, spId);
 
     const updatedItem = buildAllCostingSummaries().find((c) => c.spId === spId);
     res.json({ success: true, item: updatedItem });
@@ -1310,10 +1318,20 @@ export function createAdminRoutes(db: DatabaseSync): Router {
         (stdSeconds / 3600) * Number(mach?.cost_per_hour || 350000)
       );
 
+      const drawingUrl =
+        req.body?.drawingUrl !== undefined
+          ? String(req.body.drawingUrl || '').trim()
+          : String(op.drawing_url || '');
+      const setupDocUrl =
+        req.body?.setupDocUrl !== undefined
+          ? String(req.body.setupDocUrl || '').trim()
+          : String(op.setup_doc_url || '');
+
       db.prepare(
         `UPDATE operations
          SET op_name = ?, std_seconds = ?, default_machine = ?, cutting_rec = ?,
-             std_edges_per_pcs = ?, std_labor_cost = ?, std_mach_cost = ?, std_tool_cost = ?, is_critical_check = ?
+             std_edges_per_pcs = ?, std_labor_cost = ?, std_mach_cost = ?, std_tool_cost = ?, is_critical_check = ?,
+             drawing_url = ?, setup_doc_url = ?
          WHERE nc_id = ?`
       ).run(
         opName,
@@ -1325,6 +1343,8 @@ export function createAdminRoutes(db: DatabaseSync): Router {
         stdMachCost,
         stdToolCost,
         isCriticalCheck,
+        drawingUrl,
+        setupDocUrl,
         ncId
       );
 

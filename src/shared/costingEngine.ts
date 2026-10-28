@@ -131,5 +131,7 @@ export function computeProductCosting(
     marginPct,
     hasActual,
     stepBreakdowns,
+    drawingUrl: product.drawingUrl || '',
+    techDocUrl: product.techDocUrl || '',
   };
 }

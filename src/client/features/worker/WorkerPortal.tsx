@@ -10,6 +10,8 @@ import {
   CloudOff,
   Coins,
   Cpu,
+  FileText,
+  FolderOpen,
   History,
   KeyRound,
   Layers,
@@ -71,6 +73,7 @@ import { QrScannerModal, SampleQrPreset } from './QrScannerModal';
 import { PickerOptionItem, SearchablePickerSheet } from './SearchablePickerSheet';
 import { TelegramLinkModal } from './TelegramLinkModal';
 import { FaiInspectionModal } from './FaiInspectionModal';
+import { DrawingViewerModal } from './DrawingViewerModal';
 import {
   applyManualToolEdges,
   computeStopTimerElapsed,
@@ -154,6 +157,7 @@ export function WorkerPortal() {
   const [activeTab, setActiveTab] = useState<WorkerTab>('REPORT');
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [telegramModalOpen, setTelegramModalOpen] = useState(false);
+  const [drawingModalOpen, setDrawingModalOpen] = useState(false);
   const [faiTargetPo, setFaiTargetPo] = useState<PurchaseOrderInfo | null>(null);
   const [activePicker, setActivePicker] = useState<PickerKind>(null);
 
@@ -1463,6 +1467,30 @@ export function WorkerPortal() {
                   </div>
                 </div>
 
+                {/* Drawing & Tech Doc Buttons (Tích hợp Google Drive chống sai lỗi) */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setDrawingModalOpen(true)}
+                    className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm"
+                  >
+                    <FileText className="h-4 w-4" />
+                    📐 Xem Bản Vẽ Kỹ Thuật (Google Drive)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setDrawingModalOpen(true)}
+                    className="min-h-[44px] flex items-center justify-center gap-1.5 border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold"
+                  >
+                    <FolderOpen className="h-4 w-4 text-amber-600" />
+                    Thư Mục Xưởng
+                  </Button>
+                </div>
+
                 {/* Soft Warnings */}
                 {combinedWarnings.length > 0 && (
                   <div className="space-y-1 rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
@@ -2474,6 +2502,19 @@ export function WorkerPortal() {
                           type="button"
                           variant="secondary"
                           size="lg"
+                          onClick={() => {
+                            handleSelectPo(po.poId);
+                            setDrawingModalOpen(true);
+                          }}
+                          className="font-bold text-blue-700 hover:text-blue-800"
+                        >
+                          <FileText className="h-4 w-4 text-blue-600" /> Bản Vẽ
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="lg"
                           onClick={() =>
                             navigateTo(`/print/traveler/${encodeURIComponent(po.poId)}`)
                           }
@@ -2748,6 +2789,18 @@ export function WorkerPortal() {
           await refreshSession();
           await loadBootstrapData(true);
         }}
+      />
+
+      <DrawingViewerModal
+        open={drawingModalOpen}
+        onClose={() => setDrawingModalOpen(false)}
+        productName={selectedOp?.productName || selectedProduct?.productName || selectedPo?.productName}
+        spId={selectedOp?.spId || selectedProduct?.spId || selectedPo?.spId}
+        customer={selectedOp?.customer || selectedProduct?.customer || selectedPo?.customer}
+        opName={selectedOp?.opName}
+        machineId={machineName}
+        drawingUrl={selectedOp?.drawingUrl || selectedProduct?.drawingUrl || selectedPo?.drawingUrl}
+        techDocUrl={selectedOp?.setupDocUrl || selectedProduct?.techDocUrl || selectedPo?.techDocUrl}
       />
 
       <FaiInspectionModal

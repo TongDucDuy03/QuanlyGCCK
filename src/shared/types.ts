@@ -84,6 +84,8 @@ export interface ProductMeta {
   opCount?: number;
   opsSummary?: string;
   totalStdSeconds?: number;
+  drawingUrl?: string;
+  techDocUrl?: string;
 }
 
 export interface OperationMeta {
@@ -107,6 +109,8 @@ export interface OperationMeta {
   stdMachCost: number;
   stdToolCost: number;
   isCriticalCheck?: number;
+  drawingUrl?: string;
+  setupDocUrl?: string;
 }
 
 export type FaiStatus = 'NOT_REQUIRED' | 'PENDING_FAI' | 'FAI_PASSED' | 'FAI_FAILED';
@@ -130,6 +134,8 @@ export interface PurchaseOrderInfo {
   priority?: number;
   note?: string;
   faiStatus?: FaiStatus;
+  drawingUrl?: string;
+  techDocUrl?: string;
 }
 
 export interface SystemPayrollConfig {
@@ -139,6 +145,7 @@ export interface SystemPayrollConfig {
   mealOt2h: number;
   mealSunday: number;
   kpiWarningThreshold: number;
+  googleDriveFolderUrl?: string;
 }
 
 export interface PriorShiftLogItem {
@@ -264,6 +271,8 @@ export interface ProductCostingSummary {
   marginPct: number;
   hasActual: boolean;
   stepBreakdowns: OpStepCostBreakdown[];
+  drawingUrl?: string;
+  techDocUrl?: string;
 }
 
 export interface MealConfig {

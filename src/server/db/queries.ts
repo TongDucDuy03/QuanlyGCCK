@@ -136,6 +136,7 @@ export function queryProducts(db: DatabaseSync, includeFinancials: boolean): Pro
   const rows = db
     .prepare(
       `SELECT p.sp_id, p.customer, p.product_name, p.mat_name, p.quoted_price, p.raw_material_cost, p.outsource_cost, p.setup_minutes_std,
+              COALESCE(p.drawing_url, '') AS drawing_url, COALESCE(p.tech_doc_url, '') AS tech_doc_url,
               COUNT(o.nc_id) AS op_count, COALESCE(SUM(o.std_seconds), 0) AS total_sec
        FROM products p
        LEFT JOIN operations o ON o.sp_id = p.sp_id
@@ -153,6 +154,8 @@ export function queryProducts(db: DatabaseSync, includeFinancials: boolean): Pro
       setupMinutesStd: Number(r.setup_minutes_std || 0),
       opCount: Number(r.op_count || 0),
       totalStdSeconds: Number(r.total_sec || 0),
+      drawingUrl: String(r.drawing_url || ''),
+      techDocUrl: String(r.tech_doc_url || ''),
     };
     if (includeFinancials) {
       dto.quotedPrice = Number(r.quoted_price || 0);
@@ -166,11 +169,14 @@ export function queryProducts(db: DatabaseSync, includeFinancials: boolean): Pro
 export function queryOperations(db: DatabaseSync): OperationMeta[] {
   const rows = db
     .prepare(
-      `SELECT nc_id, sp_id, customer, product_name, op_name, std_seconds, stage, step_order, is_final_op,
-              default_machine, mat_name, cutting_rec, tool_code, tool_name, cost_per_edge,
-              std_edges_per_pcs, std_labor_cost, std_mach_cost, std_tool_cost, is_critical_check
-       FROM operations
-       ORDER BY sp_id ASC, step_order ASC`
+      `SELECT o.nc_id, o.sp_id, o.customer, o.product_name, o.op_name, o.std_seconds, o.stage, o.step_order, o.is_final_op,
+              o.default_machine, o.mat_name, o.cutting_rec, o.tool_code, o.tool_name, o.cost_per_edge,
+              o.std_edges_per_pcs, o.std_labor_cost, o.std_mach_cost, o.std_tool_cost, o.is_critical_check,
+              COALESCE(o.drawing_url, p.drawing_url, '') AS drawing_url,
+              COALESCE(o.setup_doc_url, p.tech_doc_url, '') AS setup_doc_url
+       FROM operations o
+       LEFT JOIN products p ON p.sp_id = o.sp_id
+       ORDER BY o.sp_id ASC, o.step_order ASC`
     )
     .all() as Array<Record<string, any>>;
 
@@ -195,6 +201,8 @@ export function queryOperations(db: DatabaseSync): OperationMeta[] {
     stdMachCost: Number(r.std_mach_cost),
     stdToolCost: Number(r.std_tool_cost),
     isCriticalCheck: Number(r.is_critical_check || 0),
+    drawingUrl: String(r.drawing_url || ''),
+    setupDocUrl: String(r.setup_doc_url || ''),
   }));
 }
 
@@ -214,10 +222,13 @@ export function queryPurchaseOrders(db: DatabaseSync): PurchaseOrderInfo[] {
 
   const rows = db
     .prepare(
-      `SELECT po_id, customer, sp_id, product_name, qty_po, due_date, wip_qty, finished_qty,
-              delivered_qty, stock_qty, remain_qty, status, material_lot, supplier_name, cast_date, priority, note
-       FROM purchase_orders
-       ORDER BY rowid ASC`
+      `SELECT po.po_id, po.customer, po.sp_id, po.product_name, po.qty_po, po.due_date, po.wip_qty, po.finished_qty,
+              po.delivered_qty, po.stock_qty, po.remain_qty, po.status, po.material_lot, po.supplier_name, po.cast_date, po.priority, po.note,
+              COALESCE(p.drawing_url, '') AS drawing_url,
+              COALESCE(p.tech_doc_url, '') AS tech_doc_url
+       FROM purchase_orders po
+       LEFT JOIN products p ON (p.sp_id = po.sp_id OR (po.sp_id IS NULL AND p.customer = po.customer AND p.product_name = po.product_name))
+       ORDER BY po.rowid ASC`
     )
     .all() as Array<Record<string, any>>;
 
@@ -251,6 +262,8 @@ export function queryPurchaseOrders(db: DatabaseSync): PurchaseOrderInfo[] {
       priority: Number(r.priority || 2),
       note: String(r.note || ''),
       faiStatus,
+      drawingUrl: String(r.drawing_url || ''),
+      techDocUrl: String(r.tech_doc_url || ''),
     };
   });
 }

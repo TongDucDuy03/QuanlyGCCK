@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS products (
   raw_material_cost REAL NOT NULL DEFAULT 0,
   outsource_cost REAL NOT NULL DEFAULT 0,
   setup_minutes_std REAL NOT NULL DEFAULT 0,
+  drawing_url TEXT NOT NULL DEFAULT '',
+  tech_doc_url TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(customer, product_name)
 );
@@ -78,7 +80,9 @@ CREATE TABLE IF NOT EXISTS operations (
   std_labor_cost REAL NOT NULL DEFAULT 0,
   std_mach_cost REAL NOT NULL DEFAULT 0,
   std_tool_cost REAL NOT NULL DEFAULT 0,
-  is_critical_check INTEGER NOT NULL DEFAULT 0
+  is_critical_check INTEGER NOT NULL DEFAULT 0,
+  drawing_url TEXT NOT NULL DEFAULT '',
+  setup_doc_url TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_operations_sp_id ON operations(sp_id, step_order);

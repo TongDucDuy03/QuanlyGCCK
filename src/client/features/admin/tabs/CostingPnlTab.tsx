@@ -4,12 +4,17 @@ import {
   CheckCircle2,
   Coins,
   Download,
+  ExternalLink,
+  FileText,
+  FolderOpen,
   Save,
   Search,
   SlidersHorizontal,
   TrendingDown,
   TrendingUp,
+  Zap,
 } from 'lucide-react';
+import { DEFAULT_DRIVE_FOLDER_URL } from '@shared/driveHelper';
 import type { ProductCostingSummary } from '@shared/types';
 import { matchesSearch } from '@shared/vnSearch';
 import { apiClient } from '@client/lib/apiClient';
@@ -23,6 +28,7 @@ import {
   PaginationBar,
   useToast,
 } from '@client/components/ui/IndustrialPrimitives';
+import { GainsharingModal } from '../modals/GainsharingModal';
 import type { AdminTabCommonProps } from '../types';
 
 type CostingFilterMode = 'ALL' | 'ACTUAL' | 'LOSS' | 'PROFIT' | 'WIP_ONLY';
@@ -40,6 +46,7 @@ interface CostingApiResponse {
 export function CostingPnlTab({
   onRefreshBootstrap,
   deepLink,
+  bootstrap,
 }: AdminTabCommonProps) {
   const toast = useToast();
 
@@ -60,7 +67,13 @@ export function CostingPnlTab({
   const [modalQuotedPrice, setModalQuotedPrice] = useState(0);
   const [modalRawMatCost, setModalRawMatCost] = useState(0);
   const [modalOutsourceCost, setModalOutsourceCost] = useState(0);
+  const [modalDrawingUrl, setModalDrawingUrl] = useState('');
+  const [modalTechDocUrl, setModalTechDocUrl] = useState('');
   const [savingModal, setSavingModal] = useState(false);
+
+  // Gainsharing Simulator Modal
+  const [showGainsharingModal, setShowGainsharingModal] = useState(false);
+  const [gainsharingProduct, setGainsharingProduct] = useState<ProductCostingSummary | null>(null);
 
   useEffect(() => {
     if (deepLink?.costingSearch !== undefined) {
@@ -165,6 +178,8 @@ export function CostingPnlTab({
     );
     setModalRawMatCost(c.rawMaterialCost);
     setModalOutsourceCost(c.outsourceCost);
+    setModalDrawingUrl(c.drawingUrl || '');
+    setModalTechDocUrl(c.techDocUrl || '');
   };
 
   const handleSaveDetailModal = async (e: React.FormEvent) => {
@@ -178,6 +193,8 @@ export function CostingPnlTab({
           quotedPrice: modalQuotedPrice,
           rawMaterialCost: modalRawMatCost,
           outsourceCost: modalOutsourceCost,
+          drawingUrl: modalDrawingUrl,
+          techDocUrl: modalTechDocUrl,
         }
       );
       if (res.item) {
@@ -312,15 +329,29 @@ export function CostingPnlTab({
               phẩm khi hoàn tất công đoạn Cuối (Chốt TP); bước chưa ghi nhận tự động bù giá vốn ĐM.
             </p>
           </div>
-          <Button
-            variant="success"
-            size="sm"
-            disabled={exporting || items.length === 0}
-            onClick={() => void handleExportExcel()}
-          >
-            <Download className="h-4 w-4" />
-            📥 Xuất Excel Báo Giá &amp; Đối Soát Lãi/Lỗ (19 cột)
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="warning"
+              size="sm"
+              onClick={() => {
+                setGainsharingProduct(null);
+                setShowGainsharingModal(true);
+              }}
+              title="Mô phỏng cơ chế khoán chia thưởng năng suất thợ & lợi nhuận công ty"
+            >
+              <Zap className="h-4 w-4" />
+              ⚡ Quyết Toán Khoán Năng Suất (Win - Win)
+            </Button>
+            <Button
+              variant="success"
+              size="sm"
+              disabled={exporting || items.length === 0}
+              onClick={() => void handleExportExcel()}
+            >
+              <Download className="h-4 w-4" />
+              📥 Xuất Excel Báo Giá &amp; Đối Soát Lãi/Lỗ (19 cột)
+            </Button>
+          </div>
         </div>
 
         {/* Filter & Search Bar */}
@@ -431,6 +462,15 @@ export function CostingPnlTab({
                         >
                           {c.productName}
                         </button>
+                        <a
+                          href={c.drawingUrl || DEFAULT_DRIVE_FOLDER_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-bold ml-2 px-1.5 py-0.5 rounded bg-blue-50 border border-blue-200"
+                          title="Mở Bản Vẽ Google Drive"
+                        >
+                          <FileText className="w-3 h-3" /> Bản vẽ
+                        </a>
                         <div className="mt-0.5 max-w-[300px] truncate text-[11px] text-slate-500">
                           {c.opCount} NC: {c.opsSummary}
                         </div>
@@ -517,6 +557,17 @@ export function CostingPnlTab({
                             title="Cập nhật Chi phí Phôi, Gia công ngoài & Bóc tách từng NC"
                           >
                             <SlidersHorizontal className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGainsharingProduct(c);
+                              setShowGainsharingModal(true);
+                            }}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 text-amber-700 transition-colors hover:border-amber-400 hover:bg-amber-100 hover:text-amber-800"
+                            title="Quyết Toán Khoán & Chia Thưởng Năng Suất (Win - Win)"
+                          >
+                            <Zap className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
@@ -643,6 +694,54 @@ export function CostingPnlTab({
                     className="font-mono-num h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
                   />
                 </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block font-bold text-slate-700">
+                    📐 Link Bản Vẽ Google Drive (File PDF / Thư mục)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={modalDrawingUrl}
+                      onChange={(e) => setModalDrawingUrl(e.target.value)}
+                      placeholder={DEFAULT_DRIVE_FOLDER_URL}
+                      className="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
+                    />
+                    <a
+                      href={modalDrawingUrl || DEFAULT_DRIVE_FOLDER_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 rounded-xl border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs shrink-0"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Mở Xem
+                    </a>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1 block font-bold text-slate-700">
+                    📑 Link Hướng Dẫn Công Nghệ & Gá Đặt (Google Drive)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={modalTechDocUrl}
+                      onChange={(e) => setModalTechDocUrl(e.target.value)}
+                      placeholder={DEFAULT_DRIVE_FOLDER_URL}
+                      className="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15"
+                    />
+                    <a
+                      href={modalTechDocUrl || DEFAULT_DRIVE_FOLDER_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold text-xs shrink-0"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Mở Xem
+                    </a>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-3 flex items-center justify-between gap-2">
@@ -659,10 +758,24 @@ export function CostingPnlTab({
                     )}
                   </strong>
                 </div>
-                <Button type="submit" variant="success" size="sm" disabled={savingModal}>
-                  <CheckCircle2 className="h-4 w-4" />
-                  {savingModal ? 'Đang lưu...' : 'Lưu Định Giá & Chi Phí Phôi/GCN'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="warning"
+                    size="sm"
+                    onClick={() => {
+                      setGainsharingProduct(detailItem);
+                      setShowGainsharingModal(true);
+                    }}
+                  >
+                    <Zap className="h-4 w-4" />
+                    ⚡ Quyết Toán Khoán Năng Suất
+                  </Button>
+                  <Button type="submit" variant="success" size="sm" disabled={savingModal}>
+                    <CheckCircle2 className="h-4 w-4" />
+                    {savingModal ? 'Đang lưu...' : 'Lưu Định Giá & Chi Phí Phôi/GCN'}
+                  </Button>
+                </div>
               </div>
             </form>
 
@@ -732,6 +845,15 @@ export function CostingPnlTab({
           </div>
         )}
       </Modal>
+
+      {/* Gainsharing & Productivity Incentive Simulator Modal */}
+      <GainsharingModal
+        open={showGainsharingModal}
+        onClose={() => setShowGainsharingModal(false)}
+        initialProduct={gainsharingProduct}
+        allProducts={items}
+        allMachines={bootstrap?.machines || []}
+      />
     </div>
   );
 }
