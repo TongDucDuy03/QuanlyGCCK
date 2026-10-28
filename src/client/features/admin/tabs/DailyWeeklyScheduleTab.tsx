@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  Download,
   ExternalLink,
   Factory,
   FileSpreadsheet,
@@ -20,11 +21,13 @@ import {
   Flame,
   FolderOpen,
   Layers,
+  MessageSquare,
   Plus,
   Printer,
   RefreshCw,
   Save,
   Search,
+  Share2,
   ShieldAlert,
   ShieldCheck,
   Trash2,
@@ -38,6 +41,7 @@ import {
 import type { DailyPlanRow, WeeklyReportData } from '@shared/types';
 import { apiClient } from '@client/lib/apiClient';
 import { formatDateVn, formatNumber, formatVnd } from '@client/lib/formatters';
+import { downloadDailyScheduleExcel } from '@client/lib/excelService';
 import { navigateTo } from '@client/lib/navigation';
 import {
   Badge,
@@ -87,6 +91,10 @@ export function DailyWeeklyScheduleTab({
     return tomorrow.toISOString().slice(0, 10);
   });
   const [copyTargetResetQty, setCopyTargetResetQty] = useState<boolean>(false);
+
+  const [exportingExcel, setExportingExcel] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  const [shareText, setShareText] = useState<string>('');
 
   const [showAddWorkerModal, setShowAddWorkerModal] = useState<boolean>(false);
   const [newWorkerName, setNewWorkerName] = useState<string>('');
@@ -426,6 +434,89 @@ export function DailyWeeklyScheduleTab({
     setShowAddWorkerModal(false);
   };
 
+  // Export Daily Plan to Excel Form VICO QT.01.BM01
+  const handleExportExcel = async () => {
+    if (dailyRows.length === 0) {
+      toast.warning('Chưa có dữ liệu kế hoạch để xuất file Excel.');
+      return;
+    }
+    setExportingExcel(true);
+    try {
+      await downloadDailyScheduleExcel(selectedDate, dailyRows);
+      toast.success(`Đã xuất file Excel kế hoạch ngày ${formatDateVn(selectedDate)} thành công!`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể xuất file Excel.');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  // Generate clean Zalo group summary text
+  const generateZaloSummary = () => {
+    const [y, m, d] = selectedDate.split('-');
+    const displayDate = d && m && y ? `${d}/${m}/${y}` : selectedDate;
+
+    let text = `📋 KẾ HOẠCH SẢN XUẤT NGÀY ${displayDate} (FORM VICO QT.01.BM01)\n`;
+    text += `🏭 Công ty CP Cơ khí Chính xác Thắng Lợi\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+
+    const shifts = ['Ca 1', 'Ca 2', 'Ca 3', 'Ca Hành chính'];
+    let totalTasks = 0;
+
+    shifts.forEach((shift) => {
+      const shiftRows = dailyRows.filter(
+        (r) => r.shiftType === shift && (r.productName || Number(r.plannedQty) > 0)
+      );
+      if (shiftRows.length === 0) return;
+
+      text += `\n⏰ 【${shift.toUpperCase()}】\n`;
+      const workersMap = new Map<string, typeof dailyRows>();
+      shiftRows.forEach((r) => {
+        const list = workersMap.get(r.workerName) || [];
+        list.push(r);
+        workersMap.set(r.workerName, list);
+      });
+
+      workersMap.forEach((wRows, wName) => {
+        text += `👷 ${wName}:\n`;
+        wRows.forEach((r, idx) => {
+          totalTasks++;
+          const cust = r.customer ? `[${r.customer}] ` : '';
+          const mach = r.machineName ? ` » ${r.machineName}` : '';
+          const note = r.note ? ` (${r.note})` : '';
+          text += `   ${idx + 1}. ${cust}${r.productName || 'Chi tiết'} - ${r.opName || 'Theo bản vẽ'} | SL: ${r.plannedQty}${mach}${note}\n`;
+        });
+      });
+    });
+
+    text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `📊 Tổng số công việc phân công: ${totalTasks} việc\n`;
+    text += `🕒 Cập nhật: ${new Date().toLocaleTimeString('vi-VN')} ngày ${displayDate}`;
+    return text;
+  };
+
+  // Open modal to share to Zalo / group
+  const handleOpenShareModal = () => {
+    if (dailyRows.length === 0) {
+      toast.warning('Chưa có dữ liệu kế hoạch để gửi nhóm.');
+      return;
+    }
+    const txt = generateZaloSummary();
+    setShareText(txt);
+    setShowShareModal(true);
+  };
+
+  // Copy Zalo text to clipboard directly
+  const handleCopyShareText = () => {
+    if (!shareText.trim()) return;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(shareText);
+      toast.success('Đã sao chép nội dung tin nhắn! Bạn có thể dán (Ctrl+V) vào nhóm Zalo / Viber.');
+    } else {
+      toast.info('Vui lòng chọn bôi đen và nhấn Ctrl+C để sao chép.');
+    }
+  };
+
   // Filtered rows by shift and search query
   const filteredDailyRows = useMemo(() => {
     return dailyRows.filter((r) => {
@@ -644,6 +735,34 @@ export function DailyWeeklyScheduleTab({
               <Copy className="h-4 w-4 text-indigo-600" />
               Sao Chép Kế Hoạch
             </Button>
+
+            {/* Ô Xuất File Excel Gửi Nhóm */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleExportExcel}
+              disabled={exportingExcel}
+              className="bg-emerald-50 text-emerald-800 border-emerald-300 font-bold hover:bg-emerald-100 shadow-sm"
+              title="Xuất file Excel (.xlsx) Form VICO QT.01.BM01 để gửi nhóm"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              {exportingExcel ? 'Đang xuất...' : 'Xuất File Excel'}
+            </Button>
+
+            {/* Ô Gửi Vào Hội Nhóm Zalo / Viber */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleOpenShareModal}
+              className="bg-blue-50 text-blue-800 border-blue-300 font-bold hover:bg-blue-100 shadow-sm"
+              title="Mở giao diện sao chép nội dung & đính kèm gửi nhóm Zalo / Viber"
+            >
+              <Share2 className="h-4 w-4 text-blue-600" />
+              Gửi Nhóm Zalo
+            </Button>
+
             <Button
               type="button"
               variant="secondary"
@@ -2007,6 +2126,95 @@ export function DailyWeeklyScheduleTab({
               <option value={4}>4 dòng công việc</option>
               <option value={5}>5 dòng công việc</option>
             </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: XUẤT FILE & GỬI KẾ HOẠCH VÀO HỘI NHÓM (ZALO / VIBER / EXCEL)    */}
+      {/* ========================================================================= */}
+      <Modal
+        open={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        title="Xuất File & Gửi Kế Hoạch Vào Hội Nhóm"
+        subtitle={`Kế hoạch sản xuất ngày ${formatDateVn(selectedDate)} (Form VICO QT.01.BM01)`}
+        maxWidthClass="max-w-2xl"
+        footer={
+          <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleExportExcel}
+                disabled={exportingExcel}
+                className="bg-emerald-50 text-emerald-800 border-emerald-300 font-bold hover:bg-emerald-100"
+              >
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                {exportingExcel ? 'Đang tải...' : 'Tải File Excel (.xlsx)'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowShareModal(false);
+                  navigateTo(`/print/daily-schedule?date=${encodeURIComponent(selectedDate)}`);
+                }}
+                className="font-bold text-slate-700"
+              >
+                <Printer className="h-4 w-4 text-blue-600" />
+                In / Lưu PDF
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowShareModal(false)}
+              >
+                Đóng
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleCopyShareText}
+                className="bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-sm"
+              >
+                <Copy className="h-4 w-4" />
+                Sao Chép Tin Nhắn Zalo
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-3 text-xs text-slate-800">
+          <div className="rounded-lg bg-blue-50/70 p-3 border border-blue-100 text-blue-900 leading-relaxed">
+            💡 <strong>Hướng dẫn gửi nhóm:</strong> Bạn có thể bấm <strong>&quot;Sao Chép Tin Nhắn Zalo&quot;</strong> để dán (Ctrl+V) ngay vào nhóm chat của phân xưởng, hoặc bấm <strong>&quot;Tải File Excel (.xlsx)&quot;</strong> để gửi đính kèm file báo cáo đầy đủ theo biểu mẫu VICO.
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-bold text-slate-700">
+                Nội dung tóm tắt gửi hội nhóm (có thể sửa trước khi gửi):
+              </label>
+              <button
+                type="button"
+                onClick={() => setShareText(generateZaloSummary())}
+                className="text-[11px] font-bold text-blue-600 hover:underline"
+              >
+                Khôi phục mặc định
+              </button>
+            </div>
+            <textarea
+              rows={12}
+              value={shareText}
+              onChange={(e) => setShareText(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 p-3 font-mono text-[11px] leading-relaxed text-slate-900 focus:border-blue-600 focus:outline-none"
+            />
           </div>
         </div>
       </Modal>

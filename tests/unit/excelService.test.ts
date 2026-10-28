@@ -260,4 +260,45 @@ describe('excelService — Formula Injection Guard & 4 Industrial Excel Workbook
     expect(custom.defaultMachine).toBe('Máy Phay CNC 1');
     expect(custom.toolCode).toBe('T05');
   });
+
+  it('builds Daily Schedule VICO BM01 Excel workbook with title, 10 columns and summary totals', async () => {
+    const { buildDailyScheduleWorkbook } = await import('../../src/client/lib/excelService');
+    const sampleRows = [
+      {
+        workDate: '2026-10-28',
+        shiftType: 'Ca 2',
+        stt: 1,
+        workerName: 'Phùng Gia Phúc',
+        customer: 'Thysen',
+        productName: 'Sealing strip, below',
+        opName: 'G/c NC3 kích thước 412mm',
+        plannedQty: 20,
+        machineName: 'Máy Phay CNC1',
+        note: 'Tăng ca 2h',
+        actualQty: 18,
+        status: 'IN_PROGRESS',
+      },
+    ];
+
+    const bytes = await buildDailyScheduleWorkbook('2026-10-28', sampleRows as any);
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect(bytes.byteLength).toBeGreaterThan(1000);
+
+    const wb = await loadWorkbook(bytes);
+    const ws = wb.getWorksheet('KE_HOACH_NGAY')!;
+    expect(ws).toBeDefined();
+
+    // Check title in row 2
+    expect(String(ws.getRow(2).getCell(1).value)).toContain('KẾ HOẠCH SẢN XUẤT NGÀY 28/10/2026');
+
+    // Check headers in row 4
+    expect(ws.getRow(4).getCell(1).value).toBe('STT');
+    expect(ws.getRow(4).getCell(2).value).toBe('Ca Làm Việc');
+    expect(ws.getRow(4).getCell(3).value).toBe('Người Thực Hiện (Thợ)');
+    expect(ws.getRow(4).getCell(7).value).toBe('Số Lượng Kế Hoạch');
+
+    // Check data row 5
+    expect(ws.getRow(5).getCell(3).value).toBe('Phùng Gia Phúc');
+    expect(ws.getRow(5).getCell(7).value).toBe(20);
+  });
 });

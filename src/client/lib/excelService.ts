@@ -1,5 +1,6 @@
 import type ExcelJS from 'exceljs';
 import type {
+  DailyPlanRow,
   EmployeeAttSummary,
   Payroll3PRow,
   ProductCostingSummary,
@@ -417,6 +418,88 @@ export async function buildDailyLogsWorkbook(
   return workbookToBytes(wb);
 }
 
+// ==================== DAILY PRODUCTION SCHEDULE WORKBOOK (FORM VICO QT.01.BM01) ====================
+export async function buildDailyScheduleWorkbook(
+  workDate: string,
+  rows: DailyPlanRow[]
+): Promise<Uint8Array> {
+  const wb = await createExcelWorkbook();
+  wb.creator = 'GCCK Thắng Lợi Lean MES';
+  const ws = wb.addWorksheet('KE_HOACH_NGAY', {
+    views: [{ state: 'frozen', ySplit: 4 }],
+  });
+
+  // Title rows
+  const [y, m, d] = workDate.split('-');
+  const displayDate = d && m && y ? `${d}/${m}/${y}` : workDate;
+
+  const r1 = ws.addRow(['CÔNG TY CỔ PHẦN CƠ KHÍ CHÍNH XÁC THẮNG LỢI (VICO)']);
+  r1.font = { bold: true, size: 12, color: { argb: 'FF1E3A8A' } };
+
+  const r2 = ws.addRow([`KẾ HOẠCH SẢN XUẤT NGÀY ${displayDate} (FORM VICO GCCK.QT.01.BM01)`]);
+  r2.font = { bold: true, size: 13, color: { argb: 'FF0F172A' } };
+
+  ws.addRow([]); // Blank spacer
+
+  appendSafeRow(
+    ws,
+    [
+      'STT',
+      'Ca Làm Việc',
+      'Người Thực Hiện (Thợ)',
+      'Khách Hàng',
+      'Tên Sản Phẩm / Bản Vẽ',
+      'Công Đoạn / Nguyên Công',
+      'Số Lượng Kế Hoạch',
+      'Máy Thực Hiện',
+      'Số Lượng Thực Tế',
+      'Ghi Chú',
+    ],
+    { isHeader: true }
+  );
+
+  let stt = 1;
+  rows.forEach((r) => {
+    appendSafeRow(ws, [
+      r.stt || stt++,
+      r.shiftType || 'Ca 2',
+      r.workerName,
+      r.customer,
+      r.productName,
+      r.opName,
+      r.plannedQty || 0,
+      r.machineName,
+      r.actualQty || 0,
+      r.note || '',
+    ]);
+  });
+
+  const totalPlanned = rows.reduce((sum, r) => sum + Number(r.plannedQty || 0), 0);
+  const totalActual = rows.reduce((sum, r) => sum + Number(r.actualQty || 0), 0);
+
+  const sumRow = appendSafeRow(ws, [
+    'TỔNG CỘNG',
+    '',
+    '',
+    '',
+    '',
+    '',
+    totalPlanned,
+    '',
+    totalActual,
+    '',
+  ]);
+  sumRow.font = { bold: true };
+  sumRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFF1F5F9' },
+  };
+
+  autoFitColumns(ws, 8, 38);
+  return workbookToBytes(wb);
+}
+
 // ==================== 4. MASTER OPERATIONS 7-COL TEMPLATE & PARSER ====================
 export async function buildOperationsTemplateWorkbook(): Promise<Uint8Array> {
   const wb = await createExcelWorkbook();
@@ -669,6 +752,17 @@ export async function downloadDailyLogsExcel(
   const bytes = await buildDailyLogsWorkbook(logs);
   const suffix = dateSuffix ? `_${dateSuffix}` : '';
   downloadWorkbookBytes(bytes, `GCCK_ThangLoi_BaoCao_SanLuong_17Cot${suffix}.xlsx`);
+}
+
+export async function downloadDailyScheduleExcel(
+  workDate: string,
+  rows: DailyPlanRow[]
+): Promise<void> {
+  const bytes = await buildDailyScheduleWorkbook(workDate, rows);
+  downloadWorkbookBytes(
+    bytes,
+    `GCCK_ThangLoi_KeHoach_Ngay_${workDate}_VICO_BM01.xlsx`
+  );
 }
 
 export async function downloadOperationsTemplateExcel(): Promise<void> {
