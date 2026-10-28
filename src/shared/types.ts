@@ -426,6 +426,17 @@ export interface DailyPlanRow {
   status?: string;
 }
 
+export interface WeeklyProposalItem {
+  id: number;
+  weekStart: string;
+  category: string;
+  proposer: string;
+  content: string;
+  priority: string;
+  status: string;
+  createdAt: string;
+}
+
 export interface WeeklyReportData {
   weekStart: string;
   weekEnd: string;
@@ -463,6 +474,8 @@ export interface WeeklyReportData {
     standardShifts: number;
     otHours: number;
     sundayHours: number;
+    offDays: number;
+    pDays: number;
     totalConvertedShifts: number;
     actualCompletedPieces: number;
   }>;
@@ -475,6 +488,7 @@ export interface WeeklyReportData {
     workerName?: string;
   }>;
   customIncidentNotes: string[];
+  proposals: WeeklyProposalItem[];
   nextWeekForecast: {
     duePos: Array<{
       poId: string;

@@ -31,6 +31,8 @@ import {
   computeMonthDows,
   computeMonthly3PPayroll,
   getDefShiftCode,
+  parseAttendanceCell,
+  DEFAULT_MEAL_CONFIG,
 } from '../../shared/attendanceParser';
 import { computeMachineLoads } from '../../shared/loadBalancing';
 import { normalizeVn } from '../../shared/vnSearch';
@@ -1668,6 +1670,88 @@ export function createAdminRoutes(db: DatabaseSync): Router {
   });
 
   // ==================== DAILY DISPATCH SCHEDULE (FORM VICO GCCK.QT.01.BM01) ====================
+  router.get('/schedules/daily-dates', (req, res) => {
+    const rows = db
+      .prepare(
+        `SELECT work_date, COUNT(*) as row_count, COUNT(DISTINCT worker_name) as worker_count
+         FROM daily_schedule_rows
+         GROUP BY work_date
+         ORDER BY work_date DESC`
+      )
+      .all() as Array<{ work_date: string; row_count: number; worker_count: number }>;
+    res.json({
+      success: true,
+      dates: rows.map((r) => ({
+        workDate: String(r.work_date),
+        rowCount: Number(r.row_count || 0),
+        workerCount: Number(r.worker_count || 0),
+      })),
+    });
+  });
+
+  router.post('/schedules/daily/copy', requireRoles('DIRECTOR', 'ADMIN', 'SHIFT_LEADER'), (req, res) => {
+    const sourceDate = String(req.body?.sourceDate || '').trim();
+    const targetDate = String(req.body?.targetDate || '').trim();
+    const resetQty = Boolean(req.body?.resetQty);
+
+    if (!sourceDate || !targetDate) {
+      res.status(400).json({ error: 'Vui lòng cung cấp ngày nguồn và ngày đích.' });
+      return;
+    }
+
+    const existingRows = db
+      .prepare('SELECT * FROM daily_schedule_rows WHERE work_date = ? ORDER BY shift_type ASC, stt ASC, id ASC')
+      .all(sourceDate) as Array<Record<string, any>>;
+
+    if (existingRows.length === 0) {
+      res.status(404).json({ error: `Không tìm thấy kế hoạch ngày nguồn: ${sourceDate}` });
+      return;
+    }
+
+    withTransaction(db, () => {
+      db.prepare('DELETE FROM daily_schedule_rows WHERE work_date = ?').run(targetDate);
+      const ins = db.prepare(`
+        INSERT INTO daily_schedule_rows (
+          work_date, shift_type, stt, worker_name, customer, sp_id, product_name, nc_id, op_name,
+          planned_qty, machine_name, note, actual_qty, drawing_url, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (let idx = 0; idx < existingRows.length; idx++) {
+        const r = existingRows[idx];
+        ins.run(
+          targetDate,
+          String(r.shift_type || 'Ca 2'),
+          Number(r.stt || idx + 1),
+          String(r.worker_name || ''),
+          String(r.customer || ''),
+          String(r.sp_id || ''),
+          String(r.product_name || ''),
+          String(r.nc_id || ''),
+          String(r.op_name || ''),
+          resetQty ? 0 : Number(r.planned_qty || 0),
+          String(r.machine_name || ''),
+          String(r.note || ''),
+          0,
+          String(r.drawing_url || ''),
+          'PLANNED'
+        );
+      }
+    });
+
+    res.json({ success: true, targetDate, rowCount: existingRows.length });
+  });
+
+  router.delete('/schedules/daily', requireRoles('DIRECTOR', 'ADMIN', 'SHIFT_LEADER'), (req, res) => {
+    const workDate = String(req.query.date || '').trim();
+    if (!workDate) {
+      res.status(400).json({ error: 'Thiếu ngày cần xóa.' });
+      return;
+    }
+    db.prepare('DELETE FROM daily_schedule_rows WHERE work_date = ?').run(workDate);
+    res.json({ success: true, workDate });
+  });
+
   router.get('/schedules/daily', (req, res) => {
     const workDate = String(req.query.date || '2026-10-21');
     const shiftType = req.query.shift ? String(req.query.shift) : undefined;
@@ -1817,7 +1901,6 @@ export function createAdminRoutes(db: DatabaseSync): Router {
       isDelayed: Boolean(p.dueDate && p.dueDate <= weekEnd && p.remainQty > 0),
     }));
 
-    const workers = queryWorkersForViewer(db, 'ADMIN', null);
     const logsByWorker = new Map<string, Array<Record<string, any>>>();
     for (const l of logRows) {
       const name = String(l.worker_name);
@@ -1826,21 +1909,66 @@ export function createAdminRoutes(db: DatabaseSync): Router {
       logsByWorker.set(name, list);
     }
 
-    const workerLaborStats = workers.map((w) => {
-      const wLogs = logsByWorker.get(w.name) || [];
-      const distinctDays = new Set(wLogs.map((l) => String(l.work_date))).size;
-      const standardShifts = distinctDays || (wLogs.length > 0 ? Math.ceil(wLogs.length / 2) : 6);
-      const otHours = Math.round(wLogs.reduce((sum, l) => sum + Number(l.ot_minutes || 0) / 60, 0) * 10) / 10;
-      const sundayHours = wLogs.filter((l) => isVietnamSunday(String(l.work_date))).reduce((sum, l) => sum + 8 + Number(l.ot_minutes || 0) / 60, 0);
-      const totalConvertedShifts = Math.round((standardShifts + (otHours / 8) * 1.5 + (sundayHours / 8) * 2.0) * 10) / 10;
+    // Build the 7 calendar dates in this week
+    const weekDates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDt.getTime() + i * 24 * 3600 * 1000);
+      weekDates.push(d.toISOString().slice(0, 10));
+    }
+
+    // Load monthly attendance sheets for months in this week
+    const monthAttMap = new Map<string, AttendanceRow[]>();
+    for (const dStr of weekDates) {
+      const ym = dStr.slice(0, 7);
+      if (!monthAttMap.has(ym)) {
+        monthAttMap.set(ym, ensureMonthAttendanceRows(ym));
+      }
+    }
+
+    const startYm = weekStart.slice(0, 7);
+    const attList = monthAttMap.get(startYm) || ensureMonthAttendanceRows(startYm);
+
+    // Filter only production workers / shopfloor employees (work_type = 'Công' or matching active workers)
+    const activeStaff = attList.filter((e) => e.workType === 'Công' || e.empId.startsWith('NV00'));
+
+    const workerLaborStats = activeStaff.map((emp) => {
+      let standardShifts = 0;
+      let otHours = 0;
+      let sundayHours = 0;
+      let offDays = 0;
+      let pDays = 0;
+
+      for (const dStr of weekDates) {
+        const ym = dStr.slice(0, 7);
+        const dayNum = Number(dStr.slice(8, 10));
+        const dayIdx = dayNum - 1;
+        const isSun = isVietnamSunday(dStr);
+
+        const currentMonthRows = monthAttMap.get(ym) || [];
+        const empInMonth = currentMonthRows.find((e) => e.empId === emp.empId) || emp;
+        const code = empInMonth.days ? empInMonth.days[dayIdx] || '' : '';
+        const parsed = parseAttendanceCell(code, empInMonth.defaultShift, DEFAULT_MEAL_CONFIG, isSun);
+
+        standardShifts += parsed.regDays;
+        otHours += parsed.ot15;
+        sundayHours += parsed.ot20;
+        offDays += parsed.offDays;
+        pDays += parsed.pDays;
+      }
+
+      const wLogs = logsByWorker.get(emp.name) || [];
       const actualCompletedPieces = wLogs.reduce((sum, l) => sum + Number(l.ok_qty || 0), 0);
+      const totalConvertedShifts =
+        Math.round((standardShifts + (otHours / 8) * 1.5 + (sundayHours / 8) * 2.0) * 10) / 10;
 
       return {
-        workerId: w.id,
-        workerName: w.name,
-        standardShifts,
-        otHours,
-        sundayHours,
+        workerId: emp.empId,
+        workerName: emp.name,
+        standardShifts: Math.round(standardShifts * 10) / 10,
+        otHours: Math.round(otHours * 10) / 10,
+        sundayHours: Math.round(sundayHours * 10) / 10,
+        offDays: Math.round(offDays * 10) / 10,
+        pDays: Math.round(pDays * 10) / 10,
         totalConvertedShifts,
         actualCompletedPieces,
       };
@@ -1911,6 +2039,21 @@ export function createAdminRoutes(db: DatabaseSync): Router {
       }
     }
 
+    const proposalsRows = db
+      .prepare(`SELECT * FROM weekly_proposals WHERE week_start = ? ORDER BY id DESC`)
+      .all(weekStart) as Array<Record<string, any>>;
+
+    const proposals = proposalsRows.map((r) => ({
+      id: Number(r.id),
+      weekStart: String(r.week_start),
+      category: String(r.category || 'Vật tư / Dụng cụ'),
+      proposer: String(r.proposer || ''),
+      content: String(r.content || ''),
+      priority: String(r.priority || 'Bình thường'),
+      status: String(r.status || 'PENDING'),
+      createdAt: String(r.created_at || ''),
+    }));
+
     res.json({
       weekStart,
       weekEnd,
@@ -1928,6 +2071,7 @@ export function createAdminRoutes(db: DatabaseSync): Router {
       workerLaborStats,
       downtimeIncidents,
       customIncidentNotes,
+      proposals,
       nextWeekForecast: {
         duePos: duePosFormatted,
         carryoverBacklogQty,
@@ -1954,6 +2098,41 @@ export function createAdminRoutes(db: DatabaseSync): Router {
     `).run(weekStart, machineName, stopMinutes, reason, note);
 
     res.json({ success: true });
+  });
+
+  router.post('/reports/weekly/proposals', requireRoles('DIRECTOR', 'ADMIN', 'SHIFT_LEADER'), (req, res) => {
+    const weekStart = String(req.body.weekStart || '2026-10-15');
+    const category = String(req.body.category || 'Vật tư & Dụng cụ cắt').trim();
+    const proposer = String(req.body.proposer || '').trim();
+    const content = String(req.body.content || '').trim();
+    const priority = String(req.body.priority || 'Bình thường').trim();
+
+    if (!content) {
+      res.status(400).json({ error: 'Nội dung đề xuất / kiến nghị không được để trống.' });
+      return;
+    }
+
+    const r = db
+      .prepare(`
+        INSERT INTO weekly_proposals (week_start, category, proposer, content, priority, status)
+        VALUES (?, ?, ?, ?, ?, 'PENDING')
+      `)
+      .run(weekStart, category, proposer, content, priority);
+
+    res.json({ success: true, id: Number(r.lastInsertRowid) });
+  });
+
+  router.delete('/reports/weekly/proposals/:id', requireRoles('DIRECTOR', 'ADMIN', 'SHIFT_LEADER'), (req, res) => {
+    const id = Number(req.params.id);
+    db.prepare('DELETE FROM weekly_proposals WHERE id = ?').run(id);
+    res.json({ success: true, id });
+  });
+
+  router.patch('/reports/weekly/proposals/:id', requireRoles('DIRECTOR', 'ADMIN', 'SHIFT_LEADER'), (req, res) => {
+    const id = Number(req.params.id);
+    const status = String(req.body.status || 'APPROVED');
+    db.prepare('UPDATE weekly_proposals SET status = ? WHERE id = ?').run(status, id);
+    res.json({ success: true, id, status });
   });
 
   return router;

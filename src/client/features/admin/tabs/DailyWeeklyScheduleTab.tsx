@@ -2,11 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertOctagon,
   AlertTriangle,
+  Calendar,
   CalendarCheck2,
   CalendarClock,
+  CalendarPlus,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
+  Copy,
   ExternalLink,
   Factory,
   FileSpreadsheet,
@@ -25,6 +30,7 @@ import {
   Trash2,
   TrendingUp,
   Truck,
+  UserPlus,
   Users,
   Wrench,
   Zap,
@@ -43,6 +49,12 @@ import {
 import { DEFAULT_DRIVE_FOLDER_URL } from '@shared/driveHelper';
 import type { AdminTabCommonProps } from '../types';
 
+interface DailyDateMeta {
+  workDate: string;
+  rowCount: number;
+  workerCount: number;
+}
+
 export function DailyWeeklyScheduleTab({
   bootstrap,
   onRefreshBootstrap,
@@ -53,9 +65,33 @@ export function DailyWeeklyScheduleTab({
   // ==================== TAB 1: DAILY SCHEDULE STATE ====================
   const [selectedDate, setSelectedDate] = useState<string>('2026-10-21');
   const [selectedShift, setSelectedShift] = useState<string>('ALL');
+  const [searchFilter, setSearchFilter] = useState<string>('');
   const [dailyRows, setDailyRows] = useState<DailyPlanRow[]>([]);
+  const [availableDates, setAvailableDates] = useState<DailyDateMeta[]>([]);
+  const [loadingDates, setLoadingDates] = useState<boolean>(false);
   const [loadingDaily, setLoadingDaily] = useState<boolean>(false);
   const [savingDaily, setSavingDaily] = useState<boolean>(false);
+
+  // Modals state
+  const [showNewDateModal, setShowNewDateModal] = useState<boolean>(false);
+  const [newPlanDate, setNewPlanDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [newPlanMode, setNewPlanMode] = useState<'copy' | 'template' | 'blank'>('copy');
+  const [sourceCopyDate, setSourceCopyDate] = useState<string>('2026-10-21');
+  const [copyResetQty, setCopyResetQty] = useState<boolean>(false);
+  const [creatingDate, setCreatingDate] = useState<boolean>(false);
+
+  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [copyTargetDate, setCopyTargetDate] = useState<string>(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  });
+  const [copyTargetResetQty, setCopyTargetResetQty] = useState<boolean>(false);
+
+  const [showAddWorkerModal, setShowAddWorkerModal] = useState<boolean>(false);
+  const [newWorkerName, setNewWorkerName] = useState<string>('');
+  const [newWorkerShift, setNewWorkerShift] = useState<string>('Ca 2');
+  const [newWorkerLineCount, setNewWorkerLineCount] = useState<number>(3);
 
   // Load Daily Rows for selectedDate
   const loadDailyRows = async (date: string) => {
@@ -101,6 +137,47 @@ export function DailyWeeklyScheduleTab({
   useEffect(() => {
     void loadDailyRows(selectedDate);
   }, [selectedDate]);
+
+  // Load list of dates that have daily schedules
+  const loadAvailableDates = async () => {
+    setLoadingDates(true);
+    try {
+      const res = await apiClient.get<{ success: boolean; dates: DailyDateMeta[] }>(
+        '/schedules/daily-dates'
+      );
+      if (res.dates) {
+        setAvailableDates(res.dates);
+        if (res.dates.length > 0 && !sourceCopyDate) {
+          setSourceCopyDate(res.dates[0].workDate);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load available dates', err);
+    } finally {
+      setLoadingDates(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAvailableDates();
+  }, []);
+
+  // Check if current selectedDate is already persisted in DB
+  const currentDateMeta = useMemo(() => {
+    return availableDates.find((d) => d.workDate === selectedDate);
+  }, [availableDates, selectedDate]);
+
+  // Shift date helper (-1 day, +1 day)
+  const changeDateByDays = (days: number) => {
+    const parts = selectedDate.split('-');
+    if (parts.length !== 3) return;
+    const cur = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    cur.setDate(cur.getDate() + days);
+    const yr = cur.getFullYear();
+    const mo = String(cur.getMonth() + 1).padStart(2, '0');
+    const da = String(cur.getDate()).padStart(2, '0');
+    setSelectedDate(`${yr}-${mo}-${da}`);
+  };
 
   // Distinct Customers, Products, Machines for Cascade Selectors
   const customerList = useMemo(() => {
@@ -194,6 +271,7 @@ export function DailyWeeklyScheduleTab({
         rows: dailyRows,
       });
       toast.success(`Đã lưu thành công ${dailyRows.length} dòng kế hoạch ngày ${selectedDate}!`);
+      await loadAvailableDates();
       await onRefreshBootstrap();
     } catch (err: any) {
       toast.error(err?.message || 'Không thể lưu kế hoạch ngày.');
@@ -202,23 +280,193 @@ export function DailyWeeklyScheduleTab({
     }
   };
 
-  // Filtered rows by shift
+  // Create a new date plan
+  const handleCreateNewPlan = async () => {
+    if (!newPlanDate) {
+      toast.warning('Vui lòng chọn ngày kế hoạch.');
+      return;
+    }
+    setCreatingDate(true);
+    try {
+      if (newPlanMode === 'copy') {
+        const res = await apiClient.post<{ success: boolean; targetDate: string; rowCount: number }>(
+          '/schedules/daily/copy',
+          {
+            sourceDate: sourceCopyDate,
+            targetDate: newPlanDate,
+            resetQty: copyResetQty,
+          }
+        );
+        toast.success(`Đã sao chép thành công ${res.rowCount} dòng từ ngày ${sourceCopyDate} sang ngày ${newPlanDate}!`);
+      } else if (newPlanMode === 'template') {
+        const activeWorkers = bootstrap.workers.filter((w) => w.isActive);
+        const blankRows: DailyPlanRow[] = [];
+        let stt = 1;
+        for (const w of activeWorkers) {
+          for (let i = 0; i < 3; i++) {
+            blankRows.push({
+              workDate: newPlanDate,
+              shiftType: 'Ca 2',
+              stt: stt++,
+              workerName: w.name,
+              customer: '',
+              productName: '',
+              opName: '',
+              plannedQty: 0,
+              machineName: '',
+              note: '',
+              actualQty: 0,
+              status: 'PLANNED',
+            });
+          }
+        }
+        await apiClient.post('/schedules/daily', {
+          workDate: newPlanDate,
+          rows: blankRows,
+        });
+        toast.success(`Đã khởi tạo khung kế hoạch ngày ${newPlanDate} cho ${activeWorkers.length} thợ!`);
+      } else {
+        // blank mode
+        await apiClient.post('/schedules/daily', {
+          workDate: newPlanDate,
+          rows: [],
+        });
+        toast.success(`Đã tạo bảng kế hoạch trắng cho ngày ${newPlanDate}!`);
+      }
+
+      await loadAvailableDates();
+      setSelectedDate(newPlanDate);
+      setShowNewDateModal(false);
+      await loadDailyRows(newPlanDate);
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể tạo kế hoạch ngày mới.');
+    } finally {
+      setCreatingDate(false);
+    }
+  };
+
+  // Quick clone current date schedule to another date
+  const handleCopyCurrentSchedule = async () => {
+    if (!copyTargetDate) {
+      toast.warning('Vui lòng chọn ngày đích để sao chép.');
+      return;
+    }
+    if (copyTargetDate === selectedDate) {
+      toast.warning('Ngày đích phải khác ngày hiện tại.');
+      return;
+    }
+    setCreatingDate(true);
+    try {
+      const res = await apiClient.post<{ success: boolean; targetDate: string; rowCount: number }>(
+        '/schedules/daily/copy',
+        {
+          sourceDate: selectedDate,
+          targetDate: copyTargetDate,
+          resetQty: copyTargetResetQty,
+        }
+      );
+      toast.success(`Đã sao chép thành công ${res.rowCount} dòng từ ngày ${selectedDate} sang ngày ${copyTargetDate}!`);
+      await loadAvailableDates();
+      setSelectedDate(copyTargetDate);
+      setShowCopyModal(false);
+      await loadDailyRows(copyTargetDate);
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể sao chép kế hoạch.');
+    } finally {
+      setCreatingDate(false);
+    }
+  };
+
+  // Delete daily schedule for currently selected date
+  const handleDeleteDailySchedule = async () => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ kế hoạch ngày ${selectedDate}? Dữ liệu sẽ bị xóa khỏi cơ sở dữ liệu.`)) {
+      return;
+    }
+    try {
+      await apiClient.delete(`/schedules/daily?date=${encodeURIComponent(selectedDate)}`);
+      toast.success(`Đã xóa kế hoạch ngày ${selectedDate}!`);
+      const updatedDates = availableDates.filter((d) => d.workDate !== selectedDate);
+      setAvailableDates(updatedDates);
+      if (updatedDates.length > 0) {
+        setSelectedDate(updatedDates[0].workDate);
+      } else {
+        setSelectedDate('2026-10-21');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể xóa kế hoạch ngày.');
+    }
+  };
+
+  // Add a new worker into the plan
+  const handleAddNewWorker = (workerName: string, shiftType: string, count: number) => {
+    if (!workerName) {
+      toast.warning('Vui lòng chọn thợ.');
+      return;
+    }
+    const newRows: DailyPlanRow[] = [];
+    let nextStt = dailyRows.length > 0 ? Math.max(...dailyRows.map((r) => r.stt || 0)) + 1 : 1;
+    for (let i = 0; i < count; i++) {
+      newRows.push({
+        workDate: selectedDate,
+        shiftType: shiftType || 'Ca 2',
+        stt: nextStt++,
+        workerName,
+        customer: '',
+        productName: '',
+        opName: '',
+        plannedQty: 0,
+        machineName: '',
+        note: '',
+        actualQty: 0,
+        status: 'PLANNED',
+      });
+    }
+    setDailyRows((prev) => [...prev, ...newRows]);
+    toast.success(`Đã thêm thợ ${workerName} (${shiftType}) với ${count} dòng công việc! Bấm "Lưu Kế Hoạch" để lưu.`);
+    setShowAddWorkerModal(false);
+  };
+
+  // Filtered rows by shift and search query
   const filteredDailyRows = useMemo(() => {
-    if (selectedShift === 'ALL') return dailyRows;
-    return dailyRows.filter((r) => r.shiftType === selectedShift);
-  }, [dailyRows, selectedShift]);
+    return dailyRows.filter((r) => {
+      if (selectedShift !== 'ALL' && r.shiftType !== selectedShift) return false;
+      if (searchFilter.trim()) {
+        const q = searchFilter.toLowerCase();
+        const matches =
+          (r.workerName || '').toLowerCase().includes(q) ||
+          (r.customer || '').toLowerCase().includes(q) ||
+          (r.productName || '').toLowerCase().includes(q) ||
+          (r.opName || '').toLowerCase().includes(q) ||
+          (r.machineName || '').toLowerCase().includes(q) ||
+          (r.note || '').toLowerCase().includes(q);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [dailyRows, selectedShift, searchFilter]);
 
   // Group filtered rows by worker
   const rowsByWorker = useMemo(() => {
     const map = new Map<string, Array<{ row: DailyPlanRow; originalIdx: number }>>();
     dailyRows.forEach((row, originalIdx) => {
       if (selectedShift !== 'ALL' && row.shiftType !== selectedShift) return;
+      if (searchFilter.trim()) {
+        const q = searchFilter.toLowerCase();
+        const matches =
+          (row.workerName || '').toLowerCase().includes(q) ||
+          (row.customer || '').toLowerCase().includes(q) ||
+          (row.productName || '').toLowerCase().includes(q) ||
+          (row.opName || '').toLowerCase().includes(q) ||
+          (row.machineName || '').toLowerCase().includes(q) ||
+          (row.note || '').toLowerCase().includes(q);
+        if (!matches) return;
+      }
       const list = map.get(row.workerName) || [];
       list.push({ row, originalIdx });
       map.set(row.workerName, list);
     });
     return Array.from(map.entries());
-  }, [dailyRows, selectedShift]);
+  }, [dailyRows, selectedShift, searchFilter]);
 
   // ==================== TAB 2: WEEKLY REPORT STATE ====================
   const [weeklyStart, setWeeklyStart] = useState<string>('2026-10-15');
@@ -276,6 +524,60 @@ export function DailyWeeklyScheduleTab({
     }
   };
 
+  // ==================== TAB 2 - KHỐI 5: CÁC ĐỀ XUẤT & KIẾN NGHỊ KHÁC ====================
+  const [newPropCategory, setNewPropCategory] = useState<string>('Vật tư & Dụng cụ cắt');
+  const [newPropProposer, setNewPropProposer] = useState<string>('');
+  const [newPropContent, setNewPropContent] = useState<string>('');
+  const [newPropPriority, setNewPropPriority] = useState<string>('Bình thường');
+  const [addingProposal, setAddingProposal] = useState<boolean>(false);
+
+  const handleAddProposal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPropContent.trim()) {
+      toast.warning('Vui lòng nhập nội dung đề xuất hoặc kiến nghị.');
+      return;
+    }
+    setAddingProposal(true);
+    try {
+      await apiClient.post('/reports/weekly/proposals', {
+        weekStart: weeklyStart,
+        category: newPropCategory,
+        proposer: newPropProposer || 'Phân xưởng',
+        content: newPropContent,
+        priority: newPropPriority,
+      });
+      toast.success('Đã ghi nhận đề xuất / kiến nghị mới.');
+      setNewPropContent('');
+      void loadWeeklyReport(weeklyStart);
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể gửi đề xuất.');
+    } finally {
+      setAddingProposal(false);
+    }
+  };
+
+  const handleDeleteProposal = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa đề xuất này?')) return;
+    try {
+      await apiClient.delete(`/reports/weekly/proposals/${id}`);
+      toast.success('Đã xóa đề xuất.');
+      void loadWeeklyReport(weeklyStart);
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể xóa đề xuất.');
+    }
+  };
+
+  const handleToggleProposalStatus = async (id: number, currentStatus: string) => {
+    const nextStatus = currentStatus === 'APPROVED' ? 'PENDING' : 'APPROVED';
+    try {
+      await apiClient.patch(`/reports/weekly/proposals/${id}`, { status: nextStatus });
+      toast.success(`Đã cập nhật trạng thái: ${nextStatus === 'APPROVED' ? 'Đã duyệt' : 'Chờ duyệt'}`);
+      void loadWeeklyReport(weeklyStart);
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể cập nhật trạng thái.');
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Sub-tab Navigation Banner */}
@@ -308,7 +610,40 @@ export function DailyWeeklyScheduleTab({
         </div>
 
         {subTab === 'daily' && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                const todayStr = new Date().toISOString().slice(0, 10);
+                setNewPlanDate(todayStr);
+                setNewPlanMode('copy');
+                if (availableDates.length > 0) {
+                  setSourceCopyDate(availableDates[0].workDate);
+                }
+                setShowNewDateModal(true);
+              }}
+              className="bg-blue-600 font-bold text-white shadow-sm hover:bg-blue-700"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              + Thêm Kế Hoạch Ngày Mới
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                setCopyTargetDate(tomorrow.toISOString().slice(0, 10));
+                setShowCopyModal(true);
+              }}
+              className="font-bold text-slate-700 hover:text-slate-900"
+            >
+              <Copy className="h-4 w-4 text-indigo-600" />
+              Sao Chép Kế Hoạch
+            </Button>
             <Button
               type="button"
               variant="secondary"
@@ -317,18 +652,56 @@ export function DailyWeeklyScheduleTab({
               className="font-bold text-slate-800"
             >
               <Printer className="h-4 w-4 text-blue-600" />
-              🖨️ In Biểu Mẫu A4 VICO
+              🖨️ In Biểu Mẫu A4
             </Button>
+            {currentDateMeta && (
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={handleDeleteDailySchedule}
+                className="font-bold"
+                title="Xóa toàn bộ kế hoạch ngày này"
+              >
+                <Trash2 className="h-4 w-4" />
+                Xóa Ngày
+              </Button>
+            )}
             <Button
               type="button"
               variant="success"
               size="sm"
               onClick={handleSaveDailySchedule}
               disabled={savingDaily}
-              className="font-bold"
+              className="font-bold shadow-sm"
             >
               <Save className="h-4 w-4" />
               {savingDaily ? 'Đang lưu...' : 'Lưu Kế Hoạch Ngày'}
+            </Button>
+          </div>
+        )}
+
+        {subTab === 'weekly' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => navigateTo(`/print/weekly-report?weekStart=${encodeURIComponent(weeklyStart)}`)}
+              className="font-bold text-slate-800 hover:bg-slate-100"
+            >
+              <Printer className="h-4 w-4 text-blue-600" />
+              🖨️ In Biểu Mẫu Báo Cáo Tuần (A4)
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => void loadWeeklyReport(weeklyStart)}
+              className="font-bold text-slate-700"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Làm Mới
             </Button>
           </div>
         )}
@@ -339,52 +712,153 @@ export function DailyWeeklyScheduleTab({
       {/* ========================================================================= */}
       {subTab === 'daily' && (
         <div className="space-y-4">
-          {/* Controls Bar: Date, Shift, Filters */}
+          {/* Controls Bar: Date Navigation, Switcher, Shift, Filters */}
           <Card className="border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
+            <div className="space-y-3">
+              {/* Row 1: Date Navigation & Saved Dates Selector */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold text-slate-700">Ngày lập KH:</span>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="h-9 rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
-                  />
+                  
+                  {/* Step Day Buttons */}
+                  <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => changeDateByDays(-1)}
+                      className="rounded p-1 hover:bg-white hover:text-blue-600 text-slate-600"
+                      title="Ngày hôm trước"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="border-0 bg-transparent px-2 text-xs font-extrabold text-slate-900 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => changeDateByDays(1)}
+                      className="rounded p-1 hover:bg-white hover:text-blue-600 text-slate-600"
+                      title="Ngày tiếp theo"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      setSelectedDate(todayStr);
+                    }}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-blue-600"
+                  >
+                    Hôm nay
+                  </button>
+
+                  {/* Quick Select Saved Dates */}
+                  {availableDates.length > 0 && (
+                    <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                      <span className="text-xs text-slate-500 font-semibold">Chọn ngày đã lưu:</span>
+                      <select
+                        value={availableDates.some((d) => d.workDate === selectedDate) ? selectedDate : ''}
+                        onChange={(e) => {
+                          if (e.target.value) setSelectedDate(e.target.value);
+                        }}
+                        className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-800 focus:border-blue-600 focus:outline-none"
+                      >
+                        <option value="" disabled>
+                          -- Chọn ngày ({availableDates.length} ngày) --
+                        </option>
+                        {availableDates.map((d) => (
+                          <option key={d.workDate} value={d.workDate}>
+                            {formatDateVn(d.workDate)} ({d.rowCount} dòng / {d.workerCount} thợ)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Status Indicator */}
+                  {currentDateMeta ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Đã lưu CSDL ({currentDateMeta.rowCount} dòng &bull; {currentDateMeta.workerCount} thợ)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Kế hoạch mới (Chưa lưu CSDL)
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700">Ca làm việc:</span>
-                  <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-                    {['ALL', 'Ca 1', 'Ca 2', 'Ca 3', 'Ca Hành chính'].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setSelectedShift(s)}
-                        className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all ${
-                          selectedShift === s
-                            ? 'bg-white text-blue-700 shadow-sm'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        {s === 'ALL' ? 'Tất Cả Ca' : s}
-                      </button>
-                    ))}
-                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowAddWorkerModal(true)}
+                    className="font-bold text-blue-700 hover:bg-blue-50"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    + Thêm Thợ Vào Ca
+                  </Button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                <span>Tổng số dòng: <strong>{filteredDailyRows.length}</strong></span>
-                <span>&bull;</span>
-                <span>Thợ phân công: <strong>{rowsByWorker.length} thợ</strong></span>
-                <button
-                  type="button"
-                  onClick={() => void loadDailyRows(selectedDate)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs hover:bg-slate-100"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" /> Nạp lại
-                </button>
+              {/* Row 2: Shift Filters & Search Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700">Ca làm việc:</span>
+                    <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                      {['ALL', 'Ca 1', 'Ca 2', 'Ca 3', 'Ca Hành chính'].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setSelectedShift(s)}
+                          className={`rounded-md px-2.5 py-1 text-xs font-bold transition-all ${
+                            selectedShift === s
+                              ? 'bg-white text-blue-700 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {s === 'ALL' ? 'Tất Cả Ca' : s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Search Filter */}
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Tìm thợ, khách hàng, sản phẩm, máy..."
+                      value={searchFilter}
+                      onChange={(e) => setSearchFilter(e.target.value)}
+                      className="h-8 w-60 rounded-lg border border-slate-200 pl-8 pr-3 text-xs focus:border-blue-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                  <span>Tổng số dòng: <strong>{filteredDailyRows.length}</strong></span>
+                  <span>&bull;</span>
+                  <span>Thợ phân công: <strong>{rowsByWorker.length} thợ</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void loadDailyRows(selectedDate);
+                      void loadAvailableDates();
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs hover:bg-slate-100"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" /> Nạp lại
+                  </button>
+                </div>
               </div>
             </div>
           </Card>
@@ -396,7 +870,40 @@ export function DailyWeeklyScheduleTab({
             </div>
           ) : rowsByWorker.length === 0 ? (
             <Card className="p-8 text-center text-slate-500">
-              Không có dữ liệu kế hoạch cho ca/ngày này. Bấm &quot;Thêm Hàng&quot; để bắt đầu.
+              <Calendar className="mx-auto mb-2 h-10 w-10 text-slate-400" />
+              <div className="font-bold text-sm text-slate-700">Chưa có dữ liệu kế hoạch cho ngày {formatDateVn(selectedDate)}</div>
+              <p className="mt-1 text-xs text-slate-500">
+                Bạn có thể tạo kế hoạch bằng cách sao chép từ ngày trước hoặc thêm thợ mới vào ca.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setNewPlanDate(selectedDate);
+                    setNewPlanMode('copy');
+                    if (availableDates.length > 0) {
+                      setSourceCopyDate(availableDates[0].workDate);
+                    }
+                    setShowNewDateModal(true);
+                  }}
+                  className="bg-blue-600 font-bold text-white hover:bg-blue-700"
+                >
+                  <Copy className="h-4 w-4" />
+                  Sao chép kế hoạch từ ngày khác
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowAddWorkerModal(true)}
+                  className="font-bold text-blue-700"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  + Thêm thợ vào ca
+                </Button>
+              </div>
             </Card>
           ) : (
             <div className="space-y-3">
@@ -409,7 +916,26 @@ export function DailyWeeklyScheduleTab({
                         {workerName.charAt(0)}
                       </div>
                       <span className="font-extrabold text-sm text-slate-900">{workerName}</span>
-                      <Badge variant="info">{workerRows[0]?.row.shiftType || 'Ca 2'}</Badge>
+
+                      {/* Dropdown Ca Làm Việc - Trỏ xuống để đổi ca nhanh */}
+                      <select
+                        value={workerRows[0]?.row.shiftType || 'Ca 2'}
+                        onChange={(e) => {
+                          const newShift = e.target.value;
+                          workerRows.forEach(({ originalIdx }) => {
+                            handleRowChange(originalIdx, 'shiftType', newShift);
+                          });
+                          toast.info(`Đã đổi thợ ${workerName} sang ${newShift}. Bấm "Lưu Kế Hoạch" để cập nhật.`);
+                        }}
+                        className="h-7 rounded-lg border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-black text-blue-800 shadow-sm focus:border-blue-600 focus:outline-none cursor-pointer hover:bg-blue-100"
+                        title="Đổi ca làm việc cho thợ này"
+                      >
+                        <option value="Ca 1">Ca 1</option>
+                        <option value="Ca 2">Ca 2</option>
+                        <option value="Ca 3">Ca 3</option>
+                        <option value="Ca Hành chính">Ca Hành chính</option>
+                      </select>
+
                       <span className="text-xs text-slate-500">
                         ({workerRows.length} mặt hàng / nguyên công)
                       </span>
@@ -780,15 +1306,15 @@ export function DailyWeeklyScheduleTab({
                 </Card>
               </div>
 
-              {/* KHỐI 2: TỔNG HỢP GIỜ CÔNG & LAO ĐỘNG (13 CÔNG NHÂN THỰC TẾ) */}
+              {/* KHỐI 2: TỔNG HỢP GIỜ CÔNG & LAO ĐỘNG (DỰA THEO PHÂN HỆ CHẤM CÔNG) */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-slate-900">
                     <Users className="h-4 w-4 text-emerald-600" />
-                    Khối 2: Tổng Hợp Giờ Công &amp; Lao Động (13 Công Nhân Thực Tế)
+                    Khối 2: Tổng Hợp Giờ Công &amp; Lao Động (Dựa Theo Phân Hệ Chấm Công)
                   </h3>
                   <span className="text-xs text-slate-600 font-semibold">
-                    * Đổi giờ làm thêm &amp; chủ nhật thành ngày công hưởng lương
+                    * Dữ liệu trích xuất trực tiếp từ bảng phân hệ chấm công tuần ({formatDateVn(weeklyReport.weekStart)} &rarr; {formatDateVn(weeklyReport.weekEnd)})
                   </span>
                 </div>
 
@@ -797,9 +1323,10 @@ export function DailyWeeklyScheduleTab({
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-100/60 font-bold uppercase text-slate-600">
                         <th className="px-4 py-2.5">Họ Và Tên</th>
-                        <th className="px-3 py-2.5 text-center">Công Nhật (Ca chuẩn)</th>
+                        <th className="px-3 py-2.5 text-center">Công Chuẩn (Ca)</th>
                         <th className="px-3 py-2.5 text-center">Thêm Giờ (OT h)</th>
                         <th className="px-3 py-2.5 text-center">Tăng Ca CN (h)</th>
+                        <th className="px-3 py-2.5 text-center">Nghỉ / Phép</th>
                         <th className="px-3 py-2.5 text-center">Tổng Công Quy Đổi</th>
                         <th className="px-4 py-2.5 text-center">Sản Lượng SP Làm Ra</th>
                       </tr>
@@ -816,6 +1343,9 @@ export function DailyWeeklyScheduleTab({
                           </td>
                           <td className="font-mono-num px-3 py-2 text-center text-violet-700">
                             {w.sundayHours > 0 ? `${w.sundayHours}h` : '—'}
+                          </td>
+                          <td className="font-mono-num px-3 py-2 text-center text-slate-600">
+                            {w.offDays > 0 || w.pDays > 0 ? `${w.offDays + w.pDays}d` : '0'}
                           </td>
                           <td className="font-mono-num px-3 py-2 text-center font-extrabold text-emerald-800">
                             {w.totalConvertedShifts} công
@@ -1017,10 +1547,469 @@ export function DailyWeeklyScheduleTab({
                   </Card>
                 )}
               </div>
+
+              {/* KHỐI 5: CÁC ĐỀ XUẤT & KIẾN NGHỊ KHÁC */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-slate-900">
+                    <FileText className="h-4 w-4 text-indigo-600" />
+                    Khối 5: Các Đề Xuất &amp; Kiến Nghị Khác
+                  </h3>
+                  <Badge variant="purple">
+                    {weeklyReport.proposals ? weeklyReport.proposals.length : 0} đề xuất
+                  </Badge>
+                </div>
+
+                {/* Proposals Table */}
+                <Card className="overflow-hidden border-slate-200 bg-white p-0">
+                  {!weeklyReport.proposals || weeklyReport.proposals.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-500">
+                      Chưa có đề xuất hoặc kiến nghị nào cho tuần này. Bạn có thể gửi đề xuất mới bên dưới.
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-100/60 font-bold uppercase text-slate-600">
+                          <th className="px-3 py-2 w-10 text-center">#</th>
+                          <th className="px-3 py-2 w-44">Phân Loại</th>
+                          <th className="px-3 py-2 w-44">Người Đề Xuất</th>
+                          <th className="px-4 py-2">Nội Dung Đề Xuất / Kiến Nghị</th>
+                          <th className="px-3 py-2 w-28 text-center">Mức Độ</th>
+                          <th className="px-3 py-2 w-28 text-center">Trạng Thái</th>
+                          <th className="px-3 py-2 w-24 text-center">Thao Tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-900">
+                        {weeklyReport.proposals.map((p, idx) => (
+                          <tr key={p.id} className="hover:bg-slate-50">
+                            <td className="px-3 py-2 text-center text-slate-500 font-mono">{idx + 1}</td>
+                            <td className="px-3 py-2 font-bold text-slate-800">
+                              <span className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                                {p.category}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 font-bold text-blue-800">{p.proposer || 'Phân xưởng'}</td>
+                            <td className="px-4 py-2 text-slate-800">{p.content}</td>
+                            <td className="px-3 py-2 text-center">
+                              <Badge
+                                variant={
+                                  p.priority === 'Khẩn cấp'
+                                    ? 'danger'
+                                    : p.priority === 'Cao'
+                                    ? 'warning'
+                                    : 'neutral'
+                                }
+                              >
+                                {p.priority}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleProposalStatus(p.id, p.status)}
+                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-all ${
+                                  p.status === 'APPROVED'
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                    : p.status === 'REJECTED'
+                                    ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                }`}
+                                title="Bấm để chuyển trạng thái duyệt / chờ duyệt"
+                              >
+                                {p.status === 'APPROVED' ? '✓ Đã duyệt' : p.status === 'REJECTED' ? '✕ Từ chối' : '⏳ Chờ duyệt'}
+                              </button>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProposal(p.id)}
+                                className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                title="Xóa đề xuất này"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {/* Add proposal inline form */}
+                  <form onSubmit={handleAddProposal} className="border-t border-slate-200 bg-slate-50/70 p-3">
+                    <div className="text-xs font-extrabold text-slate-800 mb-2">
+                      + Thêm Đề Xuất / Kiến Nghị Cho Tuần Này:
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                      <div className="md:col-span-3">
+                        <select
+                          value={newPropCategory}
+                          onChange={(e) => setNewPropCategory(e.target.value)}
+                          className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
+                        >
+                          <option value="Vật tư & Dụng cụ cắt">Vật tư & Dụng cụ cắt</option>
+                          <option value="Bảo dưỡng thiết bị">Bảo dưỡng & Sửa máy</option>
+                          <option value="Nhân sự & Bố trí ca">Nhân sự & Ca kíp</option>
+                          <option value="Quy trình & Chất lượng">Quy trình & Chất lượng</option>
+                          <option value="An toàn & Môi trường">An toàn & Môi trường</option>
+                          <option value="Đề xuất khác">Đề xuất khác</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-3">
+                        <input
+                          type="text"
+                          placeholder="Người đề xuất (Quản đốc, Tổ trưởng...)"
+                          value={newPropProposer}
+                          onChange={(e) => setNewPropProposer(e.target.value)}
+                          className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <select
+                          value={newPropPriority}
+                          onChange={(e) => setNewPropPriority(e.target.value)}
+                          className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-600 focus:outline-none"
+                        >
+                          <option value="Bình thường">Ưu tiên: Bình thường</option>
+                          <option value="Cao">Ưu tiên: Cao</option>
+                          <option value="Khẩn cấp">Ưu tiên: Khẩn cấp</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-4 flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nội dung đề xuất / kiến nghị chi tiết..."
+                          value={newPropContent}
+                          onChange={(e) => setNewPropContent(e.target.value)}
+                          className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                        />
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          size="sm"
+                          disabled={addingProposal}
+                          className="whitespace-nowrap bg-indigo-600 text-white font-bold hover:bg-indigo-700"
+                        >
+                          {addingProposal ? 'Đang gửi...' : 'Gửi'}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                </Card>
+              </div>
             </div>
           )}
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: TẠO KẾ HOẠCH CHO NGÀY MỚI                                         */}
+      {/* ========================================================================= */}
+      <Modal
+        open={showNewDateModal}
+        onClose={() => setShowNewDateModal(false)}
+        title="Tạo Kế Hoạch Sản Xuất Cho Ngày Mới"
+        subtitle="Khởi tạo bảng phân công thợ cho ca sản xuất theo biểu mẫu VICO"
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowNewDateModal(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleCreateNewPlan}
+              disabled={creatingDate}
+              className="bg-blue-600 font-bold text-white hover:bg-blue-700"
+            >
+              {creatingDate ? 'Đang tạo...' : 'Tạo Kế Hoạch & Mở Ngày Này'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-xs text-slate-800">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Ngày lập kế hoạch:
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={newPlanDate}
+                onChange={(e) => setNewPlanDate(e.target.value)}
+                className="h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  setNewPlanDate(todayStr);
+                }}
+                className="whitespace-nowrap rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 font-bold text-slate-700 hover:bg-slate-200"
+              >
+                Hôm nay
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const tom = new Date();
+                  tom.setDate(tom.getDate() + 1);
+                  setNewPlanDate(tom.toISOString().slice(0, 10));
+                }}
+                className="whitespace-nowrap rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 font-bold text-slate-700 hover:bg-slate-200"
+              >
+                Ngày mai
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2 border-t border-slate-100 pt-3">
+            <span className="block font-bold text-slate-700">
+              Phương thức khởi tạo kế hoạch:
+            </span>
+
+            {/* Option 1: Sao chép */}
+            <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer">
+              <input
+                type="radio"
+                name="newPlanMode"
+                value="copy"
+                checked={newPlanMode === 'copy'}
+                onChange={() => setNewPlanMode('copy')}
+                className="mt-0.5 text-blue-600 focus:ring-blue-500"
+              />
+              <div className="flex-1 space-y-2">
+                <div className="font-bold text-slate-900">
+                  📋 Sao chép từ kế hoạch ngày đã có (Khuyến nghị)
+                </div>
+                <div className="text-slate-500 text-[11px]">
+                  Kế thừa toàn bộ danh sách thợ, máy, chi tiết gia công và công đoạn từ ngày trước.
+                </div>
+
+                {newPlanMode === 'copy' && (
+                  <div className="rounded-lg bg-blue-50/70 p-2.5 space-y-2 border border-blue-100">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-blue-900">Ngày nguồn:</span>
+                      <select
+                        value={sourceCopyDate}
+                        onChange={(e) => setSourceCopyDate(e.target.value)}
+                        className="rounded border border-blue-200 bg-white px-2 py-1 text-xs font-bold text-slate-800"
+                      >
+                        {availableDates.map((d) => (
+                          <option key={d.workDate} value={d.workDate}>
+                            {formatDateVn(d.workDate)} ({d.rowCount} dòng, {d.workerCount} thợ)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={copyResetQty}
+                        onChange={(e) => setCopyResetQty(e.target.checked)}
+                        className="rounded text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Đặt lại số lượng kế hoạch = 0 (giữ nguyên mặt hàng và máy, nhập số lượng mới)</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </label>
+
+            {/* Option 2: Khung mẫu thợ */}
+            <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer">
+              <input
+                type="radio"
+                name="newPlanMode"
+                value="template"
+                checked={newPlanMode === 'template'}
+                onChange={() => setNewPlanMode('template')}
+                className="mt-0.5 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <div className="font-bold text-slate-900">
+                  ⚙️ Tạo khung mẫu cho tất cả thợ ({bootstrap.workers.filter((w) => w.isActive).length} thợ)
+                </div>
+                <div className="text-slate-500 text-[11px]">
+                  Tự động tạo 3 dòng trống cho mỗi thợ đang hoạt động theo đúng chuẩn biểu mẫu xưởng.
+                </div>
+              </div>
+            </label>
+
+            {/* Option 3: Bảng trắng */}
+            <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer">
+              <input
+                type="radio"
+                name="newPlanMode"
+                value="blank"
+                checked={newPlanMode === 'blank'}
+                onChange={() => setNewPlanMode('blank')}
+                className="mt-0.5 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <div className="font-bold text-slate-900">📄 Bảng trắng hoàn toàn</div>
+                <div className="text-slate-500 text-[11px]">
+                  Tạo kế hoạch rỗng, cho phép tự thêm từng thợ và mặt hàng thủ công.
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: SAO CHÉP KẾ HOẠCH SANG NGÀY KHÁC                                 */}
+      {/* ========================================================================= */}
+      <Modal
+        open={showCopyModal}
+        onClose={() => setShowCopyModal(false)}
+        title="Sao Chép Kế Hoạch Sang Ngày Mới"
+        subtitle={`Sao chép toàn bộ ${dailyRows.length} dòng kế hoạch từ ngày ${formatDateVn(selectedDate)}`}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowCopyModal(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleCopyCurrentSchedule}
+              disabled={creatingDate}
+              className="bg-indigo-600 font-bold text-white hover:bg-indigo-700"
+            >
+              {creatingDate ? 'Đang sao chép...' : 'Thực Hiện Sao Chép'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-xs text-slate-800">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Ngày đích nhận kế hoạch sao chép:
+            </label>
+            <input
+              type="date"
+              value={copyTargetDate}
+              onChange={(e) => setCopyTargetDate(e.target.value)}
+              className="h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-slate-700 hover:bg-slate-50 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={copyTargetResetQty}
+              onChange={(e) => setCopyTargetResetQty(e.target.checked)}
+              className="rounded text-indigo-600 focus:ring-indigo-500"
+            />
+            <div>
+              <span className="font-bold text-slate-900">Đặt lại số lượng kế hoạch = 0</span>
+              <div className="text-[11px] text-slate-500">Giữ nguyên danh sách thợ, máy móc và mặt hàng, đặt lại sản lượng để nhập mới.</div>
+            </div>
+          </label>
+        </div>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: THÊM THỢ VÀO CA / KẾ HOẠCH NGÀY                                   */}
+      {/* ========================================================================= */}
+      <Modal
+        open={showAddWorkerModal}
+        onClose={() => setShowAddWorkerModal(false)}
+        title="Thêm Thợ Vào Ca / Kế Hoạch Ngày"
+        subtitle={`Ngày ${formatDateVn(selectedDate)}`}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowAddWorkerModal(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                if (!newWorkerName && bootstrap.workers.filter((w) => w.isActive)[0]) {
+                  handleAddNewWorker(bootstrap.workers.filter((w) => w.isActive)[0].name, newWorkerShift, newWorkerLineCount);
+                } else {
+                  handleAddNewWorker(newWorkerName, newWorkerShift, newWorkerLineCount);
+                }
+              }}
+              className="bg-blue-600 font-bold text-white hover:bg-blue-700"
+            >
+              + Thêm Thợ
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-xs text-slate-800">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Chọn nhân sự thợ:
+            </label>
+            <select
+              value={newWorkerName || (bootstrap.workers.filter((w) => w.isActive)[0]?.name || '')}
+              onChange={(e) => setNewWorkerName(e.target.value)}
+              className="h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+            >
+              {bootstrap.workers
+                .filter((w) => w.isActive)
+                .map((w) => (
+                  <option key={w.id} value={w.name}>
+                    {w.name} {w.role ? `(${w.role})` : ''}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Ca làm việc:
+            </label>
+            <select
+              value={newWorkerShift}
+              onChange={(e) => setNewWorkerShift(e.target.value)}
+              className="h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+            >
+              <option value="Ca 1">Ca 1 (06:00 - 14:00)</option>
+              <option value="Ca 2">Ca 2 (14:00 - 22:00)</option>
+              <option value="Ca 3">Ca 3 (22:00 - 06:00)</option>
+              <option value="Ca Hành chính">Ca Hành chính (08:00 - 17:00)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Số dòng công việc ban đầu:
+            </label>
+            <select
+              value={newWorkerLineCount}
+              onChange={(e) => setNewWorkerLineCount(Number(e.target.value))}
+              className="h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+            >
+              <option value={1}>1 dòng công việc</option>
+              <option value={2}>2 dòng công việc</option>
+              <option value={3}>3 dòng công việc (Chuẩn Form VICO)</option>
+              <option value={4}>4 dòng công việc</option>
+              <option value={5}>5 dòng công việc</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

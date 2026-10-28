@@ -30,6 +30,11 @@ const DailySchedulePrintView = React.lazy(() =>
     default: (m.DailySchedulePrint || (m as any).default) as React.ComponentType<any>,
   }))
 );
+const WeeklyReportPrintView = React.lazy(() =>
+  import('./features/print/WeeklyReportPrint').then((m) => ({
+    default: (m.WeeklyReportPrint || (m as any).default) as React.ComponentType<any>,
+  }))
+);
 
 function ShellRouter() {
   const pathname = useLocationPath();
@@ -49,6 +54,8 @@ function ShellRouter() {
     content = <AndonView />;
   } else if (pathname.startsWith('/print/daily-schedule')) {
     content = <DailySchedulePrintView />;
+  } else if (pathname.startsWith('/print/weekly-report')) {
+    content = <WeeklyReportPrintView />;
   } else if (pathname.startsWith('/print/traveler')) {
     const poId = getTravelerPoIdFromLocation(pathname);
     content = <PrintView poId={poId} />;

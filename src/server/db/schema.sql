@@ -168,6 +168,19 @@ CREATE TABLE IF NOT EXISTS weekly_downtime_notes (
 
 CREATE INDEX IF NOT EXISTS idx_weekly_downtime_week ON weekly_downtime_notes(week_start);
 
+CREATE TABLE IF NOT EXISTS weekly_proposals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  week_start TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Vật tư / Dụng cụ',
+  proposer TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'Bình thường',
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_proposals_week ON weekly_proposals(week_start);
+
 CREATE TABLE IF NOT EXISTS production_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   record_uid TEXT NOT NULL UNIQUE,
