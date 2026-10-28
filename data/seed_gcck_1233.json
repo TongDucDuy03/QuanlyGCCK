@@ -11703,6 +11703,446 @@
       "costPerEdge": 220000
     },
     {
+      "code": "T09",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện trigon WNMG 080408 (Pramet XP1215 / Sumitomo / Tungaloy)",
+      "buyPrice": 130000,
+      "edges": 6,
+      "costPerEdge": 21666.67
+    },
+    {
+      "code": "T10",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện tinh thoi 35° VNMG 160404 TM 1925",
+      "buyPrice": 135000,
+      "edges": 4,
+      "costPerEdge": 33750
+    },
+    {
+      "code": "T11",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện bán tinh VNMG 160408 TM 1925 / MA",
+      "buyPrice": 135000,
+      "edges": 4,
+      "costPerEdge": 33750
+    },
+    {
+      "code": "T12",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện móc lỗ doa tinh CCMT 09T304-MF (Korloy NC3120 / TaeguTec)",
+      "buyPrice": 85000,
+      "edges": 2,
+      "costPerEdge": 42500
+    },
+    {
+      "code": "T13",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện móc lỗ CCMT 09T308 R0.8",
+      "buyPrice": 85000,
+      "edges": 2,
+      "costPerEdge": 42500
+    },
+    {
+      "code": "T14",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện thoi 55° góc dương DCMT 11T304S1",
+      "buyPrice": 95000,
+      "edges": 2,
+      "costPerEdge": 47500
+    },
+    {
+      "code": "T15",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện thô hạng nặng CNMG 160612 mác đúc hợp kim",
+      "buyPrice": 165000,
+      "edges": 4,
+      "costPerEdge": 41250
+    },
+    {
+      "code": "T16",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện đứng hạng nặng CNMG 1906 (Máy tiện đứng T1516)",
+      "buyPrice": 220000,
+      "edges": 4,
+      "costPerEdge": 55000
+    },
+    {
+      "code": "T17",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện vuông SNMG 120408-Zem XPC349-5",
+      "buyPrice": 120000,
+      "edges": 8,
+      "costPerEdge": 15000
+    },
+    {
+      "code": "T18",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện / khoan gắn mảnh WCMX 080408",
+      "buyPrice": 105000,
+      "edges": 3,
+      "costPerEdge": 35000
+    },
+    {
+      "code": "T19",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện ren 22ER / Zen 22 (Ren ngoài / ren trong)",
+      "buyPrice": 115000,
+      "edges": 3,
+      "costPerEdge": 38333.33
+    },
+    {
+      "code": "T20",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện tròn R5 THREADEX - P3200 (Cán SRDPN 2525M5)",
+      "buyPrice": 145000,
+      "edges": 2,
+      "costPerEdge": 72500
+    },
+    {
+      "code": "T21",
+      "group": "Chíp Tiện",
+      "name": "Mảnh chích rãnh & cắt đứt MGEH 2525-3 (Rộng 3mm)",
+      "buyPrice": 95000,
+      "edges": 2,
+      "costPerEdge": 47500
+    },
+    {
+      "code": "T22",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện tinh TNMG 160404 giảm chấn",
+      "buyPrice": 125000,
+      "edges": 6,
+      "costPerEdge": 20833.33
+    },
+    {
+      "code": "T23",
+      "group": "Chíp Tiện",
+      "name": "Chíp tiện gốm tròn Ceramic RCGX 120700 T02020 SH2 (Thép tôi / Gang Cr)",
+      "buyPrice": 210000,
+      "edges": 4,
+      "costPerEdge": 52500
+    },
+    {
+      "code": "T24",
+      "group": "Chíp Phay",
+      "name": "Mảnh phay vách nhỏ APMT 1135 (Lamina / TaeguTec)",
+      "buyPrice": 75000,
+      "edges": 2,
+      "costPerEdge": 37500
+    },
+    {
+      "code": "T25",
+      "group": "Chíp Phay",
+      "name": "Mảnh phay vách vuông APMT 1604-PDER / PDTR Grade 8230S",
+      "buyPrice": 95000,
+      "edges": 2,
+      "costPerEdge": 47500
+    },
+    {
+      "code": "T26",
+      "group": "Chíp Phay",
+      "name": "Chíp phay vuông Pramet M8330 chịu nhiệt (CH Séc)",
+      "buyPrice": 145000,
+      "edges": 4,
+      "costPerEdge": 36250
+    },
+    {
+      "code": "T27",
+      "group": "Chíp Phay",
+      "name": "Chíp phay mặt đầu bát giác 45° SEHT 1204AFFN (Sandvik / TaeguTec)",
+      "buyPrice": 105000,
+      "edges": 4,
+      "costPerEdge": 26250
+    },
+    {
+      "code": "T28",
+      "group": "Chíp Phay",
+      "name": "Chíp phay mặt lục giác Pramet 6 cạnh (HNGX 0906)",
+      "buyPrice": 155000,
+      "edges": 6,
+      "costPerEdge": 25833.33
+    },
+    {
+      "code": "T29",
+      "group": "Chíp Phay",
+      "name": "Chíp phay tròn R6 RPMT 1204MO-XDU XPH140 / S-RDMT12",
+      "buyPrice": 135000,
+      "edges": 4,
+      "costPerEdge": 33750
+    },
+    {
+      "code": "T30",
+      "group": "Chíp Phay",
+      "name": "Chíp phay tròn cỡ lớn R10 RPKX 2006MOT-ME12 T25M",
+      "buyPrice": 245000,
+      "edges": 4,
+      "costPerEdge": 61250
+    },
+    {
+      "code": "T31",
+      "group": "Chíp Phay",
+      "name": "Mảnh phay hợp kim CBN gia công thép tôi cứng / chịu mài mòn",
+      "buyPrice": 450000,
+      "edges": 2,
+      "costPerEdge": 225000
+    },
+    {
+      "code": "T32",
+      "group": "Chíp Phay",
+      "name": "Chíp phay ngón gắn mảnh VSM-1016 (Lắp cán VSM-1016)",
+      "buyPrice": 110000,
+      "edges": 2,
+      "costPerEdge": 55000
+    },
+    {
+      "code": "T33",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón Solid Carbide 4 me Ø4 (YG-1 / E-Cut)",
+      "buyPrice": 160000,
+      "edges": 1,
+      "costPerEdge": 160000
+    },
+    {
+      "code": "T34",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón Solid Carbide 4 me Ø6 x 150L",
+      "buyPrice": 220000,
+      "edges": 1,
+      "costPerEdge": 220000
+    },
+    {
+      "code": "T35",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón Solid Carbide 4 me Ø8 x 150L",
+      "buyPrice": 280000,
+      "edges": 1,
+      "costPerEdge": 280000
+    },
+    {
+      "code": "T36",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón Solid Carbide 4 me Ø12 (YG-1 / Widin)",
+      "buyPrice": 390000,
+      "edges": 1,
+      "costPerEdge": 390000
+    },
+    {
+      "code": "T37",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón Solid Carbide 4 me Ø16 x 90L (YG-1 / Widin)",
+      "buyPrice": 480000,
+      "edges": 1,
+      "costPerEdge": 480000
+    },
+    {
+      "code": "T38",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón Solid Carbide 4 me Ø20 x 100L (YG-1 / E-Cut)",
+      "buyPrice": 680000,
+      "edges": 1,
+      "costPerEdge": 680000
+    },
+    {
+      "code": "T39",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón cán dài phay khe sâu Ø32 (Walter / Nachi)",
+      "buyPrice": 1145000,
+      "edges": 1,
+      "costPerEdge": 1145000
+    },
+    {
+      "code": "T40",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón rãnh then Ø7 nguyên khối (Guhring / Widin)",
+      "buyPrice": 240000,
+      "edges": 1,
+      "costPerEdge": 240000
+    },
+    {
+      "code": "T41",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ngón Carbide sau nhiệt Ø10 4 me (Độ cứng 65HRC)",
+      "buyPrice": 420000,
+      "edges": 1,
+      "costPerEdge": 420000
+    },
+    {
+      "code": "T42",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay cầu Carbide R2 / R5 (Ball Nose)",
+      "buyPrice": 320000,
+      "edges": 1,
+      "costPerEdge": 320000
+    },
+    {
+      "code": "T43",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ren CNC Thread Mill M10x1.5 (D7.9*32*D8*65L*5F)",
+      "buyPrice": 450000,
+      "edges": 1,
+      "costPerEdge": 450000
+    },
+    {
+      "code": "T44",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ren CNC Thread Mill M12x1.75 (D9.9*38*D10*70L*5F)",
+      "buyPrice": 520000,
+      "edges": 1,
+      "costPerEdge": 520000
+    },
+    {
+      "code": "T45",
+      "group": "Dao Phay Ngón",
+      "name": "Dao phay ren CNC Thread Mill M16 (Walter / Vargus)",
+      "buyPrice": 650000,
+      "edges": 1,
+      "costPerEdge": 650000
+    },
+    {
+      "code": "T46",
+      "group": "Mũi Khoan Hợp Kim",
+      "name": "Mũi khoan tâm định vị NC Spot Drill D12 Carbide 120° (Nine9 / Guhring)",
+      "buyPrice": 320000,
+      "edges": 5,
+      "costPerEdge": 64000
+    },
+    {
+      "code": "T47",
+      "group": "Mũi Khoan Cobalt",
+      "name": "Mũi khoan Cobalt rãnh xoắn HSS-Co 8% D10 x 210L (Guhring / Nachi)",
+      "buyPrice": 380000,
+      "edges": 4,
+      "costPerEdge": 95000
+    },
+    {
+      "code": "T48",
+      "group": "Mũi Khoan Cobalt",
+      "name": "Mũi khoan mở rộng Cobalt HSS-Co 8% D19.5 x 220L (Guhring / Nachi)",
+      "buyPrice": 620000,
+      "edges": 4,
+      "costPerEdge": 155000
+    },
+    {
+      "code": "T49",
+      "group": "Mũi Khoan Hợp Kim",
+      "name": "Mũi khoan ruột gà gắn mảnh hợp kim D17.5 (Kennametal / Sumitomo)",
+      "buyPrice": 1250000,
+      "edges": 3,
+      "costPerEdge": 416666.67
+    },
+    {
+      "code": "T50",
+      "group": "Mũi Khoan Hợp Kim",
+      "name": "Cán khoan gắn chíp U-Drill SD14-4D-C25 (Lắp chíp WCMX)",
+      "buyPrice": 850000,
+      "edges": 3,
+      "costPerEdge": 283333.33
+    },
+    {
+      "code": "T51",
+      "group": "Mũi Khoan Hợp Kim",
+      "name": "Cán khoan gắn chíp U-Drill SD18-4D-C25 (Lắp chíp WCMX)",
+      "buyPrice": 950000,
+      "edges": 3,
+      "costPerEdge": 316666.67
+    },
+    {
+      "code": "T52",
+      "group": "Mũi Khoan Hợp Kim",
+      "name": "Cán khoan gắn chíp U-Drill SD20-4D-C25 (Lắp chíp WCMX)",
+      "buyPrice": 1050000,
+      "edges": 3,
+      "costPerEdge": 350000
+    },
+    {
+      "code": "T53",
+      "group": "Mũi Khoan HSS",
+      "name": "Mũi khoan Ø16 List 501 HSS Nachi dài 250mm / 300mm",
+      "buyPrice": 380000,
+      "edges": 5,
+      "costPerEdge": 76000
+    },
+    {
+      "code": "T54",
+      "group": "Dao Doa Máy",
+      "name": "Dao doa máy chuẩn D32 HSS x 100mm",
+      "buyPrice": 650000,
+      "edges": 5,
+      "costPerEdge": 130000
+    },
+    {
+      "code": "T55",
+      "group": "Mũi Taro HSS",
+      "name": "Mũi taro ren ống côn PT 1/4 (Ren Anh bôi trơn đường ống dầu mỡ)",
+      "buyPrice": 125000,
+      "edges": 1,
+      "costPerEdge": 125000
+    },
+    {
+      "code": "T56",
+      "group": "Mũi Taro HSS",
+      "name": "Mũi taro ren trái ngược M12 x 1.75 LH",
+      "buyPrice": 180000,
+      "edges": 1,
+      "costPerEdge": 180000
+    },
+    {
+      "code": "T57",
+      "group": "Mũi Taro HSS",
+      "name": "Mũi taro ren mịn M12 x 1.5 loại tốt",
+      "buyPrice": 160000,
+      "edges": 1,
+      "costPerEdge": 160000
+    },
+    {
+      "code": "T58",
+      "group": "Mũi Taro HSS",
+      "name": "Mũi taro ren mịn M20 x 1.5 / M20 x 1.75 mm",
+      "buyPrice": 320000,
+      "edges": 1,
+      "costPerEdge": 320000
+    },
+    {
+      "code": "T59",
+      "group": "Mũi Taro Hợp Kim",
+      "name": "Mũi taro máy xoắn cao cấp M20 x 2.5 Hãng YG / Yamawa (Rigid Tapping)",
+      "buyPrice": 420000,
+      "edges": 1,
+      "costPerEdge": 420000
+    },
+    {
+      "code": "T60",
+      "group": "Mũi Taro Hợp Kim",
+      "name": "Mũi taro xoắn máy HSS-E M16 x 2.0 x 110L Yamawa / OSG",
+      "buyPrice": 260000,
+      "edges": 1,
+      "costPerEdge": 260000
+    },
+    {
+      "code": "T61",
+      "group": "Dây Cắt EDM",
+      "name": "Dây cắt Molypden máy CNC Ø0.18mm (DK7745 / DK7780 / Podatech)",
+      "buyPrice": 450000,
+      "edges": 1,
+      "costPerEdge": 450000
+    },
+    {
+      "code": "T62",
+      "group": "Vật Tư Làm Mát",
+      "name": "Dầu tưới nguội làm mát pha nước pha dầu 10% (Castrol Cooledge BI)",
+      "buyPrice": 95000,
+      "edges": 1,
+      "costPerEdge": 95000
+    },
+    {
+      "code": "T63",
+      "group": "Dao Tiện Hàn",
+      "name": "Mảnh dao tiện hàn BK8 (Cánh buồm tiện phá thô máy cơ)",
+      "buyPrice": 65000,
+      "edges": 4,
+      "costPerEdge": 16250
+    },
+    {
       "code": "TP01",
       "group": "Mũi Taro HSS",
       "name": "Taro M1 x 0.25 (Mồi D0.75)",
