@@ -114,7 +114,7 @@ export function DailyWeeklyScheduleTab({
         setDailyRows(res.rows);
       } else {
         // Generate blank 3-rows template for the 13 active workers if date is empty
-        const activeWorkers = bootstrap.workers.filter((w) => w.isActive);
+        const activeWorkers = (bootstrap.workers || []).filter((w) => w.isActive !== 0);
         const blankRows: DailyPlanRow[] = [];
         let stt = 1;
         for (const w of activeWorkers) {
@@ -309,7 +309,7 @@ export function DailyWeeklyScheduleTab({
         );
         toast.success(`Đã sao chép thành công ${res.rowCount} dòng từ ngày ${sourceCopyDate} sang ngày ${newPlanDate}!`);
       } else if (newPlanMode === 'template') {
-        const activeWorkers = bootstrap.workers.filter((w) => w.isActive);
+        const activeWorkers = (bootstrap.workers || []).filter((w) => w.isActive !== 0);
         const blankRows: DailyPlanRow[] = [];
         let stt = 1;
         for (const w of activeWorkers) {
@@ -1957,7 +1957,7 @@ export function DailyWeeklyScheduleTab({
               />
               <div>
                 <div className="font-bold text-slate-900">
-                  ⚙️ Tạo khung mẫu cho tất cả thợ ({bootstrap.workers.filter((w) => w.isActive).length} thợ)
+                  ⚙️ Tạo khung mẫu cho tất cả thợ ({(bootstrap.workers || []).filter((w) => w.isActive !== 0).length} thợ)
                 </div>
                 <div className="text-slate-500 text-[11px]">
                   Tự động tạo 3 dòng trống cho mỗi thợ đang hoạt động theo đúng chuẩn biểu mẫu xưởng.
@@ -2064,8 +2064,9 @@ export function DailyWeeklyScheduleTab({
               type="button"
               variant="primary"
               onClick={() => {
-                if (!newWorkerName && bootstrap.workers.filter((w) => w.isActive)[0]) {
-                  handleAddNewWorker(bootstrap.workers.filter((w) => w.isActive)[0].name, newWorkerShift, newWorkerLineCount);
+                const activeWorkers = (bootstrap.workers || []).filter((w) => w.isActive !== 0);
+                if (!newWorkerName && activeWorkers[0]) {
+                  handleAddNewWorker(activeWorkers[0].name, newWorkerShift, newWorkerLineCount);
                 } else {
                   handleAddNewWorker(newWorkerName, newWorkerShift, newWorkerLineCount);
                 }
@@ -2083,12 +2084,12 @@ export function DailyWeeklyScheduleTab({
               Chọn nhân sự thợ:
             </label>
             <select
-              value={newWorkerName || (bootstrap.workers.filter((w) => w.isActive)[0]?.name || '')}
+              value={newWorkerName || ((bootstrap.workers || []).filter((w) => w.isActive !== 0)[0]?.name || '')}
               onChange={(e) => setNewWorkerName(e.target.value)}
               className="h-9 w-full rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
             >
-              {bootstrap.workers
-                .filter((w) => w.isActive)
+              {(bootstrap.workers || [])
+                .filter((w) => w.isActive !== 0)
                 .map((w) => (
                   <option key={w.id} value={w.name}>
                     {w.name} {w.role ? `(${w.role})` : ''}

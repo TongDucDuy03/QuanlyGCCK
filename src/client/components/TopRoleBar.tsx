@@ -58,19 +58,31 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
     targetTab?: string
   ) => {
     try {
-      if (targetWorkerId && user?.workerId !== targetWorkerId) {
-        try {
-          await quickSwitch({ workerId: targetWorkerId });
-        } catch (swErr) {
-          console.warn('Quick switch fallback:', swErr);
-        }
-      }
+      // 1. Immediately route so the UI switches with zero delay
       navigateTo(targetPath);
       if (targetTab) {
         window.dispatchEvent(
           new CustomEvent('gcck:navigate', { detail: { path: targetPath, tab: targetTab } })
         );
       }
+
+      // 2. Seamlessly elevate role if currently unprivileged or switching to worker
+      const isManager =
+        user?.appRole === 'ADMIN' ||
+        user?.appRole === 'DIRECTOR' ||
+        user?.appRole === 'SHIFT_LEADER' ||
+        user?.appRole === 'QC';
+
+      const needsElevate = targetWorkerId && (!isManager || (targetWorkerId === 'NV00214' && user?.appRole !== 'WORKER'));
+
+      if (needsElevate && user?.workerId !== targetWorkerId) {
+        try {
+          await quickSwitch({ workerId: targetWorkerId });
+        } catch (swErr) {
+          console.warn('Quick switch fallback:', swErr);
+        }
+      }
+
       if (label) toast.info(`Đã chuyển sang ${label}`);
     } catch {
       navigateTo(targetPath);
@@ -157,7 +169,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
 
           <button
             type="button"
-            onClick={() => void handleRoleNav('/admin?tab=daily_schedule', 'NV_KT02', '📅 Kế Hoạch & Báo Cáo', 'daily_schedule')}
+            onClick={() => void handleRoleNav('/admin?tab=daily_schedule', 'NV00053', '📅 Kế Hoạch & Báo Cáo', 'daily_schedule')}
             className={pillCls(isScheduleActive)}
           >
             <CalendarClock className="h-3.5 w-3.5 text-blue-600" />

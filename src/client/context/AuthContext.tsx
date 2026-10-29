@@ -74,8 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               : window.location.pathname
             : '/worker';
         if (path.startsWith('/admin')) {
-          const targetId =
-            path.includes('logs_qc') || path.includes('daily_schedule') ? 'NV_KT02' : 'NV00053';
+          const targetId = path.includes('logs_qc') ? 'NV_KT02' : 'NV00053';
           await quickSwitch({ workerId: targetId });
         } else if (!path.startsWith('/andon')) {
           await quickSwitch({ workerId: 'NV00214' });
@@ -93,8 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             : window.location.pathname
           : '/worker';
       if (path.startsWith('/admin')) {
-        const targetId =
-          path.includes('logs_qc') || path.includes('daily_schedule') ? 'NV_KT02' : 'NV00053';
+        const targetId = path.includes('logs_qc') ? 'NV_KT02' : 'NV00053';
         await quickSwitch({ workerId: targetId });
       } else {
         await quickSwitch({ workerId: 'NV00214' });
