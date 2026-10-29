@@ -54,7 +54,8 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
   const handleRoleNav = async (
     targetPath: string,
     targetWorkerId?: string,
-    label?: string
+    label?: string,
+    targetTab?: string
   ) => {
     try {
       if (targetWorkerId && user?.workerId !== targetWorkerId) {
@@ -65,6 +66,11 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
         }
       }
       navigateTo(targetPath);
+      if (targetTab) {
+        window.dispatchEvent(
+          new CustomEvent('gcck:navigate', { detail: { path: targetPath, tab: targetTab } })
+        );
+      }
       if (label) toast.info(`Đã chuyển sang ${label}`);
     } catch {
       navigateTo(targetPath);
@@ -124,7 +130,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
 
           <button
             type="button"
-            onClick={() => void handleRoleNav('/admin?tab=logs_qc', 'NV_KT02', '🔍 Tổ Trưởng / QC')}
+            onClick={() => void handleRoleNav('/admin?tab=logs_qc', 'NV_KT02', '🔍 Tổ Trưởng / QC', 'logs_qc')}
             className={pillCls(isQcActive)}
           >
             <UserCheck className="h-3.5 w-3.5 text-amber-600" />
@@ -133,7 +139,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
 
           <button
             type="button"
-            onClick={() => void handleRoleNav('/admin?tab=cockpit', 'NV00053', '🛡️ Quản Trị Admin')}
+            onClick={() => void handleRoleNav('/admin?tab=cockpit', 'NV00053', '🛡️ Quản Trị Admin', 'cockpit')}
             className={pillCls(isAdminActive)}
           >
             <Shield className="h-3.5 w-3.5 text-blue-600" />
@@ -151,7 +157,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
 
           <button
             type="button"
-            onClick={() => void handleRoleNav('/admin?tab=daily_schedule', 'NV_KT02', '📅 Kế Hoạch & Báo Cáo')}
+            onClick={() => void handleRoleNav('/admin?tab=daily_schedule', 'NV_KT02', '📅 Kế Hoạch & Báo Cáo', 'daily_schedule')}
             className={pillCls(isScheduleActive)}
           >
             <CalendarClock className="h-3.5 w-3.5 text-blue-600" />

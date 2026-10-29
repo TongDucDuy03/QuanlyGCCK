@@ -6,6 +6,7 @@ import {
   saveFallbackHandover,
   FALLBACK_PRODUCTS,
 } from './clientFallbackStore';
+import { isStaticHost } from './navigation';
 
 export const AUTH_TOKEN_STORAGE_KEY = 'GCCK_SESSION_TOKEN';
 
@@ -60,6 +61,12 @@ export async function apiFetch<T = any>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
+  // If running on static host (GitHub Pages), resolve directly with client fallback without network latency or 405 errors
+  if (isStaticHost()) {
+    const fallback = handleClientFallback<T>(path, options);
+    if (fallback !== null) return fallback;
+  }
+
   const { timeoutMs = 15000, json, headers, ...rest } = options;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -93,10 +100,8 @@ export async function apiFetch<T = any>(
       : await resp.text();
 
     if (!resp.ok) {
-      if (resp.status === 404) {
-        const fallback = handleClientFallback<T>(path, options);
-        if (fallback !== null) return fallback;
-      }
+      const fallback = handleClientFallback<T>(path, options);
+      if (fallback !== null) return fallback;
 
       const msg =
         (payload && typeof payload === 'object' && 'error' in payload && String((payload as any).error)) ||
@@ -151,8 +156,17 @@ function handleClientFallback<T>(path: string, options: ApiFetchOptions): T | nu
   if (norm.includes('/bootstrap')) {
     return getFallbackBootstrap() as unknown as T;
   }
+  if (norm.includes('/schedules/daily-dates')) {
+    return {
+      success: true,
+      dates: [
+        { workDate: '2026-10-21', rowCount: 39, workerCount: 13 },
+        { workDate: '2026-10-22', rowCount: 39, workerCount: 13 },
+      ],
+    } as unknown as T;
+  }
   if (norm.includes('/schedules/daily')) {
-    return [] as unknown as T;
+    return { success: true, rows: [] } as unknown as T;
   }
   if (norm.includes('/costing')) {
     return FALLBACK_PRODUCTS as unknown as T;

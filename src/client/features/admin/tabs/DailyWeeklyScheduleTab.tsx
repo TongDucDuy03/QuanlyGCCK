@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertOctagon,
   AlertTriangle,
-  ArrowRightLeft,
   Calendar,
   CalendarCheck2,
   CalendarClock,
@@ -39,12 +38,11 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react';
-import type { DailyPlanRow, HandoverSlipRow, WeeklyReportData } from '@shared/types';
+import type { DailyPlanRow, WeeklyReportData } from '@shared/types';
 import { apiClient } from '@client/lib/apiClient';
 import { formatDateVn, formatNumber, formatVnd } from '@client/lib/formatters';
 import { downloadDailyScheduleExcel } from '@client/lib/excelService';
 import { navigateTo } from '@client/lib/navigation';
-import { VicoLogo } from '@client/components/VicoLogo';
 import {
   Badge,
   Button,
@@ -52,6 +50,7 @@ import {
   Modal,
   useToast,
 } from '@client/components/ui/IndustrialPrimitives';
+import { getFallbackBootstrap } from '@client/lib/clientFallbackStore';
 import { DEFAULT_DRIVE_FOLDER_URL } from '@shared/driveHelper';
 import type { AdminTabCommonProps } from '../types';
 
@@ -62,9 +61,10 @@ interface DailyDateMeta {
 }
 
 export function DailyWeeklyScheduleTab({
-  bootstrap,
+  bootstrap: rawBootstrap,
   onRefreshBootstrap,
 }: AdminTabCommonProps) {
+  const bootstrap = rawBootstrap || getFallbackBootstrap();
   const toast = useToast();
   const [subTab, setSubTab] = useState<'daily' | 'weekly'>('daily');
 
@@ -77,10 +77,6 @@ export function DailyWeeklyScheduleTab({
   const [loadingDates, setLoadingDates] = useState<boolean>(false);
   const [loadingDaily, setLoadingDaily] = useState<boolean>(false);
   const [savingDaily, setSavingDaily] = useState<boolean>(false);
-  const [dailyHandovers, setDailyHandovers] = useState<HandoverSlipRow[]>([]);
-  const [loadingHandovers, setLoadingHandovers] = useState<boolean>(false);
-  const [generatingHandovers, setGeneratingHandovers] = useState<boolean>(false);
-  const [openHandoverSection, setOpenHandoverSection] = useState<boolean>(true);
 
   // Modals state
   const [showNewDateModal, setShowNewDateModal] = useState<boolean>(false);
@@ -440,69 +436,6 @@ export function DailyWeeklyScheduleTab({
     setShowAddWorkerModal(false);
   };
 
-  // Load Handovers for selected date
-  const loadDailyHandovers = async (dateStr: string) => {
-    setLoadingHandovers(true);
-    try {
-      const data = await apiClient.get<HandoverSlipRow[]>(`/handovers?date=${encodeURIComponent(dateStr)}`);
-      setDailyHandovers(data || []);
-    } catch {
-      setDailyHandovers([]);
-    } finally {
-      setLoadingHandovers(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadDailyHandovers(selectedDate);
-  }, [selectedDate]);
-
-  const handleAutoGenerateHandover = async () => {
-    setGeneratingHandovers(true);
-    try {
-      const res = await apiClient.post<{ success: boolean; addedCount: number; items: HandoverSlipRow[] }>(
-        '/handovers/auto-generate',
-        { date: selectedDate }
-      );
-      setDailyHandovers(res.items || []);
-      toast.success(`Đã tự động lập Sổ chuyển giao công đoạn (${res.addedCount || 0} mục mới)!`);
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể tự động lập sổ chuyển giao.');
-    } finally {
-      setGeneratingHandovers(false);
-    }
-  };
-
-  const handleConfirmHandover = async (id: string) => {
-    try {
-      await apiClient.patch(`/handovers/${encodeURIComponent(id)}`, {
-        isConfirmed: true,
-        receiverName: 'Quản đốc / QC',
-      });
-      setDailyHandovers((prev) =>
-        prev.map((h) => (h.id === id ? { ...h, isConfirmed: true, receiverName: 'Quản đốc / QC' } : h))
-      );
-      toast.success('Đã xác nhận nghiệm thu chuyển giao công đoạn!');
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể xác nhận chuyển giao.');
-    }
-  };
-
-  const handoverMetrics = useMemo(() => {
-    const totalPlanQty = dailyRows.reduce((sum, r) => sum + (Number(r.plannedQty) || 0), 0);
-    const totalTransferredQty = dailyHandovers.reduce((sum, h) => sum + (Number(h.prodQtyTransferred) || 0), 0);
-    const totalDefectQty = dailyHandovers.reduce((sum, h) => sum + (Number(h.prodQtyDefect) || 0), 0);
-    const totalMissingQty = dailyHandovers.reduce((sum, h) => sum + (Number(h.prodQtyMissing) || 0), 0);
-    const realizationPct = totalPlanQty > 0 ? Math.round((totalTransferredQty / totalPlanQty) * 100) : 0;
-    return {
-      totalPlanQty,
-      totalTransferredQty,
-      totalDefectQty,
-      totalMissingQty,
-      realizationPct,
-    };
-  }, [dailyRows, dailyHandovers]);
-
   // Export Daily Plan to Excel Form VICO QT.01.BM01
   const handleExportExcel = async () => {
     if (dailyRows.length === 0) {
@@ -753,7 +686,7 @@ export function DailyWeeklyScheduleTab({
             }`}
           >
             <CalendarClock className="h-4 w-4" />
-            <VicoLogo className="h-5 w-auto object-contain inline-block mr-1" /><span>1. Kế Hoạch Sản Xuất Ngày (Form VICO QT.01.BM01)</span>
+            <span>1. Kế Hoạch Sản Xuất Ngày (Form VICO QT.01.BM01)</span>
           </button>
           <button
             type="button"
@@ -838,22 +771,9 @@ export function DailyWeeklyScheduleTab({
               size="sm"
               onClick={() => navigateTo(`/print/daily-schedule?date=${encodeURIComponent(selectedDate)}`)}
               className="font-bold text-slate-800"
-              title="In Biểu Mẫu Kế Hoạch Sản Xuất Ngày Form VICO QT.01.BM01 (Khổ A4)"
             >
               <Printer className="h-4 w-4 text-blue-600" />
-              🖨️ In Kế Hoạch (BM01)
-            </Button>
-
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => navigateTo(`/print/handover?date=${encodeURIComponent(selectedDate)}`)}
-              className="bg-purple-50 text-purple-900 border-purple-300 font-bold hover:bg-purple-100 shadow-sm"
-              title="Xem và In Sổ Chuyển Giao Công Đoạn Gia Công Form BM.GC.01.02 theo ngày kế hoạch"
-            >
-              <ArrowRightLeft className="h-4 w-4 text-purple-600" />
-              📋 Sổ Chuyển Công Đoạn (BM.GC.01.02)
+              🖨️ In Biểu Mẫu A4
             </Button>
             {currentDateMeta && (
               <Button
@@ -1062,193 +982,6 @@ export function DailyWeeklyScheduleTab({
                 </div>
               </div>
             </div>
-          </Card>
-
-          {/* ========================================================================= */}
-          {/* ĐÁNH GIÁ TIẾN ĐỘ CHUYỂN GIAO CÔNG ĐOẠN & TỶ LỆ ĐẠT KẾ HOẠCH (BM.GC.01.02) */}
-          {/* ========================================================================= */}
-          <Card className="border-purple-300/80 bg-gradient-to-r from-purple-50/80 via-indigo-50/50 to-blue-50/60 p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-200/80 pb-3">
-              <div className="flex items-center gap-2.5">
-                <VicoLogo className="h-7 w-auto object-contain" />
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-black uppercase tracking-wide text-purple-950">
-                      Sổ Chuyển Giao Công Đoạn Gia Công (Form BM.GC.01.02)
-                    </h3>
-                    <Badge
-                      variant={
-                        handoverMetrics.realizationPct >= 100 && handoverMetrics.totalDefectQty === 0
-                          ? 'success'
-                          : handoverMetrics.realizationPct >= 80
-                            ? 'warning'
-                            : 'danger'
-                      }
-                    >
-                      {handoverMetrics.realizationPct >= 100 && handoverMetrics.totalDefectQty === 0
-                        ? '🟢 ĐẠT 100% KẾ HOẠCH'
-                        : `🟡 ĐẠT ${handoverMetrics.realizationPct}% (CẢNH BÁO)`}
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-xs text-purple-800">
-                    Chốt chặn nghiệm thu bán thành phẩm giữa <strong>PX Gia Công &rarr; PX Hoàn Thiện &rarr; PX Nhiệt Luyện &rarr; Phòng KHVT</strong>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={handleAutoGenerateHandover}
-                  disabled={generatingHandovers}
-                  className="bg-purple-600 font-bold text-white shadow-sm hover:bg-purple-700"
-                  title="Tự động đồng bộ sản phẩm từ Kế hoạch ngày hôm nay sang Sổ chuyển giao BM.GC.01.02"
-                >
-                  <Zap className="h-4 w-4" />
-                  {generatingHandovers ? 'Đang đồng bộ...' : '⚡ Lập Sổ Bàn Giao Từ Kế Hoạch'}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => navigateTo(`/print/handover?date=${encodeURIComponent(selectedDate)}`)}
-                  className="border-purple-300 bg-white font-bold text-purple-900 shadow-sm hover:bg-purple-50"
-                  title="In Sổ Chuyển Giao Công Đoạn Gia Công BM.GC.01.02 khổ A4 ngang"
-                >
-                  <Printer className="h-4 w-4 text-purple-600" />
-                  🖨️ In Biểu Mẫu A4
-                </Button>
-
-                <button
-                  type="button"
-                  onClick={() => setOpenHandoverSection((v) => !v)}
-                  className="rounded-lg border border-purple-200 bg-white px-2 py-1 text-xs font-bold text-purple-800 hover:bg-purple-50"
-                >
-                  {openHandoverSection ? 'Thu gọn' : `Xem chi tiết (${dailyHandovers.length})`}
-                </button>
-              </div>
-            </div>
-
-            {/* 4 Metric KPI Cards */}
-            <div className="grid grid-cols-2 gap-2.5 pt-3 sm:grid-cols-4">
-              <div className="rounded-xl border border-blue-200 bg-white p-2.5 text-center shadow-xs">
-                <div className="text-[11px] font-bold uppercase text-slate-500">1. Chỉ Tiêu Kế Hoạch Giao</div>
-                <div className="font-mono-num text-xl font-black text-blue-700">
-                  {formatNumber(handoverMetrics.totalPlanQty)} SP
-                </div>
-                <div className="text-[10px] text-slate-500">Form VICO QT.01.BM01</div>
-              </div>
-
-              <div className="rounded-xl border border-emerald-200 bg-white p-2.5 text-center shadow-xs">
-                <div className="text-[11px] font-bold uppercase text-slate-500">2. Thực Tế Bàn Giao (OK)</div>
-                <div className="font-mono-num text-xl font-black text-emerald-700">
-                  {formatNumber(handoverMetrics.totalTransferredQty)} SP
-                </div>
-                <div className="text-[10px] font-bold text-emerald-700">Số chuyển giao công đoạn</div>
-              </div>
-
-              <div className="rounded-xl border border-rose-200 bg-white p-2.5 text-center shadow-xs">
-                <div className="text-[11px] font-bold uppercase text-slate-500">3. SP Lỗi / Phế Phẩm</div>
-                <div className="font-mono-num text-xl font-black text-rose-700">
-                  {formatNumber(handoverMetrics.totalDefectQty)} SP
-                </div>
-                <div className="text-[10px] font-semibold text-rose-600">
-                  {handoverMetrics.totalDefectQty > 0 ? '⚠️ Cần đùn phôi gia công bù' : 'Không có lỗi'}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-amber-200 bg-white p-2.5 text-center shadow-xs">
-                <div className="text-[11px] font-bold uppercase text-slate-500">4. Tỷ Lệ Đạt Kế Hoạch Thật</div>
-                <div className="font-mono-num text-xl font-black text-purple-700">
-                  {handoverMetrics.realizationPct}%
-                </div>
-                <div className="text-[10px] font-bold text-slate-600">
-                  {handoverMetrics.totalMissingQty > 0
-                    ? `Thiếu ${handoverMetrics.totalMissingQty} SP so với KH`
-                    : 'Đã giao đủ chỉ tiêu'}
-                </div>
-              </div>
-            </div>
-
-            {/* Handover List Table */}
-            {openHandoverSection && (
-              <div className="mt-3">
-                {dailyHandovers.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-purple-300 bg-white/70 p-4 text-center text-xs text-purple-900">
-                    Chưa có phiếu chuyển giao công đoạn nào cho ngày {formatDateVn(selectedDate)}.
-                    <br />
-                    Bấm <strong>&ldquo;⚡ Lập Sổ Bàn Giao Từ Kế Hoạch&rdquo;</strong> ở trên để tự động đồng bộ từ Kế hoạch ngày!
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto rounded-xl border border-purple-200 bg-white">
-                    <table className="w-full text-left text-xs">
-                      <thead className="border-b border-purple-200 bg-purple-100/60 font-bold text-purple-950">
-                        <tr>
-                          <th className="w-10 p-2 text-center">STT</th>
-                          <th className="p-2">Tên sản phẩm / Bản vẽ</th>
-                          <th className="p-2">Khách hàng</th>
-                          <th className="p-2 text-center">Số chuyển</th>
-                          <th className="p-2 text-center">SP Lỗi</th>
-                          <th className="p-2 text-center">Số thiếu</th>
-                          <th className="p-2">Công đoạn nhận</th>
-                          <th className="p-2 text-center">Nghiệm thu</th>
-                          <th className="p-2 text-right">Thao tác</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {dailyHandovers.map((h, i) => (
-                          <tr key={h.id} className="hover:bg-purple-50/40">
-                            <td className="font-mono-num p-2 text-center font-bold">{i + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{h.productName}</td>
-                            <td className="p-2 font-semibold text-slate-600">{h.customer}</td>
-                            <td className="font-mono-num p-2 text-center font-bold text-emerald-700">
-                              {h.prodQtyTransferred}
-                            </td>
-                            <td className="font-mono-num p-2 text-center font-bold text-rose-700">
-                              {h.prodQtyDefect > 0 ? h.prodQtyDefect : '-'}
-                            </td>
-                            <td className="font-mono-num p-2 text-center font-bold text-amber-700">
-                              {h.prodQtyMissing > 0 ? h.prodQtyMissing : '-'}
-                            </td>
-                            <td className="p-2">
-                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-700">
-                                {h.toDept === 'PX_HOAN_THIEN'
-                                  ? 'PX Hoàn Thiện'
-                                  : h.toDept === 'PX_NHIET_LUYEN'
-                                    ? 'PX Nhiệt Luyện'
-                                    : 'Phòng KHVT'}
-                              </span>
-                            </td>
-                            <td className="p-2 text-center">
-                              {h.isConfirmed ? (
-                                <Badge variant="success">✓ Đã nhận ({h.receiverName || 'QC'})</Badge>
-                              ) : (
-                                <Badge variant="warning">Chờ nhận</Badge>
-                              )}
-                            </td>
-                            <td className="p-2 text-right">
-                              {!h.isConfirmed && (
-                                <button
-                                  type="button"
-                                  onClick={() => void handleConfirmHandover(h.id)}
-                                  className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white shadow-xs hover:bg-emerald-700"
-                                  title="Xác nhận nhận đủ số lượng đạt chuẩn"
-                                >
-                                  ✓ Nhận đủ
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
           </Card>
 
           {/* Workers Dispatch Cards: Each worker has minimum 3 lines */}

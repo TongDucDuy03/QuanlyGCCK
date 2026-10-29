@@ -7,6 +7,7 @@ import type {
   QuickSwitchProfile,
 } from '@shared/types';
 import { apiClient, setStoredAuthToken } from '../lib/apiClient';
+import { getFallbackUser } from '../lib/clientFallbackStore';
 import { Button, Modal, useToast } from '../components/ui/IndustrialPrimitives';
 
 interface AuthContextValue {
@@ -35,15 +36,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const quickSwitch = useCallback(
     async (params: { workerId?: string; role?: string }): Promise<AuthSessionUser | null> => {
-      const res = await apiClient.post<{
-        token: string;
-        user: AuthSessionUser;
-        authMode: AuthMode;
-      }>('/auth/quick-switch', params);
-      if (res.token) setStoredAuthToken(res.token);
-      setUser(res.user);
-      setAuthMode(res.authMode);
-      return res.user;
+      try {
+        const res = await apiClient.post<{
+          token: string;
+          user: AuthSessionUser;
+          authMode: AuthMode;
+        }>('/auth/quick-switch', params);
+        if (res.token) setStoredAuthToken(res.token);
+        setUser(res.user);
+        setAuthMode(res.authMode);
+        return res.user;
+      } catch (err) {
+        console.warn('apiClient quick-switch error, using local fallback:', err);
+        const targetId = params.workerId || (params.role === 'ADMIN' ? 'NV00053' : 'NV_KT02');
+        const fallbackUser = getFallbackUser(targetId);
+        setUser(fallbackUser);
+        setAuthMode('DEMO_QUICK');
+        return fallbackUser;
+      }
     },
     []
   );
@@ -282,9 +292,8 @@ export function PinLoginModal({
               return (
                 <span
                   key={idx}
-                  className={`h-3 w-3 rounded-full transition-all ${
-                    filled ? 'scale-110 bg-blue-600 shadow-sm' : 'bg-slate-200'
-                  }`}
+                  className={`h-3 w-3 rounded-full transition-all ${filled ? 'scale-110 bg-blue-600 shadow-sm' : 'bg-slate-200'
+                    }`}
                 />
               );
             })}

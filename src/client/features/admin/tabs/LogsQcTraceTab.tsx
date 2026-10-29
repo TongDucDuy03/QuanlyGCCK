@@ -28,6 +28,7 @@ import { matchesSearch, normalizeVn } from '@shared/vnSearch';
 import { apiClient } from '@client/lib/apiClient';
 import { getFallbackHandovers, saveFallbackHandover } from '@client/lib/clientFallbackStore';
 import { VicoLogo } from '@client/components/VicoLogo';
+import { getFallbackBootstrap } from '@client/lib/clientFallbackStore';
 import { downloadDailyLogsExcel } from '@client/lib/excelService';
 import {
   formatDateVn,
@@ -57,10 +58,11 @@ interface MeasuredDimRow {
 }
 
 export function LogsQcTraceTab({
-  bootstrap,
+  bootstrap: rawBootstrap,
   onRefreshBootstrap,
   deepLink,
 }: AdminTabCommonProps) {
+  const bootstrap = rawBootstrap || getFallbackBootstrap();
   const toast = useToast();
   const { user } = useAuth();
   const canEditLogs = user?.appRole === 'ADMIN' || user?.appRole === 'SHIFT_LEADER';

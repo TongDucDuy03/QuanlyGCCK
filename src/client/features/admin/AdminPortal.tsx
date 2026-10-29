@@ -71,8 +71,8 @@ export function AdminPortal() {
   const toast = useToast();
   const { user, authMode, loading: authLoading, quickSwitch, openPinModal } = useAuth();
 
-  const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(null);
-  const [loadingData, setLoadingData] = useState<boolean>(true);
+  const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(() => getFallbackBootstrap());
+  const [loadingData, setLoadingData] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string>('');
 
@@ -150,9 +150,10 @@ export function AdminPortal() {
 
   // Synchronize activeTab with URL / Navigation events
   useEffect(() => {
-    const handleUrlSync = () => {
-      const tab = getTabFromUrl();
-      if (tab && tab !== activeTab) {
+    const handleUrlSync = (e?: Event) => {
+      const detailTab = (e as CustomEvent)?.detail?.tab as AdminTabKey | undefined;
+      const tab = detailTab || getTabFromUrl();
+      if (tab) {
         setActiveTab(tab);
       }
     };
@@ -164,7 +165,7 @@ export function AdminPortal() {
       window.removeEventListener('popstate', handleUrlSync);
       window.removeEventListener('hashchange', handleUrlSync);
     };
-  }, [activeTab]);
+  }, []);
 
   // Auto-elevate session for QC / Schedule tabs if user is worker or unauthenticated
   useEffect(() => {
@@ -471,6 +472,21 @@ export function AdminPortal() {
 
   // ==================== GATE 2: WORKER OR UNLOCKED SESSION ====================
   if (!user || !canEnterManagement) {
+    if (authMode === 'DEMO_QUICK') {
+      return (
+        <main className="mx-auto flex min-h-[72vh] w-full max-w-[1920px] items-center justify-center bg-industrial-canvas p-6 text-slate-900">
+          <Card className="flex flex-col items-center gap-3 px-8 py-6 text-center border-blue-200 shadow-card">
+            <RefreshCw className="h-7 w-7 animate-spin text-blue-600" />
+            <div className="text-sm font-bold text-slate-900">
+              Đang chuyển vào phân hệ Quản lý &amp; Điều hành...
+            </div>
+            <div className="text-xs text-slate-500">
+              Tự động nâng quyền phiên làm việc sang Quản trị xưởng
+            </div>
+          </Card>
+        </main>
+      );
+    }
     return (
       <main className="mx-auto flex min-h-[78vh] w-full max-w-[1920px] items-center justify-center bg-industrial-canvas p-4 text-slate-900 sm:p-8">
         <Card className="w-full max-w-xl space-y-5 border-blue-200 p-6 shadow-elevated">
@@ -489,37 +505,6 @@ export function AdminPortal() {
               </p>
             </div>
           </div>
-
-          {authMode === 'DEMO_QUICK' && (
-            <div className="space-y-2 rounded-xl border border-blue-200 bg-blue-50/50 p-3.5">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700">
-                ⚡ Chuyển nhanh 1 chạm (Chế độ Demo đang bật)
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => void quickSwitch({ workerId: 'NV00053' })}
-                >
-                  🛡️ Quản Đốc Admin
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() => void quickSwitch({ workerId: 'NV00266' })}
-                >
-                  📋 Trưởng Ca SX
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() => void quickSwitch({ workerId: 'NV_KT02' })}
-                >
-                  🔬 Kiểm Soát QC
-                </Button>
-              </div>
-            </div>
-          )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <Button
