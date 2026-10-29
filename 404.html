@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <title>GCCK Thắng Lợi — MES</title>
+    <script>
+      (function() {
+        var l = window.location;
+        var pathSegments = l.pathname.slice(1).split('/');
+        var repoBase = '/' + (pathSegments[0] || '');
+        var subPath = l.pathname.slice(repoBase.length) || '/';
+        var search = l.search ? ('?' + l.search.slice(1)) : '';
+        var normSub = subPath.startsWith('/') ? subPath : '/' + subPath;
+        var redirectUrl = l.protocol + '//' + l.hostname + (l.port ? (':' + l.port) : '') +
+          repoBase + '/#' + normSub + search + l.hash;
+        window.location.replace(redirectUrl);
+      })();
+    </script>
+  </head>
+  <body>
+    <div style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#334155;">
+      <h2 style="font-size:18px;font-weight:700;">Đang kết nối Hệ Thống Sản Lượng GCCK Thắng Lợi...</h2>
+      <p style="font-size:14px;color:#64748b;">Tự động chuyển hướng trong giây lát...</p>
+    </div>
+  </body>
+</html>

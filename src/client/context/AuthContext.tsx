@@ -57,10 +57,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (sess.user) {
         setUser(sess.user);
       } else if (sess.authMode === 'DEMO_QUICK') {
-        // Zero-friction automatic role bootstrap based on entry URL
-        const path = typeof window !== 'undefined' ? window.location.pathname : '/worker';
+        const path =
+          typeof window !== 'undefined'
+            ? window.location.hash && window.location.hash.startsWith('#/')
+              ? window.location.hash.slice(1)
+              : window.location.pathname
+            : '/worker';
         if (path.startsWith('/admin')) {
-          await quickSwitch({ workerId: 'NV00053' });
+          const targetId =
+            path.includes('logs_qc') || path.includes('daily_schedule') ? 'NV_KT02' : 'NV00053';
+          await quickSwitch({ workerId: targetId });
         } else if (!path.startsWith('/andon')) {
           await quickSwitch({ workerId: 'NV00214' });
         }
@@ -69,6 +75,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {
       // Offline fallback keeps UI usable
+      setAuthMode('DEMO_QUICK');
+      const path =
+        typeof window !== 'undefined'
+          ? window.location.hash && window.location.hash.startsWith('#/')
+            ? window.location.hash.slice(1)
+            : window.location.pathname
+          : '/worker';
+      if (path.startsWith('/admin')) {
+        const targetId =
+          path.includes('logs_qc') || path.includes('daily_schedule') ? 'NV_KT02' : 'NV00053';
+        await quickSwitch({ workerId: targetId });
+      } else {
+        await quickSwitch({ workerId: 'NV00214' });
+      }
     } finally {
       setLoading(false);
     }

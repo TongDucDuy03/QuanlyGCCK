@@ -14,6 +14,15 @@ export function getBasePath(): string {
   return '';
 }
 
+export function isStaticHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.location.hostname.includes('github.io') ||
+    window.location.protocol === 'file:' ||
+    Boolean(getBasePath())
+  );
+}
+
 export function normalizePath(path: string): string {
   if (typeof window !== 'undefined' && window.location.hash && window.location.hash.startsWith('#/')) {
     return window.location.hash.slice(1);
@@ -30,14 +39,18 @@ export function navigateTo(path: string): void {
   if (typeof window === 'undefined') return;
   const base = getBasePath();
   const normalized = path.startsWith('/') ? path : `/${path}`;
-  const fullPath = base ? `${base}${normalized}` : normalized;
 
-  if (window.location.hash && window.location.hash.startsWith('#/')) {
-    window.location.hash = `#${normalized}`;
+  // On GitHub Pages or static host, use hash routing so refreshing/direct links never return 404
+  if (isStaticHost() || (window.location.hash && window.location.hash.startsWith('#/'))) {
+    const targetHash = `#${normalized}`;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
     window.dispatchEvent(new CustomEvent(NAV_EVENT));
     return;
   }
 
+  const fullPath = base ? `${base}${normalized}` : normalized;
   const currentFull = window.location.pathname + window.location.search;
   if (currentFull === fullPath) return;
   window.history.pushState({}, '', fullPath);

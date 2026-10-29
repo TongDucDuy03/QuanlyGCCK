@@ -11,9 +11,23 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (function() {
+        var params = new URLSearchParams(window.location.search);
+        var redirect = params.get('p');
+        if (redirect) {
+          params.delete('p');
+          var search = params.toString() ? ('?' + params.toString()) : '';
+          var base = window.location.pathname.replace(/\/$/, '');
+          var normSub = redirect.startsWith('/') ? redirect : '/' + redirect;
+          window.location.replace(base + '/#' + normSub + search + window.location.hash);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-CBe3Ho2Z.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CSZIf33C.css">
   </head>
   <body class="bg-industrial-canvas text-slate-900 antialiased selection:bg-blue-600/15 selection:text-blue-900">
     <div id="root"></div>
-    <script type="module" src="/src/client/main.tsx"></script>
   </body>
 </html>

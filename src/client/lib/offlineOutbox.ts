@@ -1,5 +1,6 @@
 import type { ReportSubmitPayload, ReportSubmitResponse } from '@shared/types';
 import { apiFetch, ApiError } from './apiClient';
+import { submitDirectToGoogleAppsScript } from './clientFallbackStore';
 
 const OUTBOX_STORAGE_KEY = 'GCCK_OFFLINE_OUTBOX_V1';
 const OUTBOX_EVENT_NAME = 'gcck:outbox-changed';
@@ -97,15 +98,20 @@ export async function flushOfflineOutbox(): Promise<{ synced: number; remaining:
         });
         synced++;
       } catch (err: any) {
-        // Keep in queue on network error (status === 0) or 5xx; drop if permanent 400 validation error after 3 tries
-        const isValidationErr = err instanceof ApiError && err.status >= 400 && err.status < 500;
-        const nextAttempts = item.attempts + 1;
-        if (!isValidationErr || nextAttempts < 3) {
-          remainingItems.push({
-            ...item,
-            attempts: nextAttempts,
-            lastError: String(err?.message || err),
-          });
+        // Try direct GAS sync if backend unavailable
+        try {
+          await submitDirectToGoogleAppsScript(item.payload);
+          synced++;
+        } catch {
+          const isValidationErr = err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 404;
+          const nextAttempts = item.attempts + 1;
+          if (!isValidationErr || nextAttempts < 3) {
+            remainingItems.push({
+              ...item,
+              attempts: nextAttempts,
+              lastError: String(err?.message || err),
+            });
+          }
         }
       }
     }
@@ -133,12 +139,15 @@ export async function submitReportWithOfflineFallback(
       json: finalPayload,
     });
     return { queuedOffline: false, response };
-  } catch (err: any) {
-    if (err instanceof ApiError && err.status === 0) {
+  } catch {
+    // If backend 404 (GitHub Pages) or offline, submit directly to Google Apps Script
+    try {
+      const gasResp = await submitDirectToGoogleAppsScript(finalPayload);
+      return { queuedOffline: false, response: gasResp };
+    } catch {
       const queuedItem = enqueueOfflineReport(finalPayload);
       return { queuedOffline: true, queuedItem };
     }
-    throw err;
   }
 }
 

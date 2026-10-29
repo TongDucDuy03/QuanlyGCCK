@@ -20,5 +20,5 @@
       "@client/*": ["src/client/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "vite.config.ts"]
+  "include": ["src/**/*", "tests/**/*", "vite.config.ts", "data/**/*"]
 }
