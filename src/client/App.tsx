@@ -35,6 +35,11 @@ const WeeklyReportPrintView = React.lazy(() =>
     default: (m.WeeklyReportPrint || (m as any).default) as React.ComponentType<any>,
   }))
 );
+const HandoverSlipPrintView = React.lazy(() =>
+  import('./features/print/HandoverSlipPrint').then((m) => ({
+    default: (m.HandoverSlipPrint || (m as any).default) as React.ComponentType<any>,
+  }))
+);
 
 function ShellRouter() {
   const pathname = useLocationPath();
@@ -56,6 +61,8 @@ function ShellRouter() {
     content = <DailySchedulePrintView />;
   } else if (pathname.startsWith('/print/weekly-report')) {
     content = <WeeklyReportPrintView />;
+  } else if (pathname.startsWith('/print/handover')) {
+    content = <HandoverSlipPrintView />;
   } else if (pathname.startsWith('/print/traveler')) {
     const poId = getTravelerPoIdFromLocation(pathname);
     content = <PrintView poId={poId} />;

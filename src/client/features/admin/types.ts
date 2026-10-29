@@ -11,7 +11,7 @@ export type AdminTabKey =
 
 export interface AdminDeepLinkContext {
   tracePoId?: string;
-  logsSubView?: 'LOGS' | 'QC' | 'TRACE';
+  logsSubView?: 'LOGS' | 'QC' | 'TRACE' | 'HANDOVER';
   ordersSearch?: string;
   costingSearch?: string;
   masterSubTab?: 'OPS' | 'MACHINES_TOOLS' | 'WORKERS' | 'CONFIG';

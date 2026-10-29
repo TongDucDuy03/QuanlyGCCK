@@ -7,6 +7,7 @@ import { formatDateVn, getTravelerPoIdFromLocation } from '../../lib/formatters'
 import { navigateTo } from '../../lib/navigation';
 import { Button, useToast } from '../../components/ui/IndustrialPrimitives';
 import { PickerOptionItem, SearchablePickerSheet } from '../worker/SearchablePickerSheet';
+import { VicoLogo } from '../../components/VicoLogo';
 
 export interface JobTravelerPrintProps {
   poId?: string;
@@ -211,8 +212,11 @@ export function JobTravelerPrint({ poId }: JobTravelerPrintProps) {
             {/* 1. ISO HEADER FRAME */}
             <header className="grid grid-cols-12 border-2 border-black">
               <div className="col-span-12 border-b border-black p-2.5 sm:col-span-4 sm:border-b-0 sm:border-r">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-700">
-                  CÔNG TY CP VICO — PHÂN XƯỞNG CƠ KHÍ
+                <div className="flex items-center gap-2 mb-1">
+                  <VicoLogo className="h-8 w-auto object-contain" />
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-700">
+                    CÔNG TY CP VICO
+                  </div>
                 </div>
                 <div className="mt-0.5 text-xs font-black uppercase leading-tight sm:text-sm">
                   XƯỞNG CƠ KHÍ CHÍNH XÁC THẮNG LỢI (GCCK)

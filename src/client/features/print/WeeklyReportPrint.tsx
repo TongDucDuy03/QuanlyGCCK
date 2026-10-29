@@ -4,6 +4,7 @@ import type { WeeklyReportData } from '@shared/types';
 import { apiClient } from '../../lib/apiClient';
 import { formatDateVn, formatNumber, formatVnd } from '../../lib/formatters';
 import { navigateTo } from '../../lib/navigation';
+import { VicoLogo } from '../../components/VicoLogo';
 
 export function WeeklyReportPrint() {
   const [weekStart, setWeekStart] = useState<string>(() => {
@@ -88,9 +89,7 @@ export function WeeklyReportPrint() {
             <div className="grid grid-cols-12 border-b border-black text-center">
               {/* Logo VICO */}
               <div className="col-span-2 flex items-center justify-center border-r border-black p-2">
-                <div className="flex items-center gap-1 rounded-full border-2 border-red-600 px-3 py-1 font-black italic tracking-widest text-blue-700">
-                  <span className="text-xl">ViCO</span>
-                </div>
+                <VicoLogo className="h-10 w-auto object-contain" />
               </div>
 
               {/* Title */}

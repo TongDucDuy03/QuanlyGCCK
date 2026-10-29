@@ -759,6 +759,34 @@ export interface TraceabilityDto {
   deliveries: DeliveryLogDto[];
 }
 
+export type HandoverDept =
+  | 'PX_GIA_CONG'
+  | 'PX_HOAN_THIEN'
+  | 'PX_NHIET_LUYEN'
+  | 'PHONG_KHVT';
+
+export interface HandoverSlipRow {
+  id: string;
+  handoverDate: string;
+  fromDept: HandoverDept;
+  toDept: HandoverDept;
+  poId?: string;
+  spId?: string;
+  productName: string;
+  customer: string;
+  unit: string;
+  prodQtyTransferred: number;
+  prodQtyDefect: number;
+  prodQtyMissing: number;
+  rawQtyTransferred: number;
+  rawQtyDefect: number;
+  rawQtyMissing: number;
+  note?: string;
+  receiverName?: string;
+  senderName?: string;
+  createdAt: string;
+}
+
 export interface AndonLivePayload {
   serverTime: string;
   vietnamDate: string;

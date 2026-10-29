@@ -18,12 +18,16 @@ import {
   XCircle,
 } from 'lucide-react';
 import type {
+  HandoverDept,
+  HandoverSlipRow,
   ProductionLogDto,
   QcInspectionDto,
   TraceabilityDto,
 } from '@shared/types';
 import { matchesSearch, normalizeVn } from '@shared/vnSearch';
 import { apiClient } from '@client/lib/apiClient';
+import { getFallbackHandovers, saveFallbackHandover } from '@client/lib/clientFallbackStore';
+import { VicoLogo } from '@client/components/VicoLogo';
 import { downloadDailyLogsExcel } from '@client/lib/excelService';
 import {
   formatDateVn,
@@ -42,7 +46,7 @@ import {
 import { useAuth } from '@client/context/AuthContext';
 import type { AdminTabCommonProps } from '../types';
 
-type SubViewMode = 'LOGS' | 'QC' | 'TRACE';
+type SubViewMode = 'LOGS' | 'QC' | 'TRACE' | 'HANDOVER';
 type LogIssueFilter = 'ALL' | 'HAS_NG' | 'PENDING_QC' | 'HANDOVER' | 'VOIDED';
 
 interface MeasuredDimRow {
@@ -163,6 +167,125 @@ export function LogsQcTraceTab({
       setLoadingTrace(false);
     }
   };
+
+  // ==================== SUB-VIEW D: HANDOVER BM.GC.01.02 STATE ====================
+  const [handovers, setHandovers] = useState<HandoverSlipRow[]>(() => getFallbackHandovers());
+  const [hoSearch, setHoSearch] = useState('');
+  const [hoDateFilter, setHoDateFilter] = useState('');
+  const [hoDeptFilter, setHoDeptFilter] = useState<'ALL' | HandoverDept>('ALL');
+  const [hoModalOpen, setHoModalOpen] = useState(false);
+
+  // New Handover Form State
+  const [hoDate, setHoDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [hoFromDept, setHoFromDept] = useState<HandoverDept>('PX_GIA_CONG');
+  const [hoToDept, setHoToDept] = useState<HandoverDept>('PX_NHIET_LUYEN');
+  const [hoSelectedPo, setHoSelectedPo] = useState(bootstrap.ordersList[0]?.poId || 'PO485-01');
+  const [hoProdName, setHoProdName] = useState(bootstrap.ordersList[0]?.productName || 'ALKTOP 1342 M');
+  const [hoCustomer, setHoCustomer] = useState(bootstrap.ordersList[0]?.customer || 'Win-Win - PO485');
+  const [hoUnit, setHoUnit] = useState('Cái');
+  const [hoProdQtyTransferred, setHoProdQtyTransferred] = useState(50);
+  const [hoProdQtyDefect, setHoProdQtyDefect] = useState(0);
+  const [hoProdQtyMissing, setHoProdQtyMissing] = useState(0);
+  const [hoRawQtyTransferred, setHoRawQtyTransferred] = useState(50);
+  const [hoRawQtyDefect, setHoRawQtyDefect] = useState(0);
+  const [hoRawQtyMissing, setHoRawQtyMissing] = useState(0);
+  const [hoNote, setHoNote] = useState('');
+  const [hoReceiver, setHoReceiver] = useState('Trần Văn Dũng');
+  const [hoSender, setHoSender] = useState(user?.name || 'Nguyễn Văn Duy');
+  const [submittingHo, setSubmittingHo] = useState(false);
+
+  const reloadHandovers = async () => {
+    try {
+      const data = await apiClient.get<HandoverSlipRow[]>('/handovers');
+      setHandovers(data && data.length > 0 ? data : getFallbackHandovers());
+    } catch {
+      setHandovers(getFallbackHandovers());
+    }
+  };
+
+  const handleSelectPoForHandover = (poId: string) => {
+    setHoSelectedPo(poId);
+    const po = bootstrap.ordersList.find((p) => p.poId === poId);
+    if (po) {
+      setHoProdName(po.productName);
+      setHoCustomer(po.customer);
+      setHoProdQtyTransferred(po.finishedQty || 0);
+      setHoRawQtyTransferred(po.qtyPo || 0);
+    }
+  };
+
+  const handleFillFromShiftLogs = () => {
+    const matchingLogs = logs.filter(
+      (l) => !l.isVoided && (l.poId === hoSelectedPo || l.productName === hoProdName)
+    );
+    if (matchingLogs.length === 0) {
+      toast.info('Không tìm thấy nhật ký ca gần đây cho sản phẩm này. Giữ nguyên số liệu.');
+      return;
+    }
+    const totOk = matchingLogs.reduce((acc, l) => acc + (l.okQty || 0), 0);
+    const totNg = matchingLogs.reduce((acc, l) => acc + (l.scrapQty || 0), 0);
+    setHoProdQtyTransferred(totOk);
+    setHoProdQtyDefect(totNg);
+    toast.success(`Đã tự động điền từ nhật ký ca: ${totOk} Đạt OK, ${totNg} Lỗi NG.`);
+  };
+
+  const handleSaveHandover = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hoProdName.trim()) {
+      toast.warning('Vui lòng nhập Tên sản phẩm bàn giao.');
+      return;
+    }
+    setSubmittingHo(true);
+    try {
+      const newRow: HandoverSlipRow = {
+        id: `HO-${Date.now()}`,
+        handoverDate: hoDate,
+        fromDept: hoFromDept,
+        toDept: hoToDept,
+        poId: hoSelectedPo,
+        productName: hoProdName.trim(),
+        customer: hoCustomer.trim() || 'Nội bộ',
+        unit: hoUnit || 'Cái',
+        prodQtyTransferred: Number(hoProdQtyTransferred) || 0,
+        prodQtyDefect: Number(hoProdQtyDefect) || 0,
+        prodQtyMissing: Number(hoProdQtyMissing) || 0,
+        rawQtyTransferred: Number(hoRawQtyTransferred) || 0,
+        rawQtyDefect: Number(hoRawQtyDefect) || 0,
+        rawQtyMissing: Number(hoRawQtyMissing) || 0,
+        note: hoNote.trim(),
+        receiverName: hoReceiver.trim(),
+        senderName: hoSender.trim(),
+        createdAt: new Date().toISOString(),
+      };
+
+      await apiClient.post('/handovers', newRow);
+      saveFallbackHandover(newRow);
+      setHandovers((prev) => [newRow, ...prev]);
+      toast.success('Đã lưu thành công phiếu chuyển giao công đoạn BM.GC.01.02!');
+      setHoModalOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Lỗi khi lưu phiếu bàn giao.');
+    } finally {
+      setSubmittingHo(false);
+    }
+  };
+
+  const filteredHandovers = useMemo(() => {
+    return handovers.filter((h) => {
+      if (hoDeptFilter !== 'ALL' && h.fromDept !== hoDeptFilter && h.toDept !== hoDeptFilter) {
+        return false;
+      }
+      if (hoDateFilter && h.handoverDate !== hoDateFilter) {
+        return false;
+      }
+      if (hoSearch.trim()) {
+        const q = hoSearch.toLowerCase();
+        const text = `${h.productName} ${h.customer} ${h.poId || ''} ${h.note || ''} ${h.receiverName || ''} ${h.senderName || ''}`.toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [handovers, hoDeptFilter, hoDateFilter, hoSearch]);
 
   useEffect(() => {
     void reloadLogs();
@@ -422,6 +545,21 @@ export function LogsQcTraceTab({
             />
             C. Truy Vết Nguồn Gốc 100% Theo Mã PO
           </button>
+
+          <button
+            type="button"
+            onClick={() => setSubView('HANDOVER')}
+            className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-extrabold transition-all ${
+              subView === 'HANDOVER'
+                ? 'border-amber-600 bg-amber-50 text-amber-800 shadow-sm'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <Truck
+              className={`h-4 w-4 ${subView === 'HANDOVER' ? 'text-amber-600' : 'text-slate-500'}`}
+            />
+            D. Sổ Bàn Giao Công Đoạn (BM.GC.01.02) ({handovers.length})
+          </button>
         </div>
 
         {subView === 'LOGS' && (
@@ -441,6 +579,27 @@ export function LogsQcTraceTab({
             <Plus className="h-4 w-4" />
             Tạo Biên Bản Kiểm Tra QC Mới
           </Button>
+        )}
+
+        {subView === 'HANDOVER' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigateTo(`/print/handover?date=${hoDateFilter || hoDate}`)}
+            >
+              <Printer className="h-4 w-4" />
+              🖨️ In Biểu Mẫu A4 BM.GC.01.02
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setHoModalOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              ➕ Lập Phiếu Bàn Giao Mới
+            </Button>
+          </div>
         )}
       </div>
 
@@ -1302,6 +1461,480 @@ export function LogsQcTraceTab({
           )}
         </div>
       )}
+
+      {/* ==================== SUB-VIEW D: SỔ CHUYỂN GIAO CÔNG ĐOẠN (BM.GC.01.02) ==================== */}
+      {subView === 'HANDOVER' && (
+        <div className="space-y-4">
+          {/* Top KPI Cards */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Card className="border-l-4 border-l-blue-600 p-3.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Tổng Phiếu Bàn Giao
+              </div>
+              <div className="mt-1 font-mono-num text-2xl font-black text-slate-900">
+                {filteredHandovers.length}
+              </div>
+              <div className="text-[11px] text-slate-500">Theo biểu mẫu BM.GC.01.02</div>
+            </Card>
+
+            <Card className="border-l-4 border-l-emerald-600 p-3.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                BTP Chuyển Giao Đạt
+              </div>
+              <div className="mt-1 font-mono-num text-2xl font-black text-emerald-700">
+                {filteredHandovers.reduce((sum, h) => sum + (h.prodQtyTransferred || 0), 0).toLocaleString('vi-VN')}
+              </div>
+              <div className="text-[11px] text-emerald-600 font-semibold">Chuyển sang công đoạn sau</div>
+            </Card>
+
+            <Card className="border-l-4 border-l-rose-600 p-3.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-rose-700">
+                Phế Phẩm Gia Công
+              </div>
+              <div className="mt-1 font-mono-num text-2xl font-black text-rose-700">
+                {filteredHandovers.reduce((sum, h) => sum + (h.prodQtyDefect || 0), 0).toLocaleString('vi-VN')}
+              </div>
+              <div className="text-[11px] text-rose-600 font-semibold">Hỏng tại PX Gia Công</div>
+            </Card>
+
+            <Card className="border-l-4 border-l-amber-600 p-3.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                Phôi Lỗi &amp; Hao Hụt
+              </div>
+              <div className="mt-1 font-mono-num text-2xl font-black text-amber-700">
+                {filteredHandovers.reduce((sum, h) => sum + (h.rawQtyDefect || 0) + (h.prodQtyMissing || 0), 0).toLocaleString('vi-VN')}
+              </div>
+              <div className="text-[11px] text-amber-600 font-semibold">Lỗi đúc / Thiếu hàng</div>
+            </Card>
+          </div>
+
+          {/* Filter Bar */}
+          <Card>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative min-w-[240px]">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={hoSearch}
+                    onChange={(e) => setHoSearch(e.target.value)}
+                    placeholder="Tìm theo sản phẩm, PO, khách hàng..."
+                    className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-600">Ngày:</span>
+                  <input
+                    type="date"
+                    value={hoDateFilter}
+                    onChange={(e) => setHoDateFilter(e.target.value)}
+                    className="h-9 rounded-lg border border-slate-300 px-2.5 text-xs font-bold text-slate-900"
+                  />
+                  {hoDateFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setHoDateFilter('')}
+                      className="text-xs font-bold text-slate-500 hover:text-slate-900"
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1">
+                  {(
+                    [
+                      ['ALL', 'Tất cả phân xưởng'],
+                      ['PX_GIA_CONG', 'PX Gia Công'],
+                      ['PX_HOAN_THIEN', 'PX Hoàn Thiện'],
+                      ['PX_NHIET_LUYEN', 'PX Nhiệt Luyện'],
+                      ['PHONG_KHVT', 'Phòng KHVT'],
+                    ] as const
+                  ).map(([deptKey, deptLabel]) => (
+                    <button
+                      key={deptKey}
+                      type="button"
+                      onClick={() => setHoDeptFilter(deptKey)}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
+                        hoDeptFilter === deptKey
+                          ? 'bg-amber-600 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {deptLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigateTo(`/print/handover?date=${hoDateFilter || hoDate}`)}
+                >
+                  <Printer className="h-4 w-4" />
+                  🖨️ In Biểu Mẫu A4 BM.GC.01.02
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setHoModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  ➕ Lập Phiếu Mới
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Main Handover Table matching Form BM.GC.01.02 */}
+          <Card noPadding>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-100 font-bold text-slate-800">
+                    <th rowSpan={2} className="border-r border-slate-200 p-2.5 text-center">STT</th>
+                    <th rowSpan={2} className="border-r border-slate-200 p-2.5">Ngày Bàn Giao</th>
+                    <th rowSpan={2} className="min-w-[180px] border-r border-slate-200 p-2.5">Tên Sản Phẩm / Lệnh PO</th>
+                    <th rowSpan={2} className="border-r border-slate-200 p-2.5">Khách Hàng</th>
+                    <th rowSpan={2} className="border-r border-slate-200 p-2.5 text-center">ĐVT</th>
+                    <th colSpan={3} className="border-r border-slate-200 p-2 text-center bg-emerald-50 text-emerald-900 font-extrabold">
+                      Chuyển Giao Sản Phẩm (BTP)
+                    </th>
+                    <th colSpan={3} className="border-r border-slate-200 p-2 text-center bg-blue-50 text-blue-900 font-extrabold">
+                      Chuyển Giao Phôi
+                    </th>
+                    <th rowSpan={2} className="border-r border-slate-200 p-2.5">Tuyến Bàn Giao</th>
+                    <th rowSpan={2} className="border-r border-slate-200 p-2.5">Người Nhận / Người Giao</th>
+                    <th rowSpan={2} className="p-2.5">Ghi Chú</th>
+                  </tr>
+                  <tr className="border-b border-slate-300 bg-slate-50 text-[11px] font-bold text-slate-700 text-center">
+                    <th className="border-r border-slate-200 p-1.5 bg-emerald-50 text-emerald-800">Số chuyển</th>
+                    <th className="border-r border-slate-200 p-1.5 bg-rose-50 text-rose-700">SP lỗi</th>
+                    <th className="border-r border-slate-200 p-1.5 bg-amber-50 text-amber-700">Số thiếu</th>
+                    <th className="border-r border-slate-200 p-1.5 bg-blue-50 text-blue-800">Số chuyển</th>
+                    <th className="border-r border-slate-200 p-1.5 bg-rose-50 text-rose-700">Phôi lỗi</th>
+                    <th className="border-r border-slate-200 p-1.5 bg-amber-50 text-amber-700">Số thiếu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {filteredHandovers.length === 0 ? (
+                    <tr>
+                      <td colSpan={13} className="p-8 text-center font-medium text-slate-500">
+                        Không có phiếu chuyển giao công đoạn nào phù hợp với bộ lọc.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredHandovers.map((row, idx) => {
+                      const deptName = (d: HandoverDept) => {
+                        switch (d) {
+                          case 'PX_GIA_CONG': return 'PX Gia Công';
+                          case 'PX_HOAN_THIEN': return 'PX Hoàn Thiện';
+                          case 'PX_NHIET_LUYEN': return 'PX Nhiệt Luyện';
+                          case 'PHONG_KHVT': return 'Phòng KHVT';
+                        }
+                      };
+
+                      return (
+                        <tr key={row.id || idx} className="hover:bg-slate-50 transition-colors">
+                          <td className="border-r border-slate-200 p-2.5 text-center font-bold font-mono-num text-slate-700">
+                            {idx + 1}
+                          </td>
+                          <td className="border-r border-slate-200 p-2.5 font-mono-num font-semibold text-slate-900 whitespace-nowrap">
+                            {formatDateVn(row.handoverDate)}
+                          </td>
+                          <td className="border-r border-slate-200 p-2.5">
+                            <div className="font-extrabold text-slate-900">{row.productName}</div>
+                            {row.poId && (
+                              <div className="font-mono-num text-[11px] font-bold text-blue-700">
+                                {row.poId}
+                              </div>
+                            )}
+                          </td>
+                          <td className="border-r border-slate-200 p-2.5 text-slate-700 whitespace-nowrap">
+                            {row.customer}
+                          </td>
+                          <td className="border-r border-slate-200 p-2.5 text-center font-semibold text-slate-600">
+                            {row.unit || 'Cái'}
+                          </td>
+                          <td className="border-r border-slate-200 p-2 text-center font-mono-num font-black text-emerald-700 bg-emerald-50/30 text-sm">
+                            {row.prodQtyTransferred || 0}
+                          </td>
+                          <td className="border-r border-slate-200 p-2 text-center font-mono-num font-black text-rose-700 bg-rose-50/30">
+                            {row.prodQtyDefect > 0 ? row.prodQtyDefect : '—'}
+                          </td>
+                          <td className="border-r border-slate-200 p-2 text-center font-mono-num font-black text-amber-700 bg-amber-50/30">
+                            {row.prodQtyMissing > 0 ? row.prodQtyMissing : '—'}
+                          </td>
+                          <td className="border-r border-slate-200 p-2 text-center font-mono-num font-black text-blue-700 bg-blue-50/30 text-sm">
+                            {row.rawQtyTransferred || 0}
+                          </td>
+                          <td className="border-r border-slate-200 p-2 text-center font-mono-num font-black text-rose-700 bg-rose-50/30">
+                            {row.rawQtyDefect > 0 ? row.rawQtyDefect : '—'}
+                          </td>
+                          <td className="border-r border-slate-200 p-2 text-center font-mono-num font-black text-amber-700 bg-amber-50/30">
+                            {row.rawQtyMissing > 0 ? row.rawQtyMissing : '—'}
+                          </td>
+                          <td className="border-r border-slate-200 p-2.5 text-xs">
+                            <div className="font-bold text-slate-800">
+                              {deptName(row.fromDept)} &rarr; {deptName(row.toDept)}
+                            </div>
+                          </td>
+                          <td className="border-r border-slate-200 p-2.5 text-xs">
+                            <div className="text-slate-800">
+                              <strong>Nhận:</strong> {row.receiverName || '—'}
+                            </div>
+                            <div className="text-slate-500">
+                              <strong>Giao:</strong> {row.senderName || '—'}
+                            </div>
+                          </td>
+                          <td className="p-2.5 text-xs text-slate-600">
+                            {row.note || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ==================== MODAL: LẬP PHIẾU CHUYỂN GIAO CÔNG ĐOẠN (BM.GC.01.02) ==================== */}
+      <Modal
+        open={hoModalOpen}
+        onClose={() => setHoModalOpen(false)}
+        title="📋 Lập Phiếu Chuyển Giao Công Đoạn Gia Công (BM.GC.01.02)"
+        maxWidthClass="max-w-2xl"
+      >
+        <form onSubmit={(e) => void handleSaveHandover(e)} className="space-y-4 text-xs">
+          {/* Quick PO Selector */}
+          <div>
+            <label className="mb-1 block font-bold text-slate-700 uppercase">
+              1. Chọn Lệnh Sản Xuất PO / Sản Phẩm (Tự động điền dữ liệu)
+            </label>
+            <select
+              value={hoSelectedPo}
+              onChange={(e) => handleSelectPoForHandover(e.target.value)}
+              className={modalInputCls}
+            >
+              {bootstrap.ordersList.map((po) => (
+                <option key={po.poId} value={po.poId}>
+                  {po.poId} — {po.productName} ({po.customer}) | SL: {po.qtyPo}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">Tên Sản Phẩm</label>
+              <input
+                type="text"
+                value={hoProdName}
+                onChange={(e) => setHoProdName(e.target.value)}
+                required
+                className={modalInputCls}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">Khách Hàng</label>
+              <input
+                type="text"
+                value={hoCustomer}
+                onChange={(e) => setHoCustomer(e.target.value)}
+                className={modalInputCls}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">Ngày Bàn Giao</label>
+              <input
+                type="date"
+                value={hoDate}
+                onChange={(e) => setHoDate(e.target.value)}
+                className={modalInputCls}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">Từ Phân Xưởng (Giao)</label>
+              <select
+                value={hoFromDept}
+                onChange={(e) => setHoFromDept(e.target.value as HandoverDept)}
+                className={modalInputCls}
+              >
+                <option value="PX_GIA_CONG">PX Gia Công</option>
+                <option value="PHONG_KHVT">Phòng KHVT</option>
+                <option value="PX_NHIET_LUYEN">PX Nhiệt Luyện</option>
+                <option value="PX_HOAN_THIEN">PX Hoàn Thiện</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">Đến Phân Xưởng (Nhận)</label>
+              <select
+                value={hoToDept}
+                onChange={(e) => setHoToDept(e.target.value as HandoverDept)}
+                className={modalInputCls}
+              >
+                <option value="PX_NHIET_LUYEN">PX Nhiệt Luyện</option>
+                <option value="PX_HOAN_THIEN">PX Hoàn Thiện</option>
+                <option value="PX_GIA_CONG">PX Gia Công</option>
+                <option value="PHONG_KHVT">Phòng KHVT</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quick Auto-Fill Button */}
+          <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50/60 p-2.5">
+            <span className="text-[11px] font-semibold text-blue-900">
+              ⚡ Tự động tính tổng SL Đạt và Hỏng từ các mẻ thợ vừa nộp trên điện thoại:
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleFillFromShiftLogs}
+            >
+              Điền Từ Nhật Ký Ca
+            </Button>
+          </div>
+
+          {/* Transfer Quantities: Products (BTP) */}
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 space-y-2">
+            <div className="font-extrabold text-emerald-900 uppercase">
+              2. Chuyển Giao Sản Phẩm (Bán Thành Phẩm)
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1 block font-bold text-emerald-800">Số Chuyển (OK)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={hoProdQtyTransferred}
+                  onChange={(e) => setHoProdQtyTransferred(Number(e.target.value))}
+                  className={modalInputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block font-bold text-rose-700">SP Lỗi (NG)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={hoProdQtyDefect}
+                  onChange={(e) => setHoProdQtyDefect(Number(e.target.value))}
+                  className={modalInputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block font-bold text-amber-700">Số Thiếu</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={hoProdQtyMissing}
+                  onChange={(e) => setHoProdQtyMissing(Number(e.target.value))}
+                  className={modalInputCls}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Transfer Quantities: Raw Material (Phôi) */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3 space-y-2">
+            <div className="font-extrabold text-blue-900 uppercase">
+              3. Chuyển Giao Phôi (Cấp hoặc Thu Hồi Phôi)
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1 block font-bold text-blue-800">Số Chuyển</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={hoRawQtyTransferred}
+                  onChange={(e) => setHoRawQtyTransferred(Number(e.target.value))}
+                  className={modalInputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block font-bold text-rose-700">Phôi Lỗi (Đúc/Rỗ)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={hoRawQtyDefect}
+                  onChange={(e) => setHoRawQtyDefect(Number(e.target.value))}
+                  className={modalInputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block font-bold text-amber-700">Số Thiếu Phôi</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={hoRawQtyMissing}
+                  onChange={(e) => setHoRawQtyMissing(Number(e.target.value))}
+                  className={modalInputCls}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">Người Giao</label>
+              <input
+                type="text"
+                value={hoSender}
+                onChange={(e) => setHoSender(e.target.value)}
+                className={modalInputCls}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-bold text-slate-700">Người Nhận</label>
+              <input
+                type="text"
+                value={hoReceiver}
+                onChange={(e) => setHoReceiver(e.target.value)}
+                className={modalInputCls}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block font-bold text-slate-700">Ghi Chú Bàn Giao</label>
+            <input
+              type="text"
+              value={hoNote}
+              onChange={(e) => setHoNote(e.target.value)}
+              placeholder="Ví dụ: Đã qua tôi cao tần, chuyển mài phẳng..."
+              className={modalInputCls}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setHoModalOpen(false)}
+            >
+              Hủy Bỏ
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={submittingHo}
+            >
+              {submittingHo ? 'Đang Lưu...' : '💾 Lưu Phiếu Bàn Giao'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ==================== MODAL: EDIT / VOID PRODUCTION LOG ==================== */}
       <Modal

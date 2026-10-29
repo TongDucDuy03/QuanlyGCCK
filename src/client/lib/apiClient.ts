@@ -1,7 +1,9 @@
 import {
   getFallbackBootstrap,
+  getFallbackHandovers,
   getFallbackSession,
   getFallbackUser,
+  saveFallbackHandover,
   FALLBACK_PRODUCTS,
 } from './clientFallbackStore';
 
@@ -157,6 +159,14 @@ function handleClientFallback<T>(path: string, options: ApiFetchOptions): T | nu
   }
   if (norm.includes('/qc/inspections')) {
     return [] as unknown as T;
+  }
+  if (norm.includes('/handovers')) {
+    if (options.method === 'POST') {
+      const body = options.json as any;
+      if (body) saveFallbackHandover(body);
+      return { success: true, item: body } as unknown as T;
+    }
+    return getFallbackHandovers() as unknown as T;
   }
 
   return null;

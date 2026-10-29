@@ -19,6 +19,7 @@ import {
   getOfflineOutbox,
   subscribeOfflineOutbox,
 } from '../lib/offlineOutbox';
+import { VicoLogo } from './VicoLogo';
 
 export interface TopRoleBarProps {
   currentPath: string;
@@ -99,10 +100,8 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
     <header className="no-print relative lg:sticky lg:top-0 z-40 w-full max-w-full border-b border-slate-200 bg-white/95 backdrop-blur shadow-sm">
       <div className="mx-auto flex w-full max-w-[1920px] flex-wrap lg:flex-nowrap lg:h-[52px] items-center justify-between gap-2 px-2.5 py-1.5 lg:py-0 sm:px-4">
         {/* Brand Identity */}
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
-            <Factory className="h-4 w-4" />
-          </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <VicoLogo className="h-8 w-auto object-contain" />
           <div className="min-w-0">
             <div className="truncate text-sm font-extrabold tracking-tight text-slate-900">
               GCCK Thắng Lợi
