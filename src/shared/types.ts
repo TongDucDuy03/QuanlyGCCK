@@ -784,6 +784,8 @@ export interface HandoverSlipRow {
   note?: string;
   receiverName?: string;
   senderName?: string;
+  isConfirmed?: boolean;
+  confirmedAt?: string;
   createdAt: string;
 }
 

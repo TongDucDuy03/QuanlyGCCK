@@ -309,3 +309,30 @@ CREATE TABLE IF NOT EXISTS sync_outbox (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   sent_at TEXT NULL
 );
+
+
+CREATE TABLE IF NOT EXISTS handover_slips (
+  id TEXT PRIMARY KEY,
+  handover_date TEXT NOT NULL,
+  from_dept TEXT NOT NULL DEFAULT 'PX_GIA_CONG',
+  to_dept TEXT NOT NULL DEFAULT 'PX_HOAN_THIEN',
+  po_id TEXT,
+  sp_id TEXT,
+  product_name TEXT NOT NULL,
+  customer TEXT NOT NULL,
+  unit TEXT NOT NULL DEFAULT 'Cái',
+  prod_qty_transferred INTEGER NOT NULL DEFAULT 0,
+  prod_qty_defect INTEGER NOT NULL DEFAULT 0,
+  prod_qty_missing INTEGER NOT NULL DEFAULT 0,
+  raw_qty_transferred INTEGER NOT NULL DEFAULT 0,
+  raw_qty_defect INTEGER NOT NULL DEFAULT 0,
+  raw_qty_missing INTEGER NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  receiver_name TEXT NOT NULL DEFAULT '',
+  sender_name TEXT NOT NULL DEFAULT '',
+  is_confirmed INTEGER NOT NULL DEFAULT 0,
+  confirmed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_handover_date ON handover_slips(handover_date);

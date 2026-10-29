@@ -22,6 +22,9 @@ import {
   queryQcInspections,
   querySchedules,
   queryWorkersForViewer,
+  deleteHandoverSlip,
+  insertHandoverSlip,
+  queryHandoverSlips,
 } from '../db/queries';
 import { hashPin, requireRoles } from '../auth/security';
 import { computeProductCosting } from '../../shared/costingEngine';
@@ -2133,6 +2136,163 @@ export function createAdminRoutes(db: DatabaseSync): Router {
     const status = String(req.body.status || 'APPROVED');
     db.prepare('UPDATE weekly_proposals SET status = ? WHERE id = ?').run(status, id);
     res.json({ success: true, id, status });
+  });
+
+
+  // ==================== SỔ CHUYỂN GIAO CÔNG ĐOẠN GIA CÔNG (FORM BM.GC.01.02) ====================
+  router.get('/handovers', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const dateStr = req.query.date ? String(req.query.date) : undefined;
+    const items = queryHandoverSlips(db, dateStr);
+    res.json(items);
+  });
+
+  router.post('/handovers', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const payload = req.body?.item || req.body;
+    if (!payload.productName) {
+      res.status(400).json({ error: 'Tên sản phẩm không được để trống.' });
+      return;
+    }
+    const id = payload.id && !payload.id.startsWith('empty-')
+      ? payload.id
+      : `HO-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const row = {
+      id,
+      handoverDate: String(payload.handoverDate || new Date().toISOString().slice(0, 10)),
+      fromDept: payload.fromDept || 'PX_GIA_CONG',
+      toDept: payload.toDept || 'PX_HOAN_THIEN',
+      poId: payload.poId || undefined,
+      spId: payload.spId || undefined,
+      productName: String(payload.productName).trim(),
+      customer: String(payload.customer || '').trim(),
+      unit: String(payload.unit || 'Cái').trim(),
+      prodQtyTransferred: Number(payload.prodQtyTransferred || 0),
+      prodQtyDefect: Number(payload.prodQtyDefect || 0),
+      prodQtyMissing: Number(payload.prodQtyMissing || 0),
+      rawQtyTransferred: Number(payload.rawQtyTransferred || 0),
+      rawQtyDefect: Number(payload.rawQtyDefect || 0),
+      rawQtyMissing: Number(payload.rawQtyMissing || 0),
+      note: String(payload.note || '').trim(),
+      receiverName: String(payload.receiverName || '').trim(),
+      senderName: String(payload.senderName || '').trim(),
+      isConfirmed: Boolean(payload.isConfirmed),
+      confirmedAt: payload.confirmedAt ? String(payload.confirmedAt) : undefined,
+      createdAt: payload.createdAt || new Date().toISOString(),
+    };
+
+    insertHandoverSlip(db, row);
+    res.status(201).json({ success: true, item: row });
+  });
+
+  router.post('/handovers/auto-generate', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const dateStr = String(req.body.date || new Date().toISOString().slice(0, 10));
+
+    // 1. Get plan rows for that date
+    const planRows = db.prepare(`
+      SELECT product_name, customer,
+             SUM(COALESCE(qty_ca1, 0) + COALESCE(qty_ca2, 0) + COALESCE(qty_ca3, 0) + COALESCE(qty_hanh_chinh, 0)) AS plan_qty
+      FROM daily_schedule_rows
+      WHERE work_date = ? AND product_name IS NOT NULL AND TRIM(product_name) != ''
+      GROUP BY product_name, customer
+    `).all(dateStr) as Array<{ product_name: string; customer: string; plan_qty: number }>;
+
+    // 2. Get production logs for that date
+    const logRows = db.prepare(`
+      SELECT product_name, customer,
+             SUM(ok_qty) AS ok_qty,
+             SUM(rework_qty) AS rework_qty,
+             SUM(scrap_qty) AS scrap_qty
+      FROM production_logs
+      WHERE work_date = ? AND is_voided = 0 AND product_name IS NOT NULL AND TRIM(product_name) != ''
+      GROUP BY product_name, customer
+    `).all(dateStr) as Array<{ product_name: string; customer: string; ok_qty: number; rework_qty: number; scrap_qty: number }>;
+
+    const logsMap = new Map<string, { okQty: number; reworkQty: number; scrapQty: number }>();
+    for (const l of logRows) {
+      const key = `${l.product_name.trim()}___${(l.customer || '').trim()}`;
+      logsMap.set(key, {
+        okQty: Number(l.ok_qty || 0),
+        reworkQty: Number(l.rework_qty || 0),
+        scrapQty: Number(l.scrap_qty || 0),
+      });
+    }
+
+    // 3. Existing handovers for that date
+    const existingHandovers = queryHandoverSlips(db, dateStr);
+    const existingNames = new Set(existingHandovers.map((h) => h.productName.trim()));
+
+    let indexCount = existingHandovers.length;
+    let addedCount = 0;
+
+    for (const p of planRows) {
+      const pName = p.product_name.trim();
+      if (!pName || existingNames.has(pName)) continue;
+
+      indexCount++;
+      addedCount++;
+      const key = `${pName}___${(p.customer || '').trim()}`;
+      const actualLog = logsMap.get(key) || { okQty: 0, reworkQty: 0, scrapQty: 0 };
+      const planQty = Number(p.plan_qty || 0);
+      const actualOk = actualLog.okQty;
+      const defect = actualLog.scrapQty;
+      const missing = Math.max(0, planQty - actualOk);
+
+      const row = {
+        id: `HO-${dateStr.replace(/-/g, '')}-${String(indexCount).padStart(2, '0')}`,
+        handoverDate: dateStr,
+        fromDept: 'PX_GIA_CONG' as const,
+        toDept: 'PX_HOAN_THIEN' as const,
+        productName: pName,
+        customer: (p.customer || '').trim(),
+        unit: 'Cái',
+        prodQtyTransferred: actualOk > 0 ? actualOk : planQty,
+        prodQtyDefect: defect,
+        prodQtyMissing: missing,
+        rawQtyTransferred: planQty,
+        rawQtyDefect: 0,
+        rawQtyMissing: 0,
+        note: `Từ Kế hoạch ${dateStr}: Giao ${planQty} SP | Báo cáo ${actualOk} SP`,
+        senderName: 'PX Gia Công',
+        receiverName: 'PX Hoàn Thiện',
+        isConfirmed: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      insertHandoverSlip(db, row);
+    }
+
+    const finalItems = queryHandoverSlips(db, dateStr);
+    res.json({ success: true, addedCount, items: finalItems });
+  });
+
+  router.patch('/handovers/:id', requireRoles('SHIFT_LEADER', 'QC', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const id = String(req.params.id);
+    const existing = queryHandoverSlips(db).find((h) => h.id === id);
+    if (!existing) {
+      res.status(404).json({ error: `Không tìm thấy phiếu chuyển giao ${id}` });
+      return;
+    }
+
+    const isConfirming = req.body.isConfirmed !== undefined ? Boolean(req.body.isConfirmed) : existing.isConfirmed;
+    const confirmedAt = isConfirming
+      ? req.body.confirmedAt || new Date().toISOString()
+      : undefined;
+
+    const updated = {
+      ...existing,
+      ...req.body,
+      isConfirmed: isConfirming,
+      confirmedAt,
+    };
+
+    insertHandoverSlip(db, updated);
+    res.json({ success: true, item: updated });
+  });
+
+  router.delete('/handovers/:id', requireRoles('SHIFT_LEADER', 'DIRECTOR', 'ADMIN'), (req, res) => {
+    const id = String(req.params.id);
+    deleteHandoverSlip(db, id);
+    res.json({ success: true, id });
   });
 
   return router;

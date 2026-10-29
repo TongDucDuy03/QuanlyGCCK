@@ -57,18 +57,11 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
     label?: string
   ) => {
     try {
-      if (targetWorkerId) {
-        if (authMode === 'DEMO_QUICK') {
-          if (user?.workerId !== targetWorkerId) {
-            try {
-              await quickSwitch({ workerId: targetWorkerId });
-            } catch (swErr) {
-              console.warn('Quick switch fallback:', swErr);
-            }
-          }
-        } else if (!user || (targetPath.startsWith('/admin') && user.appRole === 'WORKER')) {
-          openPinModal(targetWorkerId);
-          return;
+      if (targetWorkerId && user?.workerId !== targetWorkerId) {
+        try {
+          await quickSwitch({ workerId: targetWorkerId });
+        } catch (swErr) {
+          console.warn('Quick switch fallback:', swErr);
         }
       }
       navigateTo(targetPath);
@@ -83,7 +76,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
     currentPath.includes('daily_schedule') || currentPath.startsWith('/print/daily-schedule');
   const isQcActive =
     currentPath.startsWith('/admin') &&
-    (currentPath.includes('logs_qc') || user?.appRole === 'QC' || user?.appRole === 'SHIFT_LEADER') &&
+    (currentPath.includes('logs_qc') || currentPath.includes('tab=logs_qc')) &&
     !isScheduleActive;
   const isAdminActive =
     currentPath.startsWith('/admin') && !isQcActive && !isScheduleActive;

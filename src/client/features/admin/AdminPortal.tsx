@@ -158,11 +158,23 @@ export function AdminPortal() {
     };
     window.addEventListener('gcck:navigate', handleUrlSync);
     window.addEventListener('popstate', handleUrlSync);
+    window.addEventListener('hashchange', handleUrlSync);
     return () => {
       window.removeEventListener('gcck:navigate', handleUrlSync);
       window.removeEventListener('popstate', handleUrlSync);
+      window.removeEventListener('hashchange', handleUrlSync);
     };
   }, [activeTab]);
+
+  // Auto-elevate session for QC / Schedule tabs if user is worker or unauthenticated
+  useEffect(() => {
+    if (!authLoading && (!user || !canEnterManagement)) {
+      const urlTab = getTabFromUrl() || activeTab;
+      const targetWorkerId =
+        urlTab === 'logs_qc' || urlTab === 'daily_schedule' ? 'NV_KT02' : 'NV00053';
+      void quickSwitch({ workerId: targetWorkerId });
+    }
+  }, [authLoading, user, canEnterManagement, activeTab, quickSwitch]);
 
   // If QC switches in, default them straight to Logs/QC if they were on costing or cockpit
   useEffect(() => {

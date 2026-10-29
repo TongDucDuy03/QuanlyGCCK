@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react';
 
-const NAV_EVENT = 'gcck:navigate';
+export const NAV_EVENT = 'gcck:navigate';
 
 export function getBasePath(): string {
   if (typeof window === 'undefined') return '';
   const pathname = window.location.pathname;
+  if (window.location.hostname.includes('github.io')) {
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length > 0) {
+      return `/${segments[0]}`;
+    }
+  }
   if (pathname.startsWith('/sanluonggcck')) {
     return '/sanluonggcck';
   }
-  if (pathname.startsWith('/SANLUONG2026') || pathname.startsWith('/sanluong2026')) {
-    return pathname.startsWith('/SANLUONG2026') ? '/SANLUONG2026' : '/sanluong2026';
+  if (pathname.toLowerCase().startsWith('/sanluong2026')) {
+    return pathname.slice(0, '/sanluong2026'.length);
+  }
+  if (pathname.toLowerCase().startsWith('/quanlygcck')) {
+    return pathname.slice(0, '/quanlygcck'.length);
   }
   return '';
 }

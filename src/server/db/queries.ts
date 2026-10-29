@@ -4,6 +4,7 @@ import type {
   CuttingTool,
   DeliveryLogDto,
   FaiStatus,
+  HandoverSlipRow,
   MachineInfo,
   MachineStatus,
   MealConfig,
@@ -430,4 +431,79 @@ export function queryDeliveries(db: DatabaseSync, poId?: string): DeliveryLogDto
     deliveredAt: String(r.delivered_at),
     note: String(r.note || ''),
   }));
+}
+
+export function queryHandoverSlips(db: DatabaseSync, dateStr?: string): HandoverSlipRow[] {
+  const rows = (
+    dateStr
+      ? db.prepare('SELECT * FROM handover_slips WHERE handover_date = ? ORDER BY created_at DESC, id ASC').all(dateStr)
+      : db.prepare('SELECT * FROM handover_slips ORDER BY handover_date DESC, created_at DESC LIMIT 200').all()
+  ) as Array<Record<string, any>>;
+
+  return rows.map((r) => ({
+    id: String(r.id),
+    handoverDate: String(r.handover_date),
+    fromDept: r.from_dept as any,
+    toDept: r.to_dept as any,
+    poId: r.po_id ? String(r.po_id) : undefined,
+    spId: r.sp_id ? String(r.sp_id) : undefined,
+    productName: String(r.product_name),
+    customer: String(r.customer),
+    unit: String(r.unit || 'Cái'),
+    prodQtyTransferred: Number(r.prod_qty_transferred || 0),
+    prodQtyDefect: Number(r.prod_qty_defect || 0),
+    prodQtyMissing: Number(r.prod_qty_missing || 0),
+    rawQtyTransferred: Number(r.raw_qty_transferred || 0),
+    rawQtyDefect: Number(r.raw_qty_defect || 0),
+    rawQtyMissing: Number(r.raw_qty_missing || 0),
+    note: String(r.note || ''),
+    receiverName: String(r.receiver_name || ''),
+    senderName: String(r.sender_name || ''),
+    isConfirmed: Boolean(r.is_confirmed),
+    confirmedAt: r.confirmed_at ? String(r.confirmed_at) : undefined,
+    createdAt: String(r.created_at || ''),
+  }));
+}
+
+export function insertHandoverSlip(db: DatabaseSync, row: HandoverSlipRow): void {
+  db.prepare(`
+    INSERT INTO handover_slips (
+      id, handover_date, from_dept, to_dept, po_id, sp_id,
+      product_name, customer, unit,
+      prod_qty_transferred, prod_qty_defect, prod_qty_missing,
+      raw_qty_transferred, raw_qty_defect, raw_qty_missing,
+      note, receiver_name, sender_name, is_confirmed, confirmed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      handover_date = excluded.handover_date,
+      from_dept = excluded.from_dept,
+      to_dept = excluded.to_dept,
+      po_id = excluded.po_id,
+      sp_id = excluded.sp_id,
+      product_name = excluded.product_name,
+      customer = excluded.customer,
+      unit = excluded.unit,
+      prod_qty_transferred = excluded.prod_qty_transferred,
+      prod_qty_defect = excluded.prod_qty_defect,
+      prod_qty_missing = excluded.prod_qty_missing,
+      raw_qty_transferred = excluded.raw_qty_transferred,
+      raw_qty_defect = excluded.raw_qty_defect,
+      raw_qty_missing = excluded.raw_qty_missing,
+      note = excluded.note,
+      receiver_name = excluded.receiver_name,
+      sender_name = excluded.sender_name,
+      is_confirmed = excluded.is_confirmed,
+      confirmed_at = excluded.confirmed_at
+  `).run(
+    row.id, row.handoverDate, row.fromDept, row.toDept, row.poId || null, row.spId || null,
+    row.productName, row.customer, row.unit || 'Cái',
+    row.prodQtyTransferred || 0, row.prodQtyDefect || 0, row.prodQtyMissing || 0,
+    row.rawQtyTransferred || 0, row.rawQtyDefect || 0, row.rawQtyMissing || 0,
+    row.note || '', row.receiverName || '', row.senderName || '',
+    row.isConfirmed ? 1 : 0, row.confirmedAt || null
+  );
+}
+
+export function deleteHandoverSlip(db: DatabaseSync, id: string): void {
+  db.prepare('DELETE FROM handover_slips WHERE id = ?').run(id);
 }
