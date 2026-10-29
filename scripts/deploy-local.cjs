@@ -46,3 +46,4 @@ if (fs.existsSync(distIndex)) {
   fs.writeFileSync(path.join(rootDir, '404.html'), content, 'utf8');
   console.log('Updated root index.html and 404.html for GitHub Pages');
 }
+

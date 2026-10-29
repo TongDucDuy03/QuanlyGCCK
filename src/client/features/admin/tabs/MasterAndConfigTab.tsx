@@ -13,6 +13,7 @@ import {
   KeyRound,
   Lock,
   Plus,
+  Printer,
   RefreshCw,
   Repeat,
   Save,
@@ -54,7 +55,7 @@ import {
 import { useAuth } from '@client/context/AuthContext';
 import type { AdminTabCommonProps } from '../types';
 
-type MasterSubTab = 'OPS' | 'MACHINES_TOOLS' | 'WORKERS' | 'CONFIG';
+type MasterSubTab = 'OPS' | 'MACHINES_TOOLS' | 'WORKERS' | 'CONFIG' | 'TRAINING_SOP';
 
 interface ToolSwapSessionRecord {
   id: number;
@@ -863,6 +864,18 @@ export function MasterAndConfigTab({
           >
             ⚙️ 4. Cấu Hình Hệ Thống
           </button>
+
+          <button
+            type="button"
+            onClick={() => setSubTab('TRAINING_SOP')}
+            className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
+              subTab === 'TRAINING_SOP'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            📖 5. Hướng Dẫn &amp; Đào Tạo (SOP)
+          </button>
         </div>
 
         <div className="flex items-center gap-2 px-2 text-xs text-slate-600">
@@ -1640,6 +1653,41 @@ export function MasterAndConfigTab({
             </Card>
           ) : (
             <>
+              {/* DATABASE BACKUP CARD */}
+              <Card className="border-l-4 border-l-emerald-600 bg-white">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="max-w-2xl space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Download className="h-5 w-5 text-emerald-600" />
+                      <h3 className="text-base font-bold text-slate-900">
+                        Sao Lưu &amp; Bảo Vệ Cơ Sở Dữ Liệu Xưởng (Database Backup)
+                      </h3>
+                    </div>
+                    <p className="text-xs leading-relaxed text-slate-600">
+                      Tải ngay toàn bộ cơ sở dữ liệu SQLite chứa toàn bộ Lệnh PO, Nhật ký sản lượng, Bảng lương và Định mức của xưởng về máy tính hoặc USB để lưu trữ an toàn.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="success"
+                    size="md"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = '/api/v1/system/backup';
+                      link.download = 'gcck_mes_backup.sqlite';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      toast.success('Đang tải về bản sao lưu CSDL (.sqlite)...');
+                    }}
+                    className="font-bold shadow-sm"
+                  >
+                    <Download className="h-4 w-4" />
+                    📥 Tải Bản Sao Lưu (.sqlite)
+                  </Button>
+                </div>
+              </Card>
+
               {/* PROMINENT STRICT PIN MODE SWITCH CARD */}
               <Card className="border-l-4 border-l-blue-600">
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -2040,6 +2088,204 @@ export function MasterAndConfigTab({
               </form>
             </>
           )}
+        </div>
+      )}
+
+      {/* ==================== SUB-TAB 5: HƯỚNG DẪN & ĐÀO TẠO (SOP) ==================== */}
+      {subTab === 'TRAINING_SOP' && (
+        <div className="space-y-6">
+          <Card className="border-l-4 border-l-amber-500 bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white font-black text-sm">SOP</span>
+                  <h2 className="text-base font-extrabold text-slate-900">
+                    Trung Tâm Đào Tạo Thực Chiến &amp; Quy Trình Vận Hành Tiêu Chuẩn (SOP)
+                  </h2>
+                </div>
+                <p className="mt-1 text-xs text-slate-600">
+                  Tài liệu quy trình chuẩn hóa dành cho Công nhân đứng máy, Tổ trưởng QC và Quản đốc xưởng Cơ khí Chính xác Thắng Lợi.
+                </p>
+              </div>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => window.print()}
+                className="font-bold text-slate-800 border-slate-300"
+              >
+                <Printer className="h-4 w-4 text-blue-600" />
+                🖨️ In Tài Liệu A4 Dán Xưởng
+              </Button>
+            </div>
+          </Card>
+
+          {/* Module 1: Worker 8 Steps */}
+          <Card className="space-y-4 border-slate-200 bg-white p-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-black text-emerald-800">
+                  PHẦN 1
+                </span>
+                <h3 className="text-sm font-black text-slate-900 uppercase">
+                  👷 Cẩm Nang 8 Bước Báo Cáo Nhanh Cho Công Nhân Đứng Máy (&le;20 giây)
+                </h3>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 1</span>
+                  <span className="text-[11px] font-bold text-blue-700">Khách Hàng &amp; SP</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">Chọn Sản Phẩm / Bản Vẽ</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Bấm chọn tên Khách hàng (Đại Phú, TFG, Win-Win...) ➔ Chọn tên bản vẽ chi tiết mà không cần gõ phím.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 2</span>
+                  <span className="text-[11px] font-bold text-emerald-700">Máy Vận Hành</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">Chọn Máy CNC Đứng Ca</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Chọn đúng máy bạn đang làm việc (Máy tiện FUJI, Doosan...). Chú ý Banner Vàng nếu ca trước có bàn giao gá đặt!
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 3</span>
+                  <span className="text-[11px] font-bold text-indigo-700">Nguyên Công</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">Chọn Bước Công Nghệ</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Các nguyên công của chi tiết đang chọn sẽ tự đưa lên đầu. Chạm chọn đúng bước NC01, NC02 bạn thực hiện.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 4</span>
+                  <span className="text-[11px] font-bold text-purple-700">Ghép Máy</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">Chọn Chế Độ Ghép Máy</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Đứng 1 máy chọn &ldquo;Máy chính (100%)&rdquo;. Trông thêm máy 2 chạy thô chọn &ldquo;Ghép máy 2 (33%)&rdquo; để cộng thêm thu nhập.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 5</span>
+                  <span className="text-[11px] font-bold text-sky-700">Sản Lượng</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">Nhập Số Lượng Làm Được</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Bấm các nút nhanh [+1] [+5] [+10] để cộng dồn sản lượng đạt. Nếu có hàng hỏng, nhập vào ô Phế phẩm để cấp bù phôi.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 6</span>
+                  <span className="text-[11px] font-bold text-amber-700">Ca Làm Việc</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">Chọn Ca (Nhận Ăn Ca)</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Chọn Ca 1, Ca 2 hoặc Ca 3. Với Ca 2 và Ca 3, hệ thống sẽ tự động cộng phụ cấp ăn ca 25.000 đ vào lương.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 7</span>
+                  <span className="text-[11px] font-bold text-rose-700">Tiêu Hao Dao</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">Ghi Nhận Số Cạnh Dao</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Nhập số cạnh chíp thực tế đã tiêu hao. Tiết kiệm dao hơn định mức sẽ được xét thưởng tiết kiệm dao cụ cuối tháng!
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="rounded bg-teal-600 px-1.5 py-0.5 text-[10px] font-black text-white">BƯỚC 8</span>
+                  <span className="text-[11px] font-bold text-teal-700">Gửi Báo Cáo</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900">🚀 Gửi Báo Cáo Sản Lượng</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Xem số tiền lượt này được cộng ở góc trên và bấm nút màu xanh to nhất màn hình. Dữ liệu nhảy ngay lên TV Andon xưởng!
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Module 2: QC & Shift Leader */}
+          <Card className="space-y-4 border-slate-200 bg-white p-5">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-900">
+                PHẦN 2
+              </span>
+              <h3 className="text-sm font-black text-slate-900 uppercase">
+                🔍 Quy Trình Tổ Trưởng &amp; QA/QC (3 Tầng Kiểm Soát)
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div className="text-xs font-black text-blue-700 uppercase">1. Duyệt Con Đầu (FAI)</div>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Lô từ 5 SP trở lên bắt buộc QC ký duyệt sản phẩm đầu tiên trước khi chạy hàng loạt. Tránh rủi ro gia công sai cả lô phôi.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div className="text-xs font-black text-amber-700 uppercase">2. Tự Kiểm Dung Sai (★)</div>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Công nhân đo kiểm và tích chọn dung sai đạt tại các điểm đo quan trọng. Tổ trưởng kiểm tra ngẫu nhiên và duyệt biên bản trong tab Nhật Ký &amp; QC.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div className="text-xs font-black text-emerald-700 uppercase">3. Sổ Bàn Giao BM.GC.01.02</div>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Khi chuyển hàng sang Phân xưởng Hoàn Thiện hoặc Nhiệt Luyện, người nhận vào tab <strong>Sổ Bàn Giao</strong> kiểm đếm và bấm &ldquo;✓ Nhận đủ&rdquo; để xác nhận kế hoạch đạt chuẩn.
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Module 3: Admin & Director */}
+          <Card className="space-y-4 border-slate-200 bg-white p-5">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <span className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-black text-blue-900">
+                PHẦN 3
+              </span>
+              <h3 className="text-sm font-black text-slate-900 uppercase">
+                🛡️ Quy Trình Quản Đốc &amp; Ban Giám Đốc (Lập Kế Hoạch &amp; Đối Soát P&amp;L)
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div className="text-xs font-black text-blue-700 uppercase">Lập Kế Hoạch Ngày Form VICO BM01</div>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Mở tab <strong>&ldquo;Kế Hoạch &amp; Tuần&rdquo;</strong>, phân công mặt hàng và sản lượng cho 13 thợ. Bấm <strong>&ldquo;Gửi Nhóm Zalo&rdquo;</strong> để gửi thông báo ca cho anh em công nhân chuẩn bị trước.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div className="text-xs font-black text-indigo-700 uppercase">Đối Soát Báo Giá &amp; Lãi/Lỗ (P&amp;L)</div>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Định mức chuẩn tính theo công thức: <code>Tổng thời gian &divide; Sản lượng ngày</code>. Phân hệ Báo giá tự động tính giá thành thực tế so với giá chào khách để cảnh báo các đơn hàng bị lỗ.
+                </p>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
 

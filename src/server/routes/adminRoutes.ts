@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
 import ExcelJS from 'exceljs';
 import type { DatabaseSync } from 'node:sqlite';
 import type {
@@ -2293,6 +2295,30 @@ export function createAdminRoutes(db: DatabaseSync): Router {
     const id = String(req.params.id);
     deleteHandoverSlip(db, id);
     res.json({ success: true, id });
+  });
+
+  // ==================== SAO LƯU & PHỤC HỒI CƠ SỞ DỮ LIỆU (.SQLITE) ====================
+  router.get('/system/backup', (req, res) => {
+    try {
+      // Force WAL checkpoint so data in WAL is merged into the main db file
+      try {
+        db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+      } catch (walErr) {
+        console.warn('wal_checkpoint error:', walErr);
+      }
+
+      const dbPath = process.env.GCCK_DB_PATH ?? path.resolve(process.cwd(), 'data', 'gcck_mes.sqlite');
+      if (!fs.existsSync(dbPath)) {
+        res.status(404).json({ error: 'Không tìm thấy file CSDL SQLite để sao lưu.' });
+        return;
+      }
+
+      const now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `gcck_mes_backup_${now}.sqlite`;
+      res.download(dbPath, filename);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Lỗi tạo bản sao lưu CSDL.' });
+    }
   });
 
   return router;

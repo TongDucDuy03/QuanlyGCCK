@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  BookOpen,
   CalendarClock,
   ChevronUp,
   CloudOff,
@@ -20,6 +21,7 @@ import {
   subscribeOfflineOutbox,
 } from '../lib/offlineOutbox';
 import { VicoLogo } from './VicoLogo';
+import { SopTrainingModal } from './SopTrainingModal';
 
 export interface TopRoleBarProps {
   currentPath: string;
@@ -30,6 +32,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
   const toast = useToast();
   const [collapsedKiosk, setCollapsedKiosk] = useState(false);
   const [outboxCount, setOutboxCount] = useState<number>(() => getOfflineOutbox().length);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     return subscribeOfflineOutbox((items) => setOutboxCount(items.length));
@@ -186,6 +189,16 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
             <Printer className="h-3.5 w-3.5 text-slate-500" />
             <span>Phiếu QR</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setGuideOpen(true)}
+            className="inline-flex min-h-[32px] items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 shadow-2xs transition-all hover:bg-amber-100"
+            title="Mở cẩm nang hướng dẫn thao tác & quy trình vận hành xưởng (SOP)"
+          >
+            <BookOpen className="h-3.5 w-3.5 text-amber-600" />
+            <span>📖 Hướng Dẫn</span>
+          </button>
         </nav>
 
         {/* Active User & PIN / Offline Sync Status */}
@@ -242,6 +255,8 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
           )}
         </div>
       </div>
+
+      <SopTrainingModal open={guideOpen} onClose={() => setGuideOpen(false)} />
     </header>
   );
 }
