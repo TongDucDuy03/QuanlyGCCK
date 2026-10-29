@@ -63,6 +63,7 @@ interface DailyDateMeta {
 export function DailyWeeklyScheduleTab({
   bootstrap: rawBootstrap,
   onRefreshBootstrap,
+  onNavigateTab,
 }: AdminTabCommonProps) {
   const bootstrap = rawBootstrap || getFallbackBootstrap();
   const toast = useToast();
@@ -774,6 +775,23 @@ export function DailyWeeklyScheduleTab({
             >
               <Printer className="h-4 w-4 text-blue-600" />
               🖨️ In Biểu Mẫu A4
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (onNavigateTab) {
+                  onNavigateTab('logs_qc', { logsSubView: 'HANDOVER' });
+                } else {
+                  navigateTo('/admin?tab=logs_qc');
+                }
+              }}
+              className="bg-amber-50 text-amber-900 border-amber-300 font-bold hover:bg-amber-100 shadow-sm"
+              title="Chuyển đến Sổ Bàn Giao Công Đoạn (Biểu Mẫu BM.GC.01.02) để đối soát kế hoạch đạt hay không"
+            >
+              <Truck className="h-4 w-4 text-amber-600" />
+              📋 Sổ Bàn Giao (BM.GC.01.02)
             </Button>
             {currentDateMeta && (
               <Button

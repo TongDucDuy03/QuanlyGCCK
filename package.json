@@ -8,7 +8,7 @@
     "dev": "concurrently -k -n SERVER,CLIENT -c cyan,green \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/deploy-local.cjs",
     "start": "tsx src/server/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

@@ -1,26 +1,36 @@
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="utf-8">
-    <title>GCCK Thắng Lợi — MES</title>
-    <script>
-      (function() {
-        var l = window.location;
-        var pathSegments = l.pathname.slice(1).split('/');
-        var repoBase = '/' + (pathSegments[0] || '');
-        var subPath = l.pathname.slice(repoBase.length) || '/';
-        var search = l.search ? ('?' + l.search.slice(1)) : '';
-        var normSub = subPath.startsWith('/') ? subPath : '/' + subPath;
-        var redirectUrl = l.protocol + '//' + l.hostname + (l.port ? (':' + l.port) : '') +
-          repoBase + '/#' + normSub + search + l.hash;
-        window.location.replace(redirectUrl);
-      })();
-    </script>
-  </head>
-  <body>
-    <div style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#334155;">
-      <h2 style="font-size:18px;font-weight:700;">Đang kết nối Hệ Thống Sản Lượng GCCK Thắng Lợi...</h2>
-      <p style="font-size:14px;color:#64748b;">Tự động chuyển hướng trong giây lát...</p>
-    </div>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563EB" />
+  <link rel="icon" type="image/png" href="./assets/vico_logo-Dcd85INz-Dcd85INz.png" />
+  <title>GCCK Thắng Lợi — Hệ Thống Điều Hành Sản Xuất MES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var redirect = params.get('p');
+      if (redirect) {
+        params.delete('p');
+        var search = params.toString() ? ('?' + params.toString()) : '';
+        var base = window.location.pathname.replace(/\/$/, '');
+        var normSub = redirect.startsWith('/') ? redirect : '/' + redirect;
+        window.location.replace(base + '/#' + normSub + search + window.location.hash);
+      }
+    })();
+  </script>
+  <script type="module" crossorigin src="./assets/index-S_nKRMUD.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CNdaSVcM.css">
+</head>
+
+<body class="bg-industrial-canvas text-slate-900 antialiased selection:bg-blue-600/15 selection:text-blue-900">
+  <div id="root"></div>
+</body>
+
 </html>
