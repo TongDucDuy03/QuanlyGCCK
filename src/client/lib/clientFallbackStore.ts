@@ -5,6 +5,7 @@ import type {
   BootstrapPayload,
   CuttingTool,
   HandoverSlipRow,
+  JobTravelerDto,
   MachineInfo,
   OperationMeta,
   ProductMeta,
@@ -12,6 +13,8 @@ import type {
   QuickSwitchProfile,
   ReportSubmitPayload,
   ReportSubmitResponse,
+  WeeklyProposalItem,
+  WeeklyReportData,
   WorkerDto,
 } from '@shared/types';
 import seedData from '../../../data/seed_gcck_1233.json';
@@ -359,14 +362,63 @@ export async function submitDirectToGoogleAppsScript(
 
   const worker = FALLBACK_WORKERS.find((w) => w.id === payload.workerId) || {
     name: 'Công nhân GCCK',
+    role: 'Thợ chính',
+    costPerSec: 14.24,
+    chatId: '',
   };
   const op = FALLBACK_OPERATIONS.find((o) => o.ncId === payload.ncId);
   const machName = payload.machineName || 'Máy Tiện CNC 1';
 
   const scrapQty = Number(payload.scrapQty || 0);
   const edgesUsed = Number(payload.edgesUsed || 0);
+  const unitWage = Math.round(Number(op?.stdLaborCost) || 35000);
+  const turnIncome = (payload.okQty || 0) * unitWage;
 
-  const gasBody = {
+  const fullPayload: Record<string, any> = {
+    workDate: payload.workDate || todayStr,
+    shiftType: payload.shiftType || 'Ca 1 (Sáng 06h-14h)',
+    startTime: payload.startTime || '06:00',
+    endTime: payload.endTime || '14:00',
+    overtimeMinutes: String(payload.overtimeMinutes || '0'),
+    isSunday: Boolean(payload.isSunday),
+    workerId: payload.workerId,
+    workerName: worker.name,
+    workerRole: (worker as any).role || 'Thợ chính',
+    workerCostPerSec: (worker as any).costPerSec || 14.24,
+    workerChatId: (worker as any).chatId || '',
+    machineMode: payload.machineMode || 'Chạy 1 máy',
+    machineName: machName,
+    machineCostPerHour: 250000,
+    customer: op?.customer || 'Vico - Nội bộ / Khách lẻ',
+    productName: op?.productName || 'Sản phẩm GCCK',
+    poId: payload.poId || 'PO485-01',
+    ncId: op?.ncId || payload.ncId,
+    opName: op?.opName || payload.ncId || 'Gia công',
+    stage: op?.stage || 'End',
+    stdSeconds: op?.stdSeconds || 1800,
+    cuttingRec: op?.cuttingRec || '',
+    toolCode: payload.toolCode || op?.toolCode || '',
+    toolName: (payload as any).toolName || op?.toolName || '',
+    costPerEdge: 0,
+    stdEdgesPerPcs: 0,
+    edgesUsed,
+    okQty: Number(payload.okQty || 0),
+    reworkQty: Number(payload.reworkQty || 0),
+    scrapQty,
+    defectType: scrapQty > 0 ? (payload.defectType || 'Không rõ lỗi') : 'Không có lỗi',
+    damageValue: Number(payload.damageValue || 0),
+    stopMinutes: Number(payload.stopMinutes || 0),
+    stopReason: payload.stopReason || 'Không có dừng máy',
+    handoverNote: (payload as any).handoverNote || '',
+    photoBase64: payload.photoBase64 || '',
+  };
+
+  const gasBody: Record<string, any> = {
+    action: 'submitDailyReport',
+    payload: fullPayload,
+    report: fullPayload,
+    data: fullPayload,
+    // Direct fields for backward compatibility with pure formula GAS
     record_id: recordUid,
     recordUid,
     date: payload.workDate || todayStr,
@@ -399,9 +451,6 @@ export async function submitDirectToGoogleAppsScript(
   } catch (gasErr) {
     console.warn('Direct GAS sync warning (stored offline):', gasErr);
   }
-
-  const unitWage = Math.round(Number(op?.stdLaborCost) || 35000);
-  const turnIncome = (payload.okQty || 0) * unitWage;
 
   const mockLogDto: any = {
     id: Date.now(),
@@ -460,5 +509,192 @@ export async function submitDirectToGoogleAppsScript(
       edgesConsumed: edgesUsed,
     },
     todayTotalIncome: turnIncome,
+  };
+}
+
+export function getFallbackTraveler(poId: string): JobTravelerDto {
+  const cleanPoId = poId.replace(/\/traveler$/, '').trim();
+  const po =
+    FALLBACK_ORDERS.find((o) => o.poId === cleanPoId) ||
+    FALLBACK_ORDERS[0] || {
+      poId: cleanPoId || 'PO485-01',
+      customer: 'Vico - Nội bộ / Khách lẻ',
+      productName: 'ALKTOP 1342 M',
+      qtyPo: 20,
+      finishedQty: 18,
+      remainQty: 2,
+      dueDate: '2026-11-05',
+      status: 'Đang gia công',
+      materialLot: 'LÔ-2026-09A',
+      faiStatus: 'FAI_PASSED',
+    };
+
+  const product =
+    FALLBACK_PRODUCTS.find((p) => p.productName === po.productName) || {
+      spId: 'SP-01',
+      customer: po.customer,
+      productName: po.productName,
+      matName: 'Thép C45',
+      setupMinutesStd: 15,
+      opCount: 3,
+      totalStdSeconds: 5400,
+      drawingUrl: '',
+      techDocUrl: '',
+      quotedPrice: 120000,
+      rawMaterialCost: 40000,
+      outsourceCost: 0,
+    };
+
+  const ops = FALLBACK_OPERATIONS.filter(
+    (o) => o.productName === po.productName
+  ).sort((a, b) => a.stepOrder - b.stepOrder);
+
+  const finalOpsList = ops.length > 0 ? ops : FALLBACK_OPERATIONS.slice(0, 3);
+  const mappedOps = finalOpsList.map((op, idx) => ({
+    ...op,
+    stepOrder: idx + 1,
+    qrPayload: `GCCK|${po.poId}|${op.ncId}`,
+    doneOkQty: Math.floor(po.finishedQty * 0.9),
+    faiPassed: true,
+  }));
+
+  return {
+    po,
+    product,
+    operations: mappedOps,
+    faiRecords: [
+      {
+        id: 1,
+        inspectionType: 'FAI',
+        poId: po.poId,
+        spId: product?.spId || 'SP-01',
+        ncId: mappedOps[0]?.ncId || 'NC098',
+        productName: po.productName,
+        opName: mappedOps[0]?.opName || 'Gia công',
+        machineName: 'Máy Tiện CNC 1',
+        operatorId: 'NV00214',
+        inspectorId: 'NV_KT02',
+        inspectorName: 'Nguyễn Văn Duy (KCS)',
+        result: 'PASS',
+        sampleSize: 1,
+        defectQty: 0,
+        measuredDimsJson: JSON.stringify({ 'Kích thước chính': 45.02, 'Độ nhám': 1.6 }),
+        rootCause: '',
+        correctiveAction: 'Đạt dung sai bản vẽ ISO 2768-m. Cho phép gia công hàng loạt.',
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    printedAt: new Date().toISOString(),
+  };
+}
+
+export function getFallbackWeeklyReport(weekStart?: string): WeeklyReportData {
+  const wStart = weekStart || '2026-10-15';
+  const startDt = new Date(wStart);
+  const endDt = new Date(startDt.getTime() + 6 * 24 * 3600 * 1000);
+  const weekEnd = endDt.toISOString().slice(0, 10);
+  const weekLabel = `Tuần làm việc (${wStart.slice(8, 10)}/${wStart.slice(5, 7)} - ${weekEnd.slice(8, 10)}/${weekEnd.slice(5, 7)}/${weekEnd.slice(0, 4)})`;
+
+  return {
+    weekStart: wStart,
+    weekEnd,
+    weekLabel,
+    summary: {
+      totalPlannedQty: 240,
+      totalActualQty: 228,
+      completionPct: 95,
+      totalPoActive: FALLBACK_ORDERS.length,
+      completedPoCount: 8,
+      delayedPoCount: 1,
+    },
+    customerStats: [
+      {
+        customer: 'Taniguchi',
+        productCount: 12,
+        plannedQty: 120,
+        actualQty: 118,
+        completionPct: 98,
+        poCount: 6,
+      },
+      {
+        customer: 'Hạ Long',
+        productCount: 8,
+        plannedQty: 80,
+        actualQty: 74,
+        completionPct: 92,
+        poCount: 4,
+      },
+      {
+        customer: 'Vico - Nội bộ / Khách lẻ',
+        productCount: 14,
+        plannedQty: 40,
+        actualQty: 36,
+        completionPct: 90,
+        poCount: 5,
+      },
+    ],
+    poStatuses: FALLBACK_ORDERS.slice(0, 10).map((po) => ({
+      poId: po.poId,
+      customer: po.customer,
+      productName: po.productName,
+      qtyPo: po.qtyPo,
+      finishedQty: po.finishedQty,
+      wipQty: po.remainQty,
+      dueDate: po.dueDate,
+      status: po.status,
+      isDelayed: po.remainQty > 0 && new Date(po.dueDate) < new Date(),
+    })),
+    workerLaborStats: FALLBACK_WORKERS.slice(0, 10).map((w, idx) => ({
+      workerId: w.id,
+      workerName: w.name,
+      standardShifts: 6,
+      otHours: idx % 2 === 0 ? 4 : 0,
+      sundayHours: 0,
+      offDays: 0,
+      pDays: 0,
+      totalConvertedShifts: 6 + (idx % 2 === 0 ? 0.5 : 0),
+      actualCompletedPieces: 25 + idx * 3,
+    })),
+    downtimeIncidents: [
+      {
+        id: 'INC-01',
+        machineName: 'Máy tiện FUJI',
+        stopMinutes: 45,
+        reason: 'Thay mảnh hợp kim CNC do mòn đầu dao',
+        date: wStart,
+        workerName: 'Trần Văn Quỳnh',
+      },
+    ],
+    customIncidentNotes: ['Bảo dưỡng định kỳ trục chính máy phay Moriseiki hoàn tất trong ca sáng'],
+    proposals: [
+      {
+        id: 1,
+        weekStart: wStart,
+        category: 'Dao cụ & Thiết bị',
+        proposer: 'Hoàng Ngọc Hà (Quản đốc)',
+        content: 'Bổ sung thêm 20 mảnh chíp tiện WNMG080408 cho máy Tiện CNC 1 để chạy đơn hàng Taniguchi',
+        priority: 'CAO',
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    nextWeekForecast: {
+      duePos: FALLBACK_ORDERS.slice(0, 4).map((po) => ({
+        poId: po.poId,
+        customer: po.customer,
+        productName: po.productName,
+        remainQty: po.remainQty,
+        dueDate: po.dueDate,
+        requiredHours: Math.round((po.remainQty * 1800) / 3600),
+        defaultMachine: 'Máy Tiện CNC 1',
+      })),
+      carryoverBacklogQty: 12,
+      carryoverHours: 6,
+      totalRequiredHours: 42,
+      machineCapacityHours: 120,
+      overloadCapacityHours: 0,
+      isOverloaded: false,
+      outsourceRecommendations: [],
+    },
   };
 }
