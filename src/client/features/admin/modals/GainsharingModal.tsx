@@ -67,7 +67,7 @@ export function GainsharingModal({
     return allMachines.find((m) => m.id === 'M02') || allMachines[0] || {
       id: 'M02',
       name: 'Máy Tiện CNC 1',
-      costPerHour: 87500,
+      costPerHour: 100000,
     };
   }, [allMachines]);
 
@@ -76,12 +76,12 @@ export function GainsharingModal({
     return allMachines.find((m) => m.id === selectedMachineId) || defaultMachine;
   }, [allMachines, selectedMachineId, defaultMachine]);
 
-  // Base shift cost (Đơn giá 1 Ca 8h = costPerHour * 8)
-  const defaultShiftCost = (activeMachine.costPerHour || 87500) * 8;
+  // Base shift cost (Đơn giá 1 Ca 8h = costPerHour * 8, chuẩn xưởng VICO 800.000 đ/ca trọn gói)
+  const defaultShiftCost = (activeMachine.costPerHour || 100000) * 8;
   const [customShiftCost, setCustomShiftCost] = useState<number>(defaultShiftCost);
 
   useEffect(() => {
-    setCustomShiftCost((activeMachine.costPerHour || 87500) * 8);
+    setCustomShiftCost((activeMachine.costPerHour || 100000) * 8);
   }, [activeMachine]);
 
   // Baseline standard quantity in 1 shift
@@ -239,7 +239,7 @@ export function GainsharingModal({
             >
               {allMachines.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name} — {formatNumber((m.costPerHour || 87500) * 8)} đ/ca ({formatNumber(m.costPerHour || 87500)} đ/h)
+                  {m.name} — {formatNumber((m.costPerHour || 100000) * 8)} đ/ca ({formatNumber(m.costPerHour || 100000)} đ/h)
                 </option>
               ))}
             </select>

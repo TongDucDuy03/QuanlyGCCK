@@ -273,6 +273,11 @@ export interface ProductCostingSummary {
   stepBreakdowns: OpStepCostBreakdown[];
   drawingUrl?: string;
   techDocUrl?: string;
+
+  // Real-world shopfloor all-in machine rate (800k/ca = 100k/h) & 8h shift quota
+  allInMachineCost?: number;
+  shiftQuota8h?: number;
+  shiftTargetRevenue?: number;
 }
 
 export interface MealConfig {

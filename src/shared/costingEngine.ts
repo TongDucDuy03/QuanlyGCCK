@@ -13,11 +13,16 @@ import type {
  *   wipQty = 8, actualUnitCost = totalStdCost, totalBatchProfit = 0.
  * - If finishedQty > 0 and an upstream step was not logged (loggedOkQty === 0), substitutes
  *   stdOpUnitCost (including 10% overhead) for that step to prevent fake profit.
+ * - Real-world Shopfloor support: All-in Machine Rate (800k/ca 8h = 100k/h) & 8h Shift Quota.
  */
 export function computeProductCosting(
   product: ProductMeta,
   ops: OperationMeta[],
-  logs: OpLogSummary[]
+  logs: OpLogSummary[],
+  options?: {
+    costingModel?: 'ALL_IN_MACHINE' | 'DETAILED_BREAKDOWN';
+    allInRatePerHour?: number;
+  }
 ): ProductCostingSummary {
   const sortedOps = [...ops].sort((a, b) => (a.stepOrder || 0) - (b.stepOrder || 0));
 
@@ -37,7 +42,16 @@ export function computeProductCosting(
   const stdOverhead = Math.round(machiningBase * 0.1);
   const rawMaterialCost = Math.round(Number(product.rawMaterialCost) || 0);
   const outsourceCost = Math.round(Number(product.outsourceCost) || 0);
-  const totalStdCost = machiningBase + stdOverhead + rawMaterialCost + outsourceCost;
+  let totalStdCost = machiningBase + stdOverhead + rawMaterialCost + outsourceCost;
+
+  // Real-world All-in Machine Rate (800k/ca 8h = 100k/h)
+  const allInRatePerHour = Math.max(1, Number(options?.allInRatePerHour) || 100000);
+  const allInMachineCost = Math.round((totalSec / 3600) * allInRatePerHour) + rawMaterialCost + outsourceCost;
+  const shiftQuota8h = totalSec > 0 ? Math.floor(28800 / totalSec) : 0;
+
+  if (options?.costingModel === 'ALL_IN_MACHINE') {
+    totalStdCost = allInMachineCost;
+  }
 
   // Aggregate non-voided logs per ncId
   const activeLogs = (logs || []).filter((l) => !l.isVoided);
@@ -104,6 +118,7 @@ export function computeProductCosting(
   const totalBatchProfit = hasActual ? unitProfit * finishedQty : 0;
   const marginPct =
     quotedPrice > 0 ? Number(((unitProfit / quotedPrice) * 100).toFixed(1)) : 0;
+  const shiftTargetRevenue = shiftQuota8h * quotedPrice;
 
   return {
     spId: product.spId,
@@ -133,5 +148,8 @@ export function computeProductCosting(
     stepBreakdowns,
     drawingUrl: product.drawingUrl || '',
     techDocUrl: product.techDocUrl || '',
+    allInMachineCost,
+    shiftQuota8h,
+    shiftTargetRevenue,
   };
 }

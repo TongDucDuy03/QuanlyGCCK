@@ -77,8 +77,6 @@ describe('costingEngine — SP095 Anti-Fake-Profit, Std Fallback & Raw/Outsource
 
     expect(res.finishedQty).toBe(4);
     expect(res.hasActual).toBe(true);
-    // Step 1 stdOpUnitCost = round((48132 + 349992 + 43750) * 1.1) = 486061
-    // Step 2 actual unit = 8800000 / 4 = 2200000
     expect(res.stepBreakdowns[0].usedStdFallback).toBe(true);
     expect(res.actualUnitCost).toBe(486_061 + 2_200_000);
   });
@@ -100,5 +98,51 @@ describe('costingEngine — SP095 Anti-Fake-Profit, Std Fallback & Raw/Outsource
     expect(res.actualUnitCost).toBe(400_000 + 2_200_000 + 600_000);
     expect(res.unitProfit).toBe(4_500_000 - res.actualUnitCost);
     expect(res.totalBatchProfit).toBe(res.unitProfit * 5);
+  });
+
+  it('calculates All-in Machine Rate (800k/shift = 100k/h) and 8h Shift Quota correctly for SP002 Đĩa búa', () => {
+    const diaBuaProduct: ProductMeta = {
+      spId: 'SP002',
+      customer: 'Đại Phú',
+      productName: 'Đĩa búa 2000x2000 D750- DP (Đĩa 2 bên moay ơ 260/185 dày 124)',
+      quotedPrice: 100_000,
+      rawMaterialCost: 0,
+      outsourceCost: 0,
+    };
+    const diaBuaOps: OperationMeta[] = [
+      {
+        ncId: 'NC002',
+        spId: 'SP002',
+        customer: 'Đại Phú',
+        productName: diaBuaProduct.productName,
+        opName: 'Gia công tiện hoàn thiện',
+        stdSeconds: 3600, // 1h
+        stage: 'End',
+        stepOrder: 1,
+        isFinalOp: 1,
+        defaultMachine: 'Máy tiện đứng T1516',
+        matName: 'Thép hợp kim',
+        cuttingRec: '',
+        toolCode: 'T01',
+        toolName: 'Mảnh tiện thô CNMG 120408',
+        costPerEdge: 27500,
+        stdEdgesPerPcs: 1.68,
+        stdLaborCost: 50004,
+        stdMachCost: 87500,
+        stdToolCost: 46200,
+      },
+    ];
+
+    const res = computeProductCosting(diaBuaProduct, diaBuaOps, [], {
+      costingModel: 'ALL_IN_MACHINE',
+      allInRatePerHour: 100_000,
+    });
+
+    // 1h * 100k/h = 100.000 đ
+    expect(res.allInMachineCost).toBe(100_000);
+    expect(res.totalStdCost).toBe(100_000);
+    expect(res.shiftQuota8h).toBe(8); // 28800 / 3600 = 8 pcs/shift
+    expect(res.shiftTargetRevenue).toBe(800_000); // 8 * 100k = 800k (recovers full shift cost)
+    expect(res.unitProfit).toBe(0); // Quoted 100k - Cost 100k = 0 (perfect break-even standard)
   });
 });
