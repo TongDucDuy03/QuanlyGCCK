@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertOctagon,
   AlertTriangle,
+  ArrowRightLeft,
   Calendar,
   CalendarCheck2,
   CalendarClock,
@@ -43,6 +44,7 @@ import { apiClient } from '@client/lib/apiClient';
 import { formatDateVn, formatNumber, formatVnd } from '@client/lib/formatters';
 import { downloadDailyScheduleExcel } from '@client/lib/excelService';
 import { navigateTo } from '@client/lib/navigation';
+import { VicoLogo } from '@client/components/VicoLogo';
 import {
   Badge,
   Button,
@@ -684,7 +686,7 @@ export function DailyWeeklyScheduleTab({
             }`}
           >
             <CalendarClock className="h-4 w-4" />
-            <span>1. Kế Hoạch Sản Xuất Ngày (Form VICO QT.01.BM01)</span>
+            <VicoLogo className="h-5 w-auto object-contain inline-block mr-1" /><span>1. Kế Hoạch Sản Xuất Ngày (Form VICO QT.01.BM01)</span>
           </button>
           <button
             type="button"
@@ -769,9 +771,22 @@ export function DailyWeeklyScheduleTab({
               size="sm"
               onClick={() => navigateTo(`/print/daily-schedule?date=${encodeURIComponent(selectedDate)}`)}
               className="font-bold text-slate-800"
+              title="In Biểu Mẫu Kế Hoạch Sản Xuất Ngày Form VICO QT.01.BM01 (Khổ A4)"
             >
               <Printer className="h-4 w-4 text-blue-600" />
-              🖨️ In Biểu Mẫu A4
+              🖨️ In Kế Hoạch (BM01)
+            </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => navigateTo(`/print/handover?date=${encodeURIComponent(selectedDate)}`)}
+              className="bg-purple-50 text-purple-900 border-purple-300 font-bold hover:bg-purple-100 shadow-sm"
+              title="Xem và In Sổ Chuyển Giao Công Đoạn Gia Công Form BM.GC.01.02 theo ngày kế hoạch"
+            >
+              <ArrowRightLeft className="h-4 w-4 text-purple-600" />
+              📋 Sổ Chuyển Công Đoạn (BM.GC.01.02)
             </Button>
             {currentDateMeta && (
               <Button
