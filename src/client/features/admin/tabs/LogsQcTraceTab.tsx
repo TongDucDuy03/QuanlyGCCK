@@ -742,7 +742,7 @@ export function LogsQcTraceTab({
                         {formatDateVn(l.workDate)} • {l.timeStr}
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
-                        {l.shiftType.split('(')[0].trim()} ({l.startTime}–{l.endTime})
+                        {(l.shiftType ? l.shiftType.split('(')[0].trim() : 'Ca 1')} ({l.startTime || '07:30'}–{l.endTime || '16:30'})
                         {l.isLightsOut === 1 && (
                           <span className="ml-1 font-semibold text-violet-700">🌙 Lights-out</span>
                         )}

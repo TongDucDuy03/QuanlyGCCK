@@ -179,7 +179,7 @@ export function DailyWeeklyScheduleTab({
 
   // Shift date helper (-1 day, +1 day)
   const changeDateByDays = (days: number) => {
-    const parts = selectedDate.split('-');
+    const parts = (selectedDate || '').split('-');
     if (parts.length !== 3) return;
     const cur = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     cur.setDate(cur.getDate() + days);
@@ -455,7 +455,7 @@ export function DailyWeeklyScheduleTab({
 
   // Generate clean Zalo group summary text
   const generateZaloSummary = () => {
-    const [y, m, d] = selectedDate.split('-');
+    const [y, m, d] = (selectedDate || '').split('-');
     const displayDate = d && m && y ? `${d}/${m}/${y}` : selectedDate;
 
     let text = `📋 KẾ HOẠCH SẢN XUẤT NGÀY ${displayDate} (FORM VICO QT.01.BM01)\n`;

@@ -40,8 +40,8 @@ export function DailySchedulePrint() {
     };
   }, [workDate]);
 
-  const [y, m, d] = workDate.split('-');
-  const displayDateStr = `${d}/${m}/${y}`;
+  const [y, m, d] = (workDate || '').split('-');
+  const displayDateStr = d && m && y ? `${d}/${m}/${y}` : workDate;
 
   // Group by shift
   const shiftGroups = ['Ca 2', 'Ca 3', 'Ca 1', 'Ca Hành chính'].filter((s) =>

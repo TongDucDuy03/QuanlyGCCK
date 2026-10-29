@@ -41,7 +41,7 @@ export function HandoverSlipPrint() {
     };
   }, [dateStr]);
 
-  const [y, m, d] = dateStr.split('-');
+  const [y, m, d] = (dateStr || '').split('-');
 
   // Always display at least 10 rows matching the ISO template
   const paddedRows = useMemo(() => {
