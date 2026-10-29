@@ -38,27 +38,26 @@ export function navigateTo(path: string): void {
     return;
   }
 
-  if (window.location.pathname === fullPath) return;
+  const currentFull = window.location.pathname + window.location.search;
+  if (currentFull === fullPath) return;
   window.history.pushState({}, '', fullPath);
   window.dispatchEvent(new CustomEvent(NAV_EVENT));
 }
 
 export function useLocationPath(): string {
-  const [pathname, setPathname] = useState<string>(() => {
+  const getFullNormPath = () => {
     if (typeof window === 'undefined') return '/worker';
     if (window.location.hash && window.location.hash.startsWith('#/')) {
       return window.location.hash.slice(1);
     }
-    return normalizePath(window.location.pathname);
-  });
+    return normalizePath(window.location.pathname) + window.location.search;
+  };
+
+  const [pathname, setPathname] = useState<string>(getFullNormPath);
 
   useEffect(() => {
     const sync = () => {
-      if (window.location.hash && window.location.hash.startsWith('#/')) {
-        setPathname(window.location.hash.slice(1));
-      } else {
-        setPathname(normalizePath(window.location.pathname));
-      }
+      setPathname(getFullNormPath());
     };
     window.addEventListener('popstate', sync);
     window.addEventListener('hashchange', sync);

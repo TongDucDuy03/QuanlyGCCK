@@ -105,12 +105,22 @@ export function getSessionSecret(db: DatabaseSync): string {
 }
 
 export function loadUserById(db: DatabaseSync, workerId: string): AuthSessionUser | null {
+  const normId = String(workerId || '').trim();
+  const aliasId =
+    normId === 'NV_KT01' ? 'NV00101' :
+    normId === 'NV_KT02' ? 'NV00102' :
+    normId === 'NV_KT03' ? 'NV00103' :
+    normId === 'NV00101' ? 'NV_KT01' :
+    normId === 'NV00102' ? 'NV_KT02' :
+    normId === 'NV00103' ? 'NV_KT03' :
+    normId === 'NV00112' ? 'NV00214' : normId;
+
   const row = db
     .prepare(
       `SELECT id, name, username, role, title, salary_mode, base_salary, cost_per_sec, chat_id, is_linked, is_active
-       FROM workers WHERE id = ?`
+       FROM workers WHERE id = ? OR id = ?`
     )
-    .get(workerId) as Record<string, any> | undefined;
+    .get(normId, aliasId) as Record<string, any> | undefined;
 
   if (!row || Number(row.is_active) === 0) return null;
 

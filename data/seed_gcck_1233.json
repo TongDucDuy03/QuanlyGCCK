@@ -170,7 +170,7 @@
       "pin": "1234"
     },
     {
-      "id": "NV00101",
+      "id": "NV_KT01",
       "name": "Đinh Văn Thiên",
       "role": "KT",
       "title": "Kỹ thuật / Điều độ",
@@ -183,7 +183,7 @@
       "pin": "1234"
     },
     {
-      "id": "NV00102",
+      "id": "NV_KT02",
       "name": "Nguyễn Văn Duy",
       "role": "KT",
       "title": "Kỹ thuật / QC",
@@ -196,7 +196,7 @@
       "pin": "1234"
     },
     {
-      "id": "NV00103",
+      "id": "NV_KT03",
       "name": "Lê Trung Hải",
       "role": "KT",
       "title": "Quản lý / Kỹ sư trưởng",
@@ -23044,7 +23044,7 @@
       ]
     },
     {
-      "empId": "NV00101",
+      "empId": "NV_KT01",
       "name": "Đinh Văn Thiên",
       "workType": "Công",
       "defaultShift": "Ca 1",
@@ -23094,7 +23094,7 @@
       ]
     },
     {
-      "empId": "NV00102",
+      "empId": "NV_KT02",
       "name": "Nguyễn Văn Duy",
       "workType": "Công",
       "defaultShift": "Ca 1",
@@ -23144,7 +23144,7 @@
       ]
     },
     {
-      "empId": "NV00103",
+      "empId": "NV_KT03",
       "name": "Lê Trung Hải",
       "workType": "Công",
       "defaultShift": "Ca 1",

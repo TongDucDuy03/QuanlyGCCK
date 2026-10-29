@@ -75,7 +75,22 @@ export function AdminPortal() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<AdminTabKey>('cockpit');
+  const getTabFromUrl = (): AdminTabKey | null => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab') as AdminTabKey | null;
+    if (tabParam && ['cockpit', 'orders', 'daily_schedule', 'logs_qc', 'costing', 'attendance', 'master'].includes(tabParam)) {
+      return tabParam;
+    }
+    const path = window.location.pathname;
+    if (path.includes('daily_schedule')) return 'daily_schedule';
+    if (path.includes('logs_qc')) return 'logs_qc';
+    return null;
+  };
+
+  const [activeTab, setActiveTab] = useState<AdminTabKey>(
+    () => getTabFromUrl() || (user?.appRole === 'QC' ? 'logs_qc' : 'cockpit')
+  );
   const [deepLink, setDeepLink] = useState<AdminDeepLinkContext | undefined>(undefined);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
@@ -128,10 +143,29 @@ export function AdminPortal() {
     }
   }, [authLoading, user?.workerId, user?.appRole]);
 
-  // If QC switches in, default them straight to Logs/QC if they were on costing
+  // Synchronize activeTab with URL / Navigation events
   useEffect(() => {
+    const handleUrlSync = () => {
+      const tab = getTabFromUrl();
+      if (tab && tab !== activeTab) {
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('gcck:navigate', handleUrlSync);
+    window.addEventListener('popstate', handleUrlSync);
+    return () => {
+      window.removeEventListener('gcck:navigate', handleUrlSync);
+      window.removeEventListener('popstate', handleUrlSync);
+    };
+  }, [activeTab]);
+
+  // If QC switches in, default them straight to Logs/QC if they were on costing or cockpit
+  useEffect(() => {
+    const tabFromUrl = getTabFromUrl();
     if (!canViewCosting && activeTab === 'costing') {
       setActiveTab(user?.appRole === 'QC' ? 'logs_qc' : 'cockpit');
+    } else if (user?.appRole === 'QC' && !tabFromUrl && activeTab === 'cockpit') {
+      setActiveTab('logs_qc');
     }
   }, [canViewCosting, activeTab, user?.appRole]);
 
@@ -165,6 +199,11 @@ export function AdminPortal() {
         return;
       }
       setActiveTab(tab);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
       setDeepLink(ctx ? { ...ctx } : undefined);
       setMobileDrawerOpen(false);
     },

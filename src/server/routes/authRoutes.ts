@@ -133,9 +133,10 @@ export function createAuthRoutes(db: DatabaseSync): Router {
     let targetId = normalizeVn(req.body?.workerId || '');
     const roleHint = normalizeVn(req.body?.role || '').toUpperCase();
 
-    if (targetId === 'NV00112') {
-      targetId = 'NV00214';
-    }
+    if (targetId === 'NV00112') targetId = 'NV00214';
+    if (targetId === 'NV00102') targetId = 'NV_KT02';
+    if (targetId === 'NV00101') targetId = 'NV_KT01';
+    if (targetId === 'NV00103') targetId = 'NV_KT03';
 
     if (!targetId) {
       if (roleHint === 'ADMIN' || roleHint === 'DIRECTOR' || roleHint === 'QĐ') {

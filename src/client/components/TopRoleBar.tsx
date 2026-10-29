@@ -59,7 +59,11 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
       if (targetWorkerId) {
         if (authMode === 'DEMO_QUICK') {
           if (user?.workerId !== targetWorkerId) {
-            await quickSwitch({ workerId: targetWorkerId });
+            try {
+              await quickSwitch({ workerId: targetWorkerId });
+            } catch (swErr) {
+              console.warn('Quick switch fallback:', swErr);
+            }
           }
         } else if (!user || (targetPath.startsWith('/admin') && user.appRole === 'WORKER')) {
           openPinModal(targetWorkerId);
@@ -68,21 +72,21 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
       }
       navigateTo(targetPath);
       if (label) toast.info(`Đã chuyển sang ${label}`);
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể chuyển vai trò.');
-      openPinModal(targetWorkerId);
+    } catch {
+      navigateTo(targetPath);
     }
   };
 
   const isWorkerActive = currentPath === '/' || currentPath.startsWith('/worker');
+  const isScheduleActive =
+    currentPath.includes('daily_schedule') || currentPath.startsWith('/print/daily-schedule');
   const isQcActive =
     currentPath.startsWith('/admin') &&
-    (user?.appRole === 'QC' || user?.appRole === 'SHIFT_LEADER');
+    (currentPath.includes('logs_qc') || user?.appRole === 'QC' || user?.appRole === 'SHIFT_LEADER') &&
+    !isScheduleActive;
   const isAdminActive =
-    currentPath.startsWith('/admin') &&
-    user?.appRole !== 'QC' &&
-    user?.appRole !== 'SHIFT_LEADER';
-  const isPrintActive = currentPath.startsWith('/print/');
+    currentPath.startsWith('/admin') && !isQcActive && !isScheduleActive;
+  const isPrintActive = currentPath.startsWith('/print/') && !currentPath.startsWith('/print/daily-schedule');
 
   const pillCls = (active: boolean) =>
     `inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-all ${
@@ -128,7 +132,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
 
           <button
             type="button"
-            onClick={() => void handleRoleNav('/admin', 'NV_KT02', '🔍 Tổ Trưởng / QC')}
+            onClick={() => void handleRoleNav('/admin?tab=logs_qc', 'NV_KT02', '🔍 Tổ Trưởng / QC')}
             className={pillCls(isQcActive)}
           >
             <UserCheck className="h-3.5 w-3.5 text-amber-600" />
@@ -137,7 +141,7 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
 
           <button
             type="button"
-            onClick={() => void handleRoleNav('/admin', 'NV00053', '🛡️ Quản Trị Admin')}
+            onClick={() => void handleRoleNav('/admin?tab=cockpit', 'NV00053', '🛡️ Quản Trị Admin')}
             className={pillCls(isAdminActive)}
           >
             <Shield className="h-3.5 w-3.5 text-blue-600" />
@@ -155,8 +159,8 @@ export function TopRoleBar({ currentPath }: TopRoleBarProps) {
 
           <button
             type="button"
-            onClick={() => void handleRoleNav('/admin', 'NV_KT02', '📅 Kế Hoạch & Báo Cáo')}
-            className={pillCls(currentPath.includes('daily_schedule') || currentPath.startsWith('/print/daily-schedule'))}
+            onClick={() => void handleRoleNav('/admin?tab=daily_schedule', 'NV_KT02', '📅 Kế Hoạch & Báo Cáo')}
+            className={pillCls(isScheduleActive)}
           >
             <CalendarClock className="h-3.5 w-3.5 text-blue-600" />
             <span>Kế Hoạch &amp; Tuần</span>
